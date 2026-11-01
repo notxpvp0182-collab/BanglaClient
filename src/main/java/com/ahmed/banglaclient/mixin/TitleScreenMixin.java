@@ -285,4 +285,25 @@ public abstract class TitleScreenMixin extends Screen {
         }
         cir.setReturnValue(true);
     }
+    private void renderCinematicMinecraftLandscape(DrawContext context, int w, int h) {
+        int horizonY = (int) (h * 0.62f);
+        context.fillGradient(0, 0, w, horizonY, 0xFF090D1A, 0xFF2D1930);
+        context.fillGradient(0, horizonY - 35, w, horizonY, 0x002D1930, 0x667F1D1D);
+        for (int i = 0; i < 28; i++) {
+            int sx = ((i * 97) + 23) % Math.max(10, w);
+            int sy = ((i * 53) + 11) % Math.max(10, horizonY - 30);
+            context.fill(sx, sy, sx + 2, sy + 2, (i % 3 == 0) ? 0x99FFFFFF : 0x44FFFFFF);
+        }
+        int moonX = (int) (w * 0.76f), moonY = (int) (h * 0.16f);
+        context.fill(moonX - 14, moonY - 14, moonX + 14, moonY + 14, 0x22F8FAFC);
+        context.fill(moonX - 9, moonY - 9, moonX + 9, moonY + 9, 0xDCF8FAFC);
+        for (int x = 0; x < w; x += 12) {
+            int m1 = (int) (Math.sin(x * 0.018) * 22 + Math.cos(x * 0.035) * 14) + 34;
+            context.fill(x, horizonY - m1, x + 12, horizonY, 0xFF131926);
+            int m2 = (int) (Math.cos(x * 0.028 + 1.4) * 15 + Math.sin(x * 0.06) * 8) + 18;
+            context.fill(x, horizonY - m2, x + 12, horizonY, 0xFF0C111B);
+        }
+        context.fillGradient(0, horizonY, w, h, 0xFF141A29, 0xFF070A10);
+        context.fillGradient(0, horizonY, w, horizonY + 18, 0x44EF4444, 0x00070A10);
+    }
 }
