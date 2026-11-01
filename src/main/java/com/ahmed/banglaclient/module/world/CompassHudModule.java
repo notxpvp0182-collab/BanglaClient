@@ -64,7 +64,7 @@ public final class CompassHudModule extends HudModule {
             bearing += 360.0f;
         }
 
-        int centerX = x + boxW / 2;
+        final float finalBearing = bearing; int centerX = x + boxW / 2;
         int accent = BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null
                 ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
                 : ThemeTokens.DEFAULT_ACCENT_PRIMARY;
@@ -72,7 +72,7 @@ public final class CompassHudModule extends HudModule {
         ClipRenderer.renderClipped(context, x + 2, y + 1, boxW - 4, boxH - 2, () -> {
             float pixelsPerDegree = boxW / 120.0f; // 120-degree field of view on the ribbon
             for (int deg = -180; deg < 540; deg += 15) {
-                float deltaDeg = deg - bearing;
+                float deltaDeg = deg - finalBearing;
                 int markX = Math.round(centerX + deltaDeg * pixelsPerDegree);
                 if (markX < x - 16 || markX > x + boxW + 16) {
                     continue;
