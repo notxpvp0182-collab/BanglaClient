@@ -151,7 +151,7 @@ public final class ClickGuiScreen extends Screen {
         Theme theme = GlassRenderer.getTheme();
         boolean compact = topBar.isCompactDensity();
         String heading = !topBar.getSearchQuery().isBlank()
-                ? "Search ("" + topBar.getSearchQuery() + "")"
+                ? ("Search: " + topBar.getSearchQuery())
                 : (sidebar.getSelectedTab().getModuleCategory() != null
                         ? sidebar.getSelectedTab().getModuleCategory().getFullTitle()
                         : "All Utility Modules");
