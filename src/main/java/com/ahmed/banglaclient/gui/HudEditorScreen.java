@@ -69,7 +69,7 @@ public final class HudEditorScreen extends Screen {
 
             if (selected || hovered) {
                 int outlineColor = selected ? accent : theme.getBorderStrong();
-                context.drawBorder(wx - 1, wy - 1, ww + 2, wh + 2, outlineColor);
+                GlassRenderer.drawOutlineBorder(context, wx - 1, wy - 1, ww + 2, wh + 2, outlineColor);
             }
         }
 
@@ -121,7 +121,7 @@ public final class HudEditorScreen extends Screen {
         }
 
         this.selectedWidget = null;
-        return super.mouseClicked(mouseX, mouseY, button);
+        return false;
     }
 
     @Override
@@ -151,7 +151,7 @@ public final class HudEditorScreen extends Screen {
             HudManager.clampWidgetToScreen(draggingWidget, this.width, this.height);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        return false;
     }
 
     @Override
@@ -161,7 +161,7 @@ public final class HudEditorScreen extends Screen {
             BanglaClient.getInstance().getConfigManager().saveHudLayoutConfig();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return false;
     }
 
     @Override
@@ -189,7 +189,7 @@ public final class HudEditorScreen extends Screen {
             close();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return false;
     }
 
     @Override
@@ -201,6 +201,12 @@ public final class HudEditorScreen extends Screen {
     }
 
     @Override
+        @Override public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
+    @Override public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
+    @Override public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
+    @Override public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
+    @Override public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
+    public boolean charTyped(char c, int m) { return false; }
     public boolean shouldPause() {
         return false;
     }

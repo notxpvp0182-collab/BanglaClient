@@ -84,7 +84,7 @@ public final class ModuleCardWidget {
         // Keybind indicator badge (if bound)
         int nextBadgeX = x + 10 + catW + 5;
         if (module.getKeyCode() != GLFW.GLFW_KEY_UNKNOWN && module.getKeyCode() > 0) {
-            String keyName = InputUtil.fromKeyCode(module.getKeyCode(), 0).getLocalizedText().getString().toUpperCase();
+            String keyName = com.ahmed.banglaclient.input.KeybindManager.formatKeyName(module.getKeyCode());
             int keyW = textRenderer.getWidth(keyName) + 10;
             GlassRenderer.drawPillBadge(context, nextBadgeX, footerY, keyW, 12, accent, true);
             context.drawTextWithShadow(textRenderer, keyName, nextBadgeX + 5, footerY + 2, accent);

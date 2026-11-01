@@ -67,9 +67,9 @@ public final class SpeedometerModule extends HudModule {
     public void renderHud(DrawContext context, float tickDelta, boolean preview) {
         double blocksPerSec = 0.0;
         if (client.player != null) {
-            double dx = client.player.getX() - client.player.prevX;
-            double dy = includeVerticalSpeedSetting.isEnabled() ? (client.player.getY() - client.player.prevY) : 0.0;
-            double dz = client.player.getZ() - client.player.prevZ;
+            double dx = client.player.getX() - client.player.lastRenderX;
+            double dy = includeVerticalSpeedSetting.isEnabled() ? (client.player.getY() - client.player.lastRenderY) : 0.0;
+            double dz = client.player.getZ() - client.player.lastRenderZ;
             blocksPerSec = Math.sqrt(dx * dx + dy * dy + dz * dz) * 20.0;
         } else if (preview) {
             blocksPerSec = 5.61;

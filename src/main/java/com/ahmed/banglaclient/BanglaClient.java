@@ -98,7 +98,7 @@ public final class BanglaClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((drawContext, renderTickCounter) -> {
             BlurRenderer.beginFrame();
             if (this.hudManager != null) {
-                this.hudManager.renderInGameHud(drawContext, renderTickCounter.getTickDelta(false));
+                this.hudManager.renderInGameHud(drawContext, 1.0f);
             }
         });
 

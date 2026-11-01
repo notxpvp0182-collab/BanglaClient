@@ -74,8 +74,8 @@ public final class ChatCopyModule extends Module {
         MutableText copyBadge = Text.literal(" [Copy]").setStyle(
                 Style.EMPTY
                         .withFormatting(Formatting.DARK_GRAY)
-                        .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, raw))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("Click to copy message to clipboard")))
+                        .withClickEvent(new ClickEvent.CopyToClipboard(raw))
+                        .withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy message to clipboard")))
         );
         return original.copy().append(copyBadge);
     }

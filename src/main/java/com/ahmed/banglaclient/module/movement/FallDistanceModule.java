@@ -38,7 +38,7 @@ public final class FallDistanceModule extends HudModule {
 
     @Override
     public void renderHud(DrawContext context, float tickDelta, boolean preview) {
-        float fallDist = client.player != null ? client.player.fallDistance : 0.0f;
+        float fallDist = client.player != null ? (float) client.player.fallDistance : 0.0f;
         if (preview && fallDist < 0.1f) {
             fallDist = 7.4f;
         }

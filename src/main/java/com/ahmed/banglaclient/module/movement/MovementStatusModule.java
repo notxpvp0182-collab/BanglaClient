@@ -48,8 +48,8 @@ public final class MovementStatusModule extends HudModule {
             } else if (!client.player.isOnGround()) {
                 status = client.player.getVelocity().y > 0.0 ? "Jumping" : "Airborne";
             } else {
-                double dx = client.player.getX() - client.player.prevX;
-                double dz = client.player.getZ() - client.player.prevZ;
+                double dx = client.player.getX() - client.player.lastRenderX;
+                double dz = client.player.getZ() - client.player.lastRenderZ;
                 if ((dx * dx + dz * dz) > 0.0004) {
                     status = "Walking";
                 }

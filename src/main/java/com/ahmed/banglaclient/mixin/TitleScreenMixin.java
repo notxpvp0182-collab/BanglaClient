@@ -318,7 +318,7 @@ public abstract class TitleScreenMixin extends Screen {
                         : "Mod Button";
                 int extW = Math.max(92, this.textRenderer.getWidth(extLabel) + 16);
                 if (MathUtils.isHovered(mouseX, mouseY, dockX, dockY, extW, 20)) {
-                    ext.onClick(mouseX, mouseY);
+                    ext.onClick(new net.minecraft.client.gui.Click(mouseX, mouseY, new net.minecraft.client.input.MouseInput(0, 0)), false);
                     cir.setReturnValue(true);
                     return;
                 }

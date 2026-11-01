@@ -45,7 +45,7 @@ public final class HotbarHudModule extends HudModule {
     public void renderHud(DrawContext context, float tickDelta, boolean preview) {
         int slotSize = 20;
         int pad = paddingSetting.getIntValue();
-        int selectedSlot = client.player != null ? client.player.getInventory().selectedSlot : 0;
+        int selectedSlot = client.player != null ? client.player.getInventory().getSelectedSlot() : 0;
 
         boolean hasOffhand = showOffhandSlotSetting.isEnabled()
                 && (preview || (client.player != null && !client.player.getOffHandStack().isEmpty()));

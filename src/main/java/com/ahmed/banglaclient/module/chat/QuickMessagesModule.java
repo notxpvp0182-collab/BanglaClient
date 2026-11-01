@@ -46,7 +46,7 @@ public final class QuickMessagesModule extends Module {
     protected void onEnable() {
         if (client != null && client.player != null && client.currentScreen == null) {
             String draft = formatTemplate(presetOneSetting.getValue());
-            client.setScreen(new ChatScreen(draft));
+            client.setScreen(new ChatScreen(draft, true));
             // Automatically return to standby so it acts as a clean one-shot action when bound to a key
             setEnabled(false);
         }

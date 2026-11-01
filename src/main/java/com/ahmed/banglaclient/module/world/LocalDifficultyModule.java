@@ -38,7 +38,7 @@ public final class LocalDifficultyModule extends HudModule {
         float clampedDiff = 0.12f;
 
         if (client.world != null && client.player != null) {
-            LocalDifficulty ld = client.world.getLocalDifficulty(client.player.getBlockPos());
+            LocalDifficulty ld = new LocalDifficulty(client.world.getDifficulty(), client.world.getTimeOfDay(), 0L, 1.0f);
             localDiff = ld.getLocalDifficulty();
             clampedDiff = ld.getClampedLocalDifficulty();
         }

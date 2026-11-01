@@ -34,7 +34,7 @@ public final class ReplayModIntegration {
         for (ClickableWidget widget : externalButtons) {
             String msg = widget.getMessage() != null ? widget.getMessage().getString().toLowerCase(Locale.ROOT) : "";
             if (msg.contains("replay")) {
-                widget.onClick(widget.getX() + 2, widget.getY() + 2);
+                widget.onClick(new net.minecraft.client.gui.Click(widget.getX() + 2, widget.getY() + 2, new net.minecraft.client.input.MouseInput(0, 0)), false);
                 return true;
             }
         }

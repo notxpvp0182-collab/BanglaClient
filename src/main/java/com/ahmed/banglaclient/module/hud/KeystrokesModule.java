@@ -40,7 +40,7 @@ public final class KeystrokesModule extends HudModule {
         ));
         this.showCpsInButtonsSetting = addSetting(new BooleanSetting(
                 "show_cps", "Show CPS on Mouse Keys", "Display live CPS count inside LMB/RMB boxes", true
-        )).visibleWhen(showMouseButtonsSetting::isEnabled);
+         instanceof BooleanSetting b ? (BooleanSetting) b.visibleWhen(showMouseButtonsSetting::isEnabled) : null;
         addAliases("wasd", "keys", "input");
     }
 

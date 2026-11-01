@@ -57,14 +57,14 @@ public final class HudManager {
             return;
         }
         var matrices = context.getMatrices();
-        matrices.push();
-        matrices.translate(widget.getPosX(), widget.getPosY(), 0.0f);
-        matrices.scale(scale, scale, 1.0f);
-        matrices.translate(-widget.getPosX(), -widget.getPosY(), 0.0f);
+        matrices.pushMatrix();
+        matrices.translate(widget.getPosX(), widget.getPosY());
+        matrices.scale(scale, scale);
+        matrices.translate(-widget.getPosX(), -widget.getPosY());
         try {
             widget.renderHud(context, tickDelta, preview);
         } finally {
-            matrices.pop();
+            matrices.popMatrix();
         }
     }
 

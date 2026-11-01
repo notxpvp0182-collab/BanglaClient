@@ -41,11 +41,11 @@ public final class MusicDisplayModule extends HudModule {
         if (musicVol <= 0.001f) {
             return "Muted (0%)";
         }
-        MusicSound musicType = client.getMusicInstance() != null ? client.getMusicInstance().music() : null;
-        if (musicType == null || musicType.getSound() == null) {
+        MusicSound musicType = client.getMusicInstance() != null ? client.getMusicInstance() : null;
+        if (musicType == null || musicType.sound() == null) {
             return "Ambient Soundtrack";
         }
-        var keyOpt = musicType.getSound().getKey();
+        var keyOpt = musicType.sound().getKey();
         if (keyOpt.isPresent()) {
             String rawPath = keyOpt.get().getValue().getPath();
             return formatSoundPath(rawPath);

@@ -38,7 +38,7 @@ public final class SpawnInfoModule extends HudModule {
         double dist = 180.0;
 
         if (client.world != null) {
-            spawnPos = client.world.getSpawnPos();
+            spawnPos = client.world.getLevelProperties().getSpawnPoint().getPos();
             if (client.player != null) {
                 double dx = client.player.getX() - (spawnPos.getX() + 0.5);
                 double dz = client.player.getZ() - (spawnPos.getZ() + 0.5);

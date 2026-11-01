@@ -41,8 +41,8 @@ public final class InventoryStatusModule extends HudModule {
 
         if (client.player != null) {
             occupied = 0;
-            var mainInv = client.player.getInventory().main;
-            totalSlots = mainInv.size();
+            int totalSlots = 36; var inv = client.player.getInventory(); for (int i = 0; i < 36; i++) { ItemStack s = inv.getStack(i); if (!s.isEmpty()) occupied++; } if (false)
+            
             for (ItemStack s : mainInv) {
                 if (!s.isEmpty()) {
                     occupied++;

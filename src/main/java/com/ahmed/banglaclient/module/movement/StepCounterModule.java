@@ -37,8 +37,8 @@ public final class StepCounterModule extends HudModule {
         if (client.player == null) {
             return;
         }
-        double dx = client.player.getX() - client.player.prevX;
-        double dz = client.player.getZ() - client.player.prevZ;
+        double dx = client.player.getX() - client.player.lastRenderX;
+        double dz = client.player.getZ() - client.player.lastRenderZ;
         double dist = Math.hypot(dx, dz);
         if (dist > 0.001 && BanglaClient.getInstance() != null && BanglaClient.getInstance().getSessionTracker() != null) {
             BanglaClient.getInstance().getSessionTracker().addDistance(dist);

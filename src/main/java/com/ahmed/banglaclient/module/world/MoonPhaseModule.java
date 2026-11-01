@@ -37,8 +37,8 @@ public final class MoonPhaseModule extends HudModule {
         float moonSize = 1.0f;
 
         if (client.world != null) {
-            phaseIndex = client.world.getMoonPhase();
-            moonSize = client.world.getMoonSize();
+            phaseIndex = (int) ((client.world.getTimeOfDay() / 24000L) % 8L);
+            moonSize = 1.0f;
         }
 
         String phaseName = switch (phaseIndex) {

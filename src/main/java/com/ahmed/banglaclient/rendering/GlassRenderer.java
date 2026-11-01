@@ -177,6 +177,7 @@ public final class GlassRenderer {
     /**
      * Draws a crisp 1px horizontal divider with faded ends.
      */
+    public static void drawOutlineBorder(DrawContext c, int x, int y, int w, int h, int col) { c.fill(x, y, x + w, y + 1, col); c.fill(x, y + h - 1, x + w, y + h, col); c.fill(x, y + 1, x + 1, y + h - 1, col); c.fill(x + w - 1, y + 1, x + w, y + h - 1, col); }
     public static void drawHorizontalDivider(DrawContext context, int x, int y, int width) {
         if (context == null || width <= 4) {
             return;
