@@ -6,8 +6,6 @@
   "client": [
     "BossBarHudMixin",
     "ChatHudMixin",
-    "ClientWorldMixin",
-    "ClientWorldMixin$WorldWeatherHookMixin",
     "GameRendererMixin",
     "InGameHudMixin",
     "InGameOverlayRendererMixin",
