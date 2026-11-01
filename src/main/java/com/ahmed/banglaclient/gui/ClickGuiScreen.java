@@ -150,11 +150,7 @@ public final class ClickGuiScreen extends Screen {
     private void renderModulesGridView(DrawContext context, int x, int y, int width, int height, double mouseX, double mouseY) {
         Theme theme = GlassRenderer.getTheme();
         boolean compact = topBar.isCompactDensity();
-        String heading = !topBar.getSearchQuery().isBlank()
-                ? ("Search: " + topBar.getSearchQuery())
-                : (sidebar.getSelectedTab().getModuleCategory() != null
-                        ? sidebar.getSelectedTab().getModuleCategory().getFullTitle()
-                        : "All Utility Modules");
+        String heading = !topBar.getSearchQuery().isBlank() ? ("Search: " + topBar.getSearchQuery()) : (sidebar.getSelectedTab().getModuleCategory() != null ? sidebar.getSelectedTab().getModuleCategory().getFullTitle() : "All Utility Modules");
         context.drawTextWithShadow(textRenderer, heading + " (" + filteredModules.size() + ")", x + 2, y + 2, theme.getTextPrimary());
 
         int viewY = y + 14;
