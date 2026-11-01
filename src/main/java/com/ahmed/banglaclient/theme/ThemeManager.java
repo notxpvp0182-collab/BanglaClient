@@ -33,7 +33,7 @@ public final class ThemeManager {
                 ThemeTokens.DEFAULT_GLASS_ELEVATED,
                 ThemeTokens.DEFAULT_SPECULAR_TOP,
                 ThemeTokens.DEFAULT_SPECULAR_BOTTOM,
-                ThemeTokens.0xFFEF4444,
+                0xFFEF4444,
                 0xFFF87171,
                 ThemeTokens.DEFAULT_TEXT_PRIMARY,
                 ThemeTokens.DEFAULT_TEXT_SECONDARY,

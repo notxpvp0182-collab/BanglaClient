@@ -42,7 +42,7 @@ public final class ConfigValidatorAndThemeTest {
         Assertions.assertEquals(4, tm.getAllThemes().size());
 
         Theme initial = tm.getActiveTheme();
-        Assertions.assertEquals("liquid_dark_sky", initial.getId());
+        Assertions.assertEquals("red_theme", initial.getId());
 
         tm.cycleNextTheme();
         Assertions.assertNotEquals(initial.getId(), tm.getActiveTheme().getId());
