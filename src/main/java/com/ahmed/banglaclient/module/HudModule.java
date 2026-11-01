@@ -55,7 +55,7 @@ public abstract class HudModule extends Module {
         this.showBorderSetting = addSetting(new BooleanSetting(
                 "hud_border", "Glass Border", "Render a subtle specular border around this widget",
                 true
-         instanceof BooleanSetting b ? (BooleanSetting) b.visibleWhen(showBackgroundSetting::isEnabled) : null;
+         )) instanceof BooleanSetting b ? (BooleanSetting) b.visibleWhen(showBackgroundSetting::isEnabled) : null;
         this.cornerRadiusSetting = addSetting(new NumberSetting(
                 "hud_radius", "Corner Radius", "Border rounding radius in pixels",
                 6.0, 0.0, 14.0, 1.0, "px"
