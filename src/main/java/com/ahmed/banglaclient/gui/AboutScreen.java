@@ -25,7 +25,7 @@ public final class AboutScreen extends Screen {
         this.parentScreen = parentScreen;
     }
 
-    @Override
+    
     protected void init() {
         this.panelW = 360;
         this.panelH = 210;
@@ -33,7 +33,7 @@ public final class AboutScreen extends Screen {
         this.panelY = (this.height - this.panelH) / 2;
     }
 
-    @Override
+    
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 1.0f);
         Theme theme = GlassRenderer.getTheme();
@@ -70,7 +70,7 @@ public final class AboutScreen extends Screen {
                 hovered ? accent : theme.getTextPrimary());
     }
 
-    @Override
+    
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int btnW = 88;
         int btnH = 20;
@@ -83,7 +83,7 @@ public final class AboutScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             close();
@@ -92,19 +92,19 @@ public final class AboutScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public void close() {
         if (this.client != null) {
             this.client.setScreen(parentScreen);
         }
     }
 
-    @Override
-        @Override public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
-    @Override public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
-    @Override public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
-    @Override public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
-    @Override public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
+    
+         public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
+     public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
+     public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
+     public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
+     public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
     public boolean mouseDragged(double mx, double my, int b, double dx, double dy) { return false; }
     public boolean mouseReleased(double mx, double my, int b) { return false; }
     public boolean charTyped(char c, int m) { return false; }

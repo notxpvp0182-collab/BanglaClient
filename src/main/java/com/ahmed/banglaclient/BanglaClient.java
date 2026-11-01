@@ -152,6 +152,8 @@ public final class BanglaClient implements ClientModInitializer {
         return configManager;
     }
 
+    private com.ahmed.banglaclient.tutorial.TutorialManager tutorialManager;
+    public com.ahmed.banglaclient.tutorial.TutorialManager getTutorialManager() { if (tutorialManager == null) tutorialManager = new com.ahmed.banglaclient.tutorial.TutorialManager(configDirectory); return tutorialManager; }
     public ProfileManager getProfileManager() {
         return profileManager;
     }

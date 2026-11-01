@@ -33,7 +33,7 @@ public final class HudEditorScreen extends Screen {
         this.parentScreen = parentScreen;
     }
 
-    @Override
+    
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         Theme theme = GlassRenderer.getTheme();
         int accent = BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary();
@@ -92,7 +92,7 @@ public final class HudEditorScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "Reset All", resetX + 7, barY + 12, resetHover ? accent : theme.getTextPrimary());
     }
 
-    @Override
+    
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int barW = 340;
         int barX = (this.width - barW) / 2;
@@ -124,7 +124,7 @@ public final class HudEditorScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (draggingWidget != null && button == 0) {
             float newX = (float) mouseX - dragOffsetX;
@@ -154,7 +154,7 @@ public final class HudEditorScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (button == 0 && draggingWidget != null) {
             draggingWidget = null;
@@ -164,7 +164,7 @@ public final class HudEditorScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         for (HudModule widget : BanglaClient.getInstance().getModuleManager().getHudModules()) {
             if (widget.isEnabled() && widget.isMouseOver(mouseX, mouseY)) {
@@ -183,7 +183,7 @@ public final class HudEditorScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
-    @Override
+    
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             close();
@@ -192,7 +192,7 @@ public final class HudEditorScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public void close() {
         BanglaClient.getInstance().getConfigManager().saveHudLayoutConfig();
         if (this.client != null) {
@@ -200,12 +200,12 @@ public final class HudEditorScreen extends Screen {
         }
     }
 
-    @Override
-        @Override public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
-    @Override public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
-    @Override public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
-    @Override public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
-    @Override public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
+    
+         public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
+     public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
+     public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
+     public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
+     public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
     public boolean charTyped(char c, int m) { return false; }
     public boolean shouldPause() {
         return false;

@@ -114,7 +114,7 @@ public final class CrosshairCustomizerModule extends HudModule {
             drawRectWithOptionalOutline(context, cx - halfThick, cy + gap + 1, thick, len, color, outline);
         } else if (shapeSetting.getValue() == CrosshairShape.BOX_RING) {
             int r = gap + len;
-            GlassRenderer.drawOutlineBorder(context, cx - r, cy - r, r * 2 + 1, r * 2 + 1, color);
+            com.ahmed.banglaclient.rendering.GlassRenderer.drawOutlineBorder(context, cx - r, cy - r, r * 2 + 1, r * 2 + 1, color);
         }
     }
 

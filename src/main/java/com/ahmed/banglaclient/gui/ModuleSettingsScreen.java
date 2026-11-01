@@ -73,7 +73,7 @@ public final class ModuleSettingsScreen extends Screen {
         return new GlassDropdownWidget(setting);
     }
 
-    @Override
+    
     protected void init() {
         this.panelWidth = Math.min(440, this.width - 40);
         this.panelHeight = Math.min(320, this.height - 40);
@@ -81,7 +81,7 @@ public final class ModuleSettingsScreen extends Screen {
         this.panelY = (this.height - this.panelHeight) / 2;
     }
 
-    @Override
+    
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 1.0f);
         Theme theme = GlassRenderer.getTheme();
@@ -177,7 +177,7 @@ public final class ModuleSettingsScreen extends Screen {
         scrollContainer.renderScrollbar(context, panelX + panelWidth - 6, viewY, 3, viewH, mouseX, mouseY);
     }
 
-    @Override
+    
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // Back button
         if (button == 0 && MathUtils.isHovered(mouseX, mouseY, panelX + 10, panelY + 10, 52, 18)) {
@@ -266,7 +266,7 @@ public final class ModuleSettingsScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         int viewH = panelHeight - 48;
         if (scrollContainer.onMouseDragged(mouseX, mouseY, button, viewH)) {
@@ -275,7 +275,7 @@ public final class ModuleSettingsScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         scrollContainer.onMouseReleased(button);
         for (GlassSliderWidget slider : numberSliders.values()) {
@@ -287,7 +287,7 @@ public final class ModuleSettingsScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         int viewY = panelY + 42;
         int viewH = panelHeight - 48;
@@ -297,7 +297,7 @@ public final class ModuleSettingsScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
-    @Override
+    
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (listeningForKeybind) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
@@ -334,7 +334,7 @@ public final class ModuleSettingsScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public boolean charTyped(char chr, int modifiers) {
         if (focusedStringSetting != null && chr >= 32 && chr != 127) {
             focusedStringSetting.setValue(focusedStringSetting.getValue() + chr);
@@ -343,7 +343,7 @@ public final class ModuleSettingsScreen extends Screen {
         return false;
     }
 
-    @Override
+    
     public void close() {
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getConfigManager() != null) {
             BanglaClient.getInstance().getConfigManager().saveModulesConfig();
@@ -353,12 +353,12 @@ public final class ModuleSettingsScreen extends Screen {
         }
     }
 
-    @Override
-        @Override public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
-    @Override public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
-    @Override public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
-    @Override public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
-    @Override public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
+    
+         public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
+     public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return mouseDragged(c.x(), c.y(), c.button(), dx, dy) || super.mouseDragged(c, dx, dy); }
+     public boolean mouseReleased(net.minecraft.client.gui.Click c) { return mouseReleased(c.x(), c.y(), c.button()) || super.mouseReleased(c); }
+     public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
+     public boolean charTyped(net.minecraft.client.input.CharInput ch) { return charTyped((char) ch.codepoint(), ch.modifiers()) || super.charTyped(ch); }
     public boolean shouldPause() {
         return false;
     }
