@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "banglaclient",
+  "version": "${version}",
+  "name": "BANGLA CLIENT",
+  "description": "Premium dark Liquid Glass utility, HUD, and customization client for Minecraft Java Edition. Developed by Ahmed.",
+  "authors": [
+    "Ahmed"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/"
+  },
+  "license": "All-Rights-Reserved",
+  "icon": "assets/banglaclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.ahmed.banglaclient.BanglaClient"
+    ]
+  },
+  "mixins": [
+    "banglaclient.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  },
+  "custom": {
+    "modmenu": {
+      "links": {
+        "modmenu.credits": "Developed by Ahmed"
+      }
+    }
+  }
+}

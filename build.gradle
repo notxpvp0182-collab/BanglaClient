@@ -1,0 +1,121 @@
+import java.awt.Color
+import java.awt.Font
+import java.awt.GradientPaint
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
+    maven {
+        name = 'TerraformersMC'
+        url = 'https://maven.terraformersmc.com/releases/'
+    }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Mod Menu integration
+    modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+    // JUnit 5 for offline unit verification
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.0'
+}
+
+tasks.register('generateModIcon') {
+    def iconFile = file('src/main/resources/assets/banglaclient/icon.png')
+    outputs.file(iconFile)
+    doLast {
+        if (!iconFile.exists()) {
+            iconFile.parentFile.mkdirs()
+            BufferedImage img = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB)
+            def g = img.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+
+            // Dark Liquid Glass rounded background (#080A0F to #10141B)
+            g.setPaint(new GradientPaint(0f, 0f, new Color(16, 20, 27, 245), 128f, 128f, new Color(8, 10, 15, 255)))
+            g.fillRoundRect(4, 4, 120, 120, 28, 28)
+
+            // Sky Blue specular rim border (#38BDF8)
+            g.setColor(new Color(56, 189, 248, 190))
+            g.drawRoundRect(4, 4, 120, 120, 28, 28)
+
+            // Minimalist "BC" typography mark
+            g.setColor(new Color(244, 247, 250))
+            g.setFont(new Font('SansSerif', Font.BOLD, 54))
+            def fm = g.getFontMetrics()
+            String text = 'BC'
+            int tx = (128 - fm.stringWidth(text)) / 2
+            int ty = ((128 - fm.getHeight()) / 2) + fm.getAscent()
+            g.drawString(text, tx, ty)
+
+            g.dispose()
+            ImageIO.write(img, 'PNG', iconFile)
+        }
+    }
+}
+
+processResources {
+    dependsOn tasks.named('generateModIcon')
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.minecraft_version
+    inputs.property 'loader_version', project.loader_version
+
+    filesMatching('fabric.mod.json') {
+        expand(
+            'version': project.version,
+            'minecraft_version': project.minecraft_version,
+            'loader_version': project.loader_version
+        )
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = 'UTF-8'
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
