@@ -39,7 +39,7 @@ public final class ConfigManager {
     private boolean reducedMotion = false;
     private int clickGuiKeyCode = org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT;
     private int hudEditorKeyCode = org.lwjgl.glfw.GLFW.GLFW_KEY_H;
-    private String activeThemeId = "liquid_dark_sky";
+    private String activeThemeId = "red_theme";
 
     public ConfigManager(Path configDir, ModuleManager moduleManager) {
         this.configDir = configDir;
@@ -198,12 +198,30 @@ public final class ConfigManager {
         if (root.has("activeThemeId") && root.get("activeThemeId").isJsonPrimitive()) {
             this.activeThemeId = root.get("activeThemeId").getAsString();
         }
+        if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null) {
+            var tm = BanglaClient.getInstance().getThemeManager();
+            if (root.has("priHue")) tm.setCustomPrimaryHue(root.get("priHue").getAsFloat());
+            if (root.has("secHue")) tm.setCustomSecondaryHue(root.get("secHue").getAsFloat());
+            if (root.has("glassAlpha")) tm.setCustomGlassAlpha(root.get("glassAlpha").getAsFloat());
+            if (root.has("tintBri")) tm.setCustomTintBrightness(root.get("tintBri").getAsFloat());
+            if (root.has("borderAlpha")) tm.setCustomBorderAlpha(root.get("borderAlpha").getAsFloat());
+            if (root.has("textBri")) tm.setCustomTextBrightness(root.get("textBri").getAsFloat());
+        }
     }
 
     public void saveThemeConfig() {
         JsonObject root = new JsonObject();
         root.addProperty("schemaVersion", ConfigValidator.CURRENT_SCHEMA_VERSION);
         root.addProperty("activeThemeId", activeThemeId);
+        if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null) {
+            var tm = BanglaClient.getInstance().getThemeManager();
+            root.addProperty("priHue", tm.getCustomPrimaryHue());
+            root.addProperty("secHue", tm.getCustomSecondaryHue());
+            root.addProperty("glassAlpha", tm.getCustomGlassAlpha());
+            root.addProperty("tintBri", tm.getCustomTintBrightness());
+            root.addProperty("borderAlpha", tm.getCustomBorderAlpha());
+            root.addProperty("textBri", tm.getCustomTextBrightness());
+        }
         writeAtomically(themeFile, root);
     }
 

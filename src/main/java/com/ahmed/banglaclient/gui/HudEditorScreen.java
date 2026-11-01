@@ -90,6 +90,10 @@ public final class HudEditorScreen extends Screen {
         boolean resetHover = MathUtils.isHovered(mouseX, mouseY, resetX, barY + 7, resetW, 18);
         GlassRenderer.drawPillBadge(context, resetX, barY + 7, resetW, 18, resetHover ? accent : theme.getTextSecondary(), resetHover);
         context.drawTextWithShadow(textRenderer, "Reset All", resetX + 7, barY + 12, resetHover ? accent : theme.getTextPrimary());
+        int doneX = resetX - 52;
+        boolean doneHov = MathUtils.isHovered(mouseX, mouseY, doneX, barY + 7, 46, 18);
+        GlassRenderer.drawPillBadge(context, doneX, barY + 7, 46, 18, accent, true);
+        context.drawTextWithShadow(textRenderer, "Done", doneX + 11, barY + 12, doneHov ? 0xFFFFFFFF : accent);
     }
 
     
@@ -97,6 +101,7 @@ public final class HudEditorScreen extends Screen {
         int barW = 340;
         int barX = (this.width - barW) / 2;
         int resetX = barX + barW - 66;
+        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, resetX - 52, 17, 46, 18)) { close(); return true; }
         if (button == 0 && MathUtils.isHovered(mouseX, mouseY, resetX, 17, 58, 18)) {
             BanglaClient.getInstance().getHudManager().resetAllPositions();
             return true;

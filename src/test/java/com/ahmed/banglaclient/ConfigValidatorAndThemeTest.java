@@ -39,7 +39,7 @@ public final class ConfigValidatorAndThemeTest {
     @Test
     public void testThemeManagerBuiltInThemesAndCycling() {
         ThemeManager tm = new ThemeManager();
-        Assertions.assertEquals(4, tm.getAllThemes().size());
+        Assertions.assertEquals(2, tm.getAllThemes().size());
 
         Theme initial = tm.getActiveTheme();
         Assertions.assertEquals("red_theme", initial.getId());
@@ -47,8 +47,8 @@ public final class ConfigValidatorAndThemeTest {
         tm.cycleNextTheme();
         Assertions.assertNotEquals(initial.getId(), tm.getActiveTheme().getId());
 
-        tm.setActiveThemeById("bengal_emerald_glass");
-        Assertions.assertEquals("Bengal Emerald Glass", tm.getActiveTheme().getDisplayName());
+        tm.setActiveThemeById("custom_theme");
+        Assertions.assertEquals("Custom Theme", tm.getActiveTheme().getDisplayName());
     }
 
     @Test

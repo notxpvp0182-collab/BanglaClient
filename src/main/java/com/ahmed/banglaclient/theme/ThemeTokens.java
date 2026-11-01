@@ -6,10 +6,10 @@ package com.ahmed.banglaclient.theme;
  */
 public final class ThemeTokens {
     // Core Dark Liquid Glass Palette (Default Reference Tokens)
-    public static final int DEFAULT_BG_PRIMARY = 0x22080A0F;
-    public static final int DEFAULT_BG_SECONDARY = 0x3610141B;
-    public static final int DEFAULT_GLASS_SURFACE = 0x3A12161F;
-    public static final int DEFAULT_GLASS_ELEVATED = 0x52181E29;
+    public static final int DEFAULT_BG_PRIMARY = 0x12080A0F;
+    public static final int DEFAULT_BG_SECONDARY = 0x2010141B;
+    public static final int DEFAULT_GLASS_SURFACE = 0x26101520;
+    public static final int DEFAULT_GLASS_ELEVATED = 0x34161D2B;
     public static final int DEFAULT_SPECULAR_TOP = 0x38FFFFFF;
     public static final int DEFAULT_SPECULAR_BOTTOM = 0x05FFFFFF;
 
