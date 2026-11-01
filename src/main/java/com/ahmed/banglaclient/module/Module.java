@@ -47,7 +47,7 @@ public abstract class Module {
         this.keyCode = defaultKeyCode;
         this.enabled = false;
         if (defaultEnabled) {
-            setEnabled(true);
+            this.enabled = true;
         }
     }
 

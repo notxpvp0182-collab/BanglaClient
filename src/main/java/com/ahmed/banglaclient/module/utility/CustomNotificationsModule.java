@@ -54,7 +54,7 @@ public final class CustomNotificationsModule extends Module {
 
     private void syncState() {
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
-            BanglaClient.getInstance().getNotificationManager().setEnabled(isEnabled() && enableModuleToggleToastsSetting.isEnabled());
+            BanglaClient.getInstance().getNotificationManager().setEnabled(isEnabled() && (enableModuleToggleToastsSetting == null || enableModuleToggleToastsSetting.isEnabled()));
         }
     }
 }
