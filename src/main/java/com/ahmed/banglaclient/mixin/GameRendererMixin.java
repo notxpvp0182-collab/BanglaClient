@@ -12,14 +12,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Connects `ZoomModule` smooth FOV magnification and `CustomHurtCameraModule` tilt scaling
- * to Minecraft's `GameRenderer`.
- */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
 
-    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$applySmoothZoomFov(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getModuleManager() == null) {
@@ -34,7 +30,7 @@ public abstract class GameRendererMixin {
         }
     }
 
-    @Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "tiltViewWhenHurt", at = @At("HEAD"), cancellable = true, require = 0)
     private void banglaclient$controlHurtCameraTilt(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getModuleManager() == null) {
