@@ -78,7 +78,7 @@ public final class GlassRenderer {
         Theme theme = getTheme();
 
         // 1. Optional Ambient Shadow
-        ShadowRenderer.drawAmbientShadow(context, x, y, width, height, 4, 0.45f);
+        ShadowRenderer.drawAmbientShadow(context, x, y, width, height, 3, 0.20f);
 
         // 2. Main Beveled Rounded Fill (1px corner inset for crisp anti-aliased rounded appearance)
         int topFill = hovered ? ColorUtils.scaleBrightness(surfaceArgb, 1.22f) : ColorUtils.scaleBrightness(surfaceArgb, 1.10f);

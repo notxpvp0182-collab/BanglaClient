@@ -57,8 +57,8 @@ public final class ClickGuiScreen extends Screen {
 
     
     protected void init() {
-        this.windowWidth = Math.min(720, Math.max(460, this.width - 40));
-        this.windowHeight = Math.min(440, Math.max(280, this.height - 36));
+        this.windowWidth = Math.min(680, Math.max(240, this.width - 16));
+        this.windowHeight = Math.min(400, Math.max(170, this.height - 16));
         this.windowX = (this.width - this.windowWidth) / 2;
         this.windowY = (this.height - this.windowHeight) / 2;
 
@@ -103,7 +103,7 @@ public final class ClickGuiScreen extends Screen {
 
         GlassRenderer.drawGlassPanel(context, windowX, windowY, windowWidth, windowHeight, false, false, false);
 
-        int sidebarW = ThemeTokens.SIDEBAR_WIDTH;
+        int sidebarW = Math.min(ThemeTokens.SIDEBAR_WIDTH, Math.max(82, this.windowWidth / 4));
         int topBarH = ThemeTokens.TOPBAR_HEIGHT;
         int mainX = windowX + sidebarW + 6;
         int mainY = windowY + topBarH + 6;
@@ -162,9 +162,9 @@ public final class ClickGuiScreen extends Screen {
     private void renderKpiCard(DrawContext context, int x, int y, int w, int h, String label, String bigValue, String subText, int statusColor) {
         Theme theme = GlassRenderer.getTheme();
         GlassRenderer.drawGlassPanel(context, x, y, w, h, true, false, false);
-        context.drawTextWithShadow(textRenderer, label, x + 8, y + 7, theme.getTextSecondary());
-        context.drawTextWithShadow(textRenderer, bigValue, x + 8, y + 21, theme.getTextPrimary());
-        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(subText, w - 14), x + 8, y + 37, statusColor);
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(label, w - 10), x + 5, y + 6, theme.getTextSecondary());
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(bigValue, w - 10), x + 5, y + 19, theme.getTextPrimary());
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(subText, w - 10), x + 5, y + 33, statusColor);
     }
 
     private void renderModulesGridView(DrawContext context, int x, int y, int width, int height, double mouseX, double mouseY) {
@@ -189,7 +189,7 @@ public final class ClickGuiScreen extends Screen {
             return;
         }
 
-        int columns = width >= 420 ? 2 : 1;
+        int columns = width >= 270 ? 2 : 1;
         int gap = 6;
         int cardW = (width - 10 - (gap * (columns - 1))) / columns;
         int cardH = compact ? 42 : 56;
@@ -300,11 +300,12 @@ public final class ClickGuiScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "Minecraft Java Edition 1.21.11 (Fabric Utility Client)", cx, cy + 58, theme.getTextSecondary());
         context.drawTextWithShadow(textRenderer, "Design System: Premium Dark Transparent Liquid Glass", cx, cy + 72, theme.getTextSecondary());
         context.drawTextWithShadow(textRenderer, "Legitimate HUD, Visual, Audio, Performance & QoL Suite.", cx, cy + 86, theme.getTextMuted());
+        context.drawTextWithShadow(textRenderer, "Bangla SMP — Server Address: play.banglasmp.net", cx, cy + 104, accent);
     }
 
     
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int sidebarW = ThemeTokens.SIDEBAR_WIDTH;
+        int sidebarW = Math.min(ThemeTokens.SIDEBAR_WIDTH, Math.max(82, this.windowWidth / 4));
         int topBarH = ThemeTokens.TOPBAR_HEIGHT;
         int mainX = windowX + sidebarW + 6;
         int mainY = windowY + topBarH + 6;
@@ -391,7 +392,7 @@ public final class ClickGuiScreen extends Screen {
 
         if (MathUtils.isHovered(mouseX, mouseY, mainX, viewY, mainW - 8, viewH)) {
             boolean compact = topBar.isCompactDensity();
-            int columns = mainW >= 420 ? 2 : 1;
+            int columns = mainW >= 270 ? 2 : 1;
             int gap = 6;
             int cardW = (mainW - 10 - (gap * (columns - 1))) / columns;
             int cardH = compact ? 42 : 56;
@@ -439,7 +440,7 @@ public final class ClickGuiScreen extends Screen {
 
     
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int sidebarW = ThemeTokens.SIDEBAR_WIDTH;
+        int sidebarW = Math.min(ThemeTokens.SIDEBAR_WIDTH, Math.max(82, this.windowWidth / 4));
         int topBarH = ThemeTokens.TOPBAR_HEIGHT;
         int mainX = windowX + sidebarW + 6;
         int mainY = windowY + topBarH + 6;

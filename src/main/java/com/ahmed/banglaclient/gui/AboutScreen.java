@@ -27,8 +27,8 @@ public final class AboutScreen extends Screen {
 
     
     protected void init() {
-        this.panelW = 360;
-        this.panelH = 210;
+        this.panelW = Math.min(340, this.width - 20);
+        this.panelH = Math.min(220, this.height - 16);
         this.panelX = (this.width - this.panelW) / 2;
         this.panelY = (this.height - this.panelH) / 2;
     }
@@ -55,7 +55,12 @@ public final class AboutScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "Target Edition: Minecraft Java 1.21.11 (Fabric)", cx, cy + 62, theme.getTextSecondary());
         context.drawTextWithShadow(textRenderer, "Design System: Dark Transparent Liquid Glass", cx, cy + 76, theme.getTextSecondary());
         context.drawTextWithShadow(textRenderer, "Modules Included: 120 Utility & Customization Modules", cx, cy + 90, theme.getTextSecondary());
-        context.drawTextWithShadow(textRenderer, "Legitimate Client-Side HUD, Visual & QoL Suite.", cx, cy + 106, theme.getTextMuted());
+        context.drawTextWithShadow(textRenderer, "Bangla SMP", cx, cy + 104, accent);
+        context.drawTextWithShadow(textRenderer, "Server Address: play.banglasmp.net", cx, cy + 116, theme.getTextPrimary());
+        int cpX = cx + 178, cpY = cy + 112, cpW = 68, cpH = 16;
+        boolean cpHov = MathUtils.isHovered(mouseX, mouseY, cpX, cpY, cpW, cpH);
+        GlassRenderer.drawPillBadge(context, cpX, cpY, cpW, cpH, accent, cpHov);
+        context.drawTextWithShadow(textRenderer, "Copy IP", cpX + 14, cpY + 4, cpHov ? accent : theme.getTextPrimary());
 
         // Close Button
         int btnW = 88;
@@ -76,6 +81,15 @@ public final class AboutScreen extends Screen {
         int btnH = 20;
         int btnX = panelX + (panelW - btnW) / 2;
         int btnY = panelY + panelH - 30;
+        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, panelX + 202, panelY + 136, 68, 16)) {
+            if (this.client != null && this.client.keyboard != null) {
+                this.client.keyboard.setClipboard("play.banglasmp.net");
+                if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
+                    BanglaClient.getInstance().getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
+                }
+            }
+            return true;
+        }
         if (button == 0 && MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
             close();
             return true;

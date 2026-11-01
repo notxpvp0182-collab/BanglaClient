@@ -77,7 +77,7 @@ public final class GlassSidebar {
 
         // Brand Identity Header ("BANGLA CLIENT" text, no oversized graphical logo)
         context.fill(x + 12, y + 14, x + 18, y + 24, accent);
-        context.drawTextWithShadow(textRenderer, BanglaClient.CLIENT_NAME, x + 24, y + 15, theme.getTextPrimary());
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(BanglaClient.CLIENT_NAME, width - 26), x + 20, y + 12, theme.getTextPrimary());
         GlassRenderer.drawHorizontalDivider(context, x + 10, y + 34, width - 20);
 
         // Scrollable navigation list area
@@ -116,7 +116,7 @@ public final class GlassSidebar {
                 }
 
                 int labelColor = active ? theme.getTextPrimary() : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
-                context.drawTextWithShadow(textRenderer, tab.getLabel(), x + 18, drawY + 6, labelColor);
+                context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(tab.getLabel(), width - 38), x + 12, drawY + 6, labelColor);
 
                 // Count badge for module categories
                 if (tab.getModuleCategory() != null && BanglaClient.getInstance() != null) {

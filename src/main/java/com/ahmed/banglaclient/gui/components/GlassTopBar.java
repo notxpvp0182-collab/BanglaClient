@@ -38,9 +38,9 @@ public final class GlassTopBar {
 
         // 1. Search Box
         int searchX = x + 10;
-        int searchY = y + 7;
-        int searchW = Math.min(210, width / 3);
-        int searchH = height - 14;
+        int searchY = y + 4;
+        int searchW = Math.max(75, Math.min(145, width / 3));
+        int searchH = height - 8;
         boolean searchHovered = MathUtils.isHovered(mouseX, mouseY, searchX, searchY, searchW, searchH);
         GlassRenderer.drawGlassPanel(context, searchX, searchY, searchW, searchH, true, searchHovered, searchFocused);
 
@@ -54,20 +54,20 @@ public final class GlassTopBar {
             displaySearch = textRenderer.trimToWidth(searchQuery, searchW - 28) + cursor;
             searchTextColor = theme.getTextPrimary();
         }
-        context.drawTextWithShadow(textRenderer, displaySearch, searchX + 8, searchY + 7, searchTextColor);
+        context.drawTextWithShadow(textRenderer, displaySearch, searchX + 8, searchY + (searchH - 8) / 2, searchTextColor);
 
         // Clear 'X' button inside search bar when non-empty
         if (!searchQuery.isEmpty()) {
             int clearX = searchX + searchW - 16;
             boolean clearHover = MathUtils.isHovered(mouseX, mouseY, clearX - 2, searchY + 2, 14, searchH - 4);
-            context.drawTextWithShadow(textRenderer, "x", clearX + 3, searchY + 7,
+            context.drawTextWithShadow(textRenderer, "x", clearX + 3, searchY + (searchH - 8) / 2,
                     clearHover ? accent : theme.getTextSecondary());
         }
 
         // 2. Filter Pills: [Enabled] [Favorites] [Compact]
         int pillX = searchX + searchW + 10;
-        int pillY = y + 9;
-        int pillH = height - 18;
+        int pillY = y + 6;
+        int pillH = height - 12;
 
         pillX += renderFilterPill(context, textRenderer, "Enabled", pillX, pillY, pillH, filterOnlyEnabled, accent, mouseX, mouseY) + 6;
         pillX += renderFilterPill(context, textRenderer, "Favorites ★", pillX, pillY, pillH, filterOnlyFavorites, accent, mouseX, mouseY) + 6;
@@ -78,7 +78,7 @@ public final class GlassTopBar {
         int verW = textRenderer.getWidth(verText) + 12;
         int verX = x + width - verW - 10;
         GlassRenderer.drawPillBadge(context, verX, pillY, verW, pillH, accent, true);
-        context.drawTextWithShadow(textRenderer, verText, verX + 6, pillY + 5, accent);
+        context.drawTextWithShadow(textRenderer, verText, verX + 6, pillY + (pillH - 8) / 2, accent);
     }
 
     private int renderFilterPill(
@@ -107,9 +107,9 @@ public final class GlassTopBar {
             return false;
         }
         int searchX = x + 10;
-        int searchY = y + 7;
-        int searchW = Math.min(210, width / 3);
-        int searchH = height - 14;
+        int searchY = y + 4;
+        int searchW = Math.max(75, Math.min(145, width / 3));
+        int searchH = height - 8;
 
         // Clear search button
         if (!searchQuery.isEmpty()) {
@@ -134,8 +134,8 @@ public final class GlassTopBar {
         // Filter pills hit testing
         MinecraftClientTextWidthHelper helper = new MinecraftClientTextWidthHelper();
         int pillX = searchX + searchW + 10;
-        int pillY = y + 9;
-        int pillH = height - 18;
+        int pillY = y + 6;
+        int pillH = height - 12;
 
         int enabledW = helper.getWidth("Enabled") + 14;
         if (MathUtils.isHovered(mouseX, mouseY, pillX, pillY, enabledW, pillH)) {

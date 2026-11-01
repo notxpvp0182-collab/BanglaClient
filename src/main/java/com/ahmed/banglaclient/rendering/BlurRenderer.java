@@ -50,7 +50,7 @@ public final class BlurRenderer {
         }
 
         int baseColor = theme != null ? theme.getBackgroundPrimary() : 0xFF080A0F;
-        float targetAlpha = preset == PerformancePreset.LOW ? 0.84f : 0.68f;
+        float targetAlpha = preset == PerformancePreset.LOW ? 0.22f : 0.14f;
         int topTint = ColorUtils.withAlpha(baseColor, targetAlpha * openProgress * 0.90f);
         int bottomTint = ColorUtils.withAlpha(baseColor, targetAlpha * openProgress);
 

@@ -19,22 +19,22 @@ public final class ThemeManager {
 
     public ThemeManager() {
         registerBuiltInThemes();
-        this.activeTheme = themes.get("liquid_dark_sky");
+        this.activeTheme = themes.values().iterator().next();
     }
 
     private void registerBuiltInThemes() {
         // 1. Primary Reference Theme: Liquid Dark Sky (Sky Blue & Cool Blue on Obsidian Glass)
         register(new Theme(
-                "liquid_dark_sky",
-                "Liquid Dark Sky",
+                "red_theme",
+                "Red Theme",
                 ThemeTokens.DEFAULT_BG_PRIMARY,
                 ThemeTokens.DEFAULT_BG_SECONDARY,
                 ThemeTokens.DEFAULT_GLASS_SURFACE,
                 ThemeTokens.DEFAULT_GLASS_ELEVATED,
                 ThemeTokens.DEFAULT_SPECULAR_TOP,
                 ThemeTokens.DEFAULT_SPECULAR_BOTTOM,
-                ThemeTokens.DEFAULT_ACCENT_PRIMARY,
-                ThemeTokens.DEFAULT_ACCENT_SECONDARY,
+                ThemeTokens.0xFFEF4444,
+                0xFFF87171,
                 ThemeTokens.DEFAULT_TEXT_PRIMARY,
                 ThemeTokens.DEFAULT_TEXT_SECONDARY,
                 ThemeTokens.DEFAULT_TEXT_MUTED,
@@ -44,16 +44,16 @@ public final class ThemeManager {
 
         // 2. Reference Dashboard Ember: Smoked Charcoal with Warm Amber/Coral Accents
         register(new Theme(
-                "smoked_ember_glass",
-                "Smoked Ember Glass",
-                0xFF09090C,
-                0xFF121217,
-                0xD8101116,
-                0xE2181A20,
+                "green_theme",
+                "Green Theme",
+                0x2206120B,
+                0x360B1D13,
+                0x3A0D1F15,
+                0x52122B1E,
                 0x24FFFFFF,
                 0x05FFFFFF,
-                0xFFF97316,
-                0xFFFB923C,
+                0xFF10B981,
+                0xFF34D399,
                 0xFFF4F7FA,
                 0xFFA5AFBC,
                 0xFF64748B,

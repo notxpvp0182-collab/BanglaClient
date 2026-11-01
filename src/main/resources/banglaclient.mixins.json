@@ -6,10 +6,12 @@
   "client": [
     "BossBarHudMixin",
     "ChatHudMixin",
+    "GameMenuScreenMixin",
     "GameRendererMixin",
     "InGameHudMixin",
     "InGameOverlayRendererMixin",
     "MouseMixin",
+    "SplashOverlayMixin",
     "TitleScreenMixin"
   ],
   "injectors": {

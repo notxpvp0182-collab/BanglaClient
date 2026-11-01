@@ -6,20 +6,20 @@ import com.ahmed.banglaclient.gui.ClickGuiScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.gui.TutorialCenterScreen;
 import com.ahmed.banglaclient.integration.MainMenuButtonBridge;
-import com.ahmed.banglaclient.integration.ReplayModIntegration;
-import com.ahmed.banglaclient.module.visual.CustomPanoramaModule;
+import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
+import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
-import net.minecraft.client.gui.screen.option.AccessibilityOptionsScreen;
-import net.minecraft.client.gui.screen.option.LanguageOptionsScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.realms.gui.screen.RealmsMainScreen;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,11 +30,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
 
-/**
- * Integrates the BANGLA CLIENT Liquid Glass Main Menu directly into Minecraft's TitleScreen.
- * Preserves third-party mod buttons, provides a top-right Theme Switcher ("Switch to Default Minecraft Theme" /
- * "Switch to BANGLA CLIENT Theme"), and renders the custom Liquid Glass layout when active.
- */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
 
@@ -45,111 +40,100 @@ public abstract class TitleScreenMixin extends Screen {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void banglaclient$onRenderTitleScreen(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla == null || bangla.getConfigManager() == null) {
-            return;
-        }
-
-        boolean customActive = bangla.getConfigManager().isCustomMainMenuEnabled();
-        if (!customActive) {
-            return;
-        }
+        if (bangla == null || bangla.getConfigManager() == null) return;
+        if (!bangla.getConfigManager().isCustomMainMenuEnabled()) return;
 
         this.renderPanoramaBackground(context, delta);
-
-        var panoMod = bangla.getModuleManager().getModule(CustomPanoramaModule.class);
-        if (panoMod.isPresent() && panoMod.get().shouldRenderGradientTint()) {
-            context.fillGradient(0, 0, this.width, this.height,
-                    panoMod.get().getTopGradientArgb(), panoMod.get().getBottomGradientArgb());
-        } else {
-            context.fillGradient(0, 0, this.width, this.height, 0x88080A0F, 0xD0080A0F);
-        }
+        BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 1.0f);
 
         Theme theme = GlassRenderer.getTheme();
         int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
 
-        // Top-Left Session Status Pill & Top-Right Theme Switcher
-        String sessionUser = this.client != null && this.client.getSession() != null
-                ? "Account: " + this.client.getSession().getUsername()
-                : "Offline Session";
-        int userW = this.textRenderer.getWidth(sessionUser) + 16;
-        GlassRenderer.drawGlassPanel(context, 10, 10, userW, 20, true, false, false);
-        context.drawTextWithShadow(this.textRenderer, sessionUser, 18, 16, theme.getTextSecondary());
+        // 1. FastClient-Style Top-Right Utility Dock: [👤 User] [⊞ GUI] [HUD] [🎨 Theme] [⚙ Opt] [ℹ SMP] [BC]
+        int topY = 8, sq = 18, gap = 4;
+        int rightCursor = this.width - 8;
 
-        renderCornerThemeSwitcher(context, mouseX, mouseY, true);
+        // [BC] Switch to Vanilla button (Rightmost accent square)
+        rightCursor -= sq;
+        boolean bcHov = MathUtils.isHovered(mouseX, mouseY, rightCursor, topY, sq, sq);
+        context.fill(rightCursor, topY, rightCursor + sq, topY + sq, bcHov ? ColorUtils.scaleBrightness(accent, 1.2f) : accent);
+        context.drawTextWithShadow(this.textRenderer, "BC", rightCursor + 3, topY + 5, 0xFFFFFFFF);
 
-        // Centerpiece BANGLA CLIENT Liquid Glass Card
-        int cardW = 248;
-        int cardH = 236;
-        int cardX = (this.width - cardW) / 2;
-        int cardY = (this.height - cardH) / 2 - 4;
-
-        GlassRenderer.drawGlassPanel(context, cardX, cardY, cardW, cardH, false, false, true);
-
-        String brand = BanglaClient.CLIENT_NAME;
-        int brandW = this.textRenderer.getWidth(brand);
-        context.drawTextWithShadow(this.textRenderer, brand, cardX + (cardW - brandW) / 2, cardY + 14, accent);
-
-        String subBrand = "Minecraft 1.21.11 • v" + BanglaClient.CLIENT_VERSION;
-        int subW = this.textRenderer.getWidth(subBrand);
-        context.drawTextWithShadow(this.textRenderer, subBrand, cardX + (cardW - subW) / 2, cardY + 26, theme.getTextSecondary());
-
-        GlassRenderer.drawHorizontalDivider(context, cardX + 16, cardY + 40, cardW - 32);
-
-        int btnX = cardX + 16;
-        int btnW = cardW - 32;
-        int btnY = cardY + 48;
-
-        renderGlassMenuButton(context, "Singleplayer", btnX, btnY, btnW, 22, mouseX, mouseY, true);
-        btnY += 26;
-        renderGlassMenuButton(context, "Multiplayer", btnX, btnY, btnW, 22, mouseX, mouseY, false);
-        btnY += 26;
-        renderGlassMenuButton(context, "Minecraft Realms", btnX, btnY, btnW, 22, mouseX, mouseY, false);
-        btnY += 26;
-
-        // Split row: [Click GUI] | [HUD Editor] | [Tutorial]
-        int thirdW = (btnW - 8) / 3;
-        renderGlassMenuButton(context, "Click GUI", btnX, btnY, thirdW, 20, mouseX, mouseY, true);
-        renderGlassMenuButton(context, "HUD Editor", btnX + thirdW + 4, btnY, thirdW, 20, mouseX, mouseY, false);
-        renderGlassMenuButton(context, "Tutorials", btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 20, mouseX, mouseY, false);
-        btnY += 24;
-
-        // Split row: [Options] | [About] | [Quit]
-        renderGlassMenuButton(context, "Options", btnX, btnY, thirdW, 20, mouseX, mouseY, false);
-        renderGlassMenuButton(context, "About", btnX + thirdW + 4, btnY, thirdW, 20, mouseX, mouseY, false);
-        renderGlassMenuButton(context, "Quit Game", btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 20, mouseX, mouseY, false);
-        btnY += 24;
-
-        // Bottom Utility Row: [Lang] | [Access] | [Replay / Stats]
-        boolean replayLoaded = ReplayModIntegration.isReplayModLoaded();
-        renderGlassMenuButton(context, "Language", btnX, btnY, thirdW, 18, mouseX, mouseY, false);
-        renderGlassMenuButton(context, "Access", btnX + thirdW + 4, btnY, thirdW, 18, mouseX, mouseY, false);
-        renderGlassMenuButton(context, replayLoaded ? "Replay" : "Stats", btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 18, mouseX, mouseY, false);
-
-        // Dynamic Third-Party Mod Buttons Dock (Mod Menu, Iris, ReplayMod, etc.)
-        List<ClickableWidget> externalButtons = MainMenuButtonBridge.collectThirdPartyButtons(this);
-        if (!externalButtons.isEmpty()) {
-            int dockX = 10;
-            int dockY = 38;
-            context.drawTextWithShadow(this.textRenderer, "Mod Extensions:", dockX + 2, dockY, theme.getTextMuted());
-            dockY += 12;
-            for (ClickableWidget ext : externalButtons) {
-                String extLabel = ext.getMessage() != null && !ext.getMessage().getString().isBlank()
-                        ? ext.getMessage().getString()
-                        : "Mod Button";
-                int extW = Math.max(92, this.textRenderer.getWidth(extLabel) + 16);
-                renderGlassMenuButton(context, extLabel, dockX, dockY, extW, 20, mouseX, mouseY, false);
-                dockY += 24;
-            }
+        String[] topIcons = {"ℹ", "⚙", "🎨", "⊞", "★"};
+        for (String ic : topIcons) {
+            rightCursor -= (sq + gap);
+            boolean hov = MathUtils.isHovered(mouseX, mouseY, rightCursor, topY, sq, sq);
+            GlassRenderer.drawGlassPanel(context, rightCursor, topY, sq, sq, true, hov, hov);
+            int iw = this.textRenderer.getWidth(ic);
+            context.drawTextWithShadow(this.textRenderer, ic, rightCursor + (sq - iw) / 2, topY + 5, hov ? accent : theme.getTextPrimary());
         }
 
-        // Render active notifications on Main Menu if any
+        // Username Pill
+        String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
+        int userW = Math.max(54, this.textRenderer.getWidth(username) + 18);
+        rightCursor -= (userW + gap);
+        GlassRenderer.drawGlassPanel(context, rightCursor, topY, userW, sq, true, false, false);
+        context.drawTextWithShadow(this.textRenderer, "• " + username, rightCursor + 6, topY + 5, theme.getTextPrimary());
+
+        // 2. Center 3D Brand Header ("বাংলা CLIENT")
+        int centerX = this.width / 2;
+        int startY = Math.max(30, (this.height - 168) / 2);
+
+        String bnTitle = "বাংলা  CLIENT";
+        int bnW = this.textRenderer.getWidth(bnTitle);
+        context.drawText(this.textRenderer, bnTitle, centerX - bnW / 2 + 1, startY + 1, 0xAA000000, false);
+        context.drawTextWithShadow(this.textRenderer, "বাংলা", centerX - bnW / 2, startY, accent);
+        int bnWordW = this.textRenderer.getWidth("বাংলা  ");
+        context.drawTextWithShadow(this.textRenderer, "CLIENT", centerX - bnW / 2 + bnWordW, startY, 0xFFFFFFFF);
+
+        // 3. FastClient-Style Centered Vertical Button Stack
+        int btnW = Math.min(156, this.width - 40);
+        int btnH = 20;
+        int btnX = centerX - btnW / 2;
+        int btnY = startY + 22;
+
+        drawFastButton(context, "Singleplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 23;
+        drawFastButton(context, "Multiplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 23;
+        drawFastButton(context, "Realms", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 23;
+        drawFastButton(context, "Mods & Click GUI", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 23;
+        drawFastButton(context, "Options", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 28;
+
+        // Bottom Separate Accent-Filled Quit Button (FastClient signature style)
+        int quitW = Math.min(118, btnW);
+        int quitX = centerX - quitW / 2;
+        drawFastButton(context, "Quit Game", quitX, btnY, quitW, btnH, mouseX, mouseY, true, accent);
+
+        String verFooter = "BANGLA CLIENT " + BanglaClient.CLIENT_VERSION + " (Developed by Ahmed)";
+        int vfW = this.textRenderer.getWidth(verFooter);
+        context.drawTextWithShadow(this.textRenderer, verFooter, centerX - vfW / 2, btnY + 24, theme.getTextSecondary());
+
+        // Bottom-Right Bangla SMP Badge (matching FastClient corner card placement)
+        int smpW = 118, smpH = 28;
+        int smpX = this.width - smpW - 8, smpY = this.height - smpH - 8;
+        boolean smpHov = MathUtils.isHovered(mouseX, mouseY, smpX, smpY, smpW, smpH);
+        GlassRenderer.drawGlassPanel(context, smpX, smpY, smpW, smpH, true, smpHov, smpHov);
+        context.drawTextWithShadow(this.textRenderer, "BANGLA SMP", smpX + 8, smpY + 5, accent);
+        context.drawTextWithShadow(this.textRenderer, "play.banglasmp.net", smpX + 8, smpY + 15, theme.getTextPrimary());
+
+        // Third-party Mod Extensions (top-left compact)
+        List<ClickableWidget> extList = MainMenuButtonBridge.collectThirdPartyButtons(this);
+        int extY = 8;
+        for (ClickableWidget ext : extList) {
+            String lbl = ext.getMessage() != null ? ext.getMessage().getString() : "Mod";
+            if (lbl.isBlank()) continue;
+            int ew = Math.min(110, this.textRenderer.getWidth(lbl) + 12);
+            drawFastButton(context, this.textRenderer.trimToWidth(lbl, 98), 8, extY, ew, 18, mouseX, mouseY, false, accent);
+            extY += 20;
+        }
+
         if (bangla.getNotificationManager() != null) {
             bangla.getNotificationManager().render(context, this.width, this.height);
         }
-
-        String footer = BanglaClient.CLIENT_NAME + " v" + BanglaClient.CLIENT_VERSION + " — Developed by " + BanglaClient.DEVELOPER;
-        context.drawTextWithShadow(this.textRenderer, footer, 10, this.height - 14, theme.getTextSecondary());
-
         ci.cancel();
     }
 
@@ -157,178 +141,136 @@ public abstract class TitleScreenMixin extends Screen {
     private void banglaclient$onRenderVanillaTail(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getConfigManager() != null && !bangla.getConfigManager().isCustomMainMenuEnabled()) {
-            renderCornerThemeSwitcher(context, mouseX, mouseY, false);
+            int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
+            drawFastButton(context, "BC Theme", this.width - 68, 8, 60, 18, mouseX, mouseY, true, accent);
         }
     }
 
-    private void renderCornerThemeSwitcher(DrawContext context, int mouseX, int mouseY, boolean customActive) {
+    private void drawFastButton(DrawContext context, String text, int x, int y, int w, int h, int mx, int my, boolean solidAccent, int accent) {
         Theme theme = GlassRenderer.getTheme();
-        int accent = BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary();
-        String label = customActive
-                ? "Switch to Default Minecraft Theme"
-                : "Switch to BANGLA CLIENT Theme";
-        int btnW = this.textRenderer.getWidth(label) + 16;
-        int btnH = 20;
-        int btnX = this.width - btnW - 10;
-        int btnY = 10;
-        boolean hovered = MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH);
-
-        GlassRenderer.drawGlassPanel(context, btnX, btnY, btnW, btnH, true, hovered, hovered);
-        context.drawTextWithShadow(this.textRenderer, label, btnX + 8, btnY + 6,
-                hovered ? accent : theme.getTextPrimary());
-    }
-
-    private void renderGlassMenuButton(
-            DrawContext context,
-            String label,
-            int x,
-            int y,
-            int w,
-            int h,
-            int mouseX,
-            int mouseY,
-            boolean primaryHighlight
-    ) {
-        Theme theme = GlassRenderer.getTheme();
-        int accent = BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary();
-        boolean hovered = MathUtils.isHovered(mouseX, mouseY, x, y, w, h);
-
-        GlassRenderer.drawGlassPanel(context, x, y, w, h, true, hovered, primaryHighlight || hovered);
-        int lw = this.textRenderer.getWidth(label);
-        int textColor = hovered ? accent : theme.getTextPrimary();
-        context.drawTextWithShadow(this.textRenderer, label, x + (w - lw) / 2, y + (h - 8) / 2, textColor);
+        boolean hov = MathUtils.isHovered(mx, my, x, y, w, h);
+        if (solidAccent) {
+            int fill = hov ? ColorUtils.withAlpha(accent, 0.88f) : ColorUtils.withAlpha(accent, 0.68f);
+            context.fill(x + 1, y, x + w - 1, y + h, fill);
+            context.fill(x, y + 1, x + 1, y + h - 1, fill);
+            context.fill(x + w - 1, y + 1, x + w, y + h - 1, fill);
+            GlassRenderer.drawOutlineBorder(context, x, y, w, h, ColorUtils.withAlpha(0xFFFFFFFF, hov ? 0.55f : 0.28f));
+        } else {
+            GlassRenderer.drawGlassPanel(context, x, y, w, h, true, hov, hov);
+        }
+        int tw = this.textRenderer.getWidth(text);
+        context.drawTextWithShadow(this.textRenderer, text, x + (w - tw) / 2, y + (h - 8) / 2, 0xFFFFFFFF);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void banglaclient$onMouseClickedTitleScreen(net.minecraft.client.gui.Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
-        if (button != 0 || this.client == null) {
-            return;
-        }
+    private void banglaclient$onMouseClickedTitleScreen(Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
+        double mouseX = click.x(), mouseY = click.y();
+        if (click.button() != 0 || this.client == null) return;
         BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla == null || bangla.getConfigManager() == null) {
+        if (bangla == null || bangla.getConfigManager() == null) return;
+
+        if (!bangla.getConfigManager().isCustomMainMenuEnabled()) {
+            if (MathUtils.isHovered(mouseX, mouseY, this.width - 68, 8, 60, 18)) {
+                bangla.getConfigManager().setCustomMainMenuEnabled(true);
+                cir.setReturnValue(true);
+            }
             return;
         }
 
-        boolean customActive = bangla.getConfigManager().isCustomMainMenuEnabled();
-        String switchLabel = customActive
-                ? "Switch to Default Minecraft Theme"
-                : "Switch to BANGLA CLIENT Theme";
-        int switchW = this.textRenderer.getWidth(switchLabel) + 16;
-        if (MathUtils.isHovered(mouseX, mouseY, this.width - switchW - 10, 10, switchW, 20)) {
-            bangla.getConfigManager().setCustomMainMenuEnabled(!customActive);
-            cir.setReturnValue(true);
-            return;
+        // Top-right icon bar clicks
+        int topY = 8, sq = 18, gap = 4;
+        int rc = this.width - 8 - sq;
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
+            bangla.getConfigManager().setCustomMainMenuEnabled(false);
+            cir.setReturnValue(true); return;
         }
-
-        if (!customActive) {
-            return;
-        }
-
-        int cardW = 248;
-        int cardH = 236;
-        int cardX = (this.width - cardW) / 2;
-        int cardY = (this.height - cardH) / 2 - 4;
-        int btnX = cardX + 16;
-        int btnW = cardW - 32;
-        int btnY = cardY + 48;
-
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, 22)) {
-            this.client.setScreen(new SelectWorldScreen(this));
-            cir.setReturnValue(true);
-            return;
-        }
-        btnY += 26;
-
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, 22)) {
-            this.client.setScreen(new MultiplayerScreen(this));
-            cir.setReturnValue(true);
-            return;
-        }
-        btnY += 26;
-
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, 22)) {
-            this.client.setScreen(new RealmsMainScreen(this));
-            cir.setReturnValue(true);
-            return;
-        }
-        btnY += 26;
-
-        int thirdW = (btnW - 8) / 3;
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, thirdW, 20)) {
-            this.client.setScreen(new ClickGuiScreen(false));
-            cir.setReturnValue(true);
-            return;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + thirdW + 4, btnY, thirdW, 20)) {
-            this.client.setScreen(new HudEditorScreen(this));
-            cir.setReturnValue(true);
-            return;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 20)) {
-            this.client.setScreen(new TutorialCenterScreen(this));
-            cir.setReturnValue(true);
-            return;
-        }
-        btnY += 24;
-
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, thirdW, 20)) {
-            this.client.setScreen(new OptionsScreen(this, this.client.options));
-            cir.setReturnValue(true);
-            return;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + thirdW + 4, btnY, thirdW, 20)) {
+        rc -= (sq + gap);
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
             this.client.setScreen(new AboutScreen(this));
-            cir.setReturnValue(true);
-            return;
+            cir.setReturnValue(true); return;
         }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 20)) {
+        rc -= (sq + gap);
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
+            this.client.setScreen(new OptionsScreen(this, this.client.options));
+            cir.setReturnValue(true); return;
+        }
+        rc -= (sq + gap);
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
+            bangla.getThemeManager().cycleNextTheme();
+            cir.setReturnValue(true); return;
+        }
+        rc -= (sq + gap);
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
+            this.client.setScreen(new ClickGuiScreen(false));
+            cir.setReturnValue(true); return;
+        }
+        rc -= (sq + gap);
+        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
+            this.client.setScreen(new HudEditorScreen(this));
+            cir.setReturnValue(true); return;
+        }
+
+        // Center stack clicks
+        int centerX = this.width / 2;
+        int startY = Math.max(30, (this.height - 168) / 2);
+        int btnW = Math.min(156, this.width - 40);
+        int btnH = 20;
+        int btnX = centerX - btnW / 2;
+        int btnY = startY + 22;
+
+        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+            this.client.setScreen(new SelectWorldScreen(this));
+            cir.setReturnValue(true); return;
+        }
+        btnY += 23;
+        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+            this.client.setScreen(new MultiplayerScreen(this));
+            cir.setReturnValue(true); return;
+        }
+        btnY += 23;
+        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+            this.client.setScreen(new RealmsMainScreen(this));
+            cir.setReturnValue(true); return;
+        }
+        btnY += 23;
+        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+            this.client.setScreen(new ClickGuiScreen(false));
+            cir.setReturnValue(true); return;
+        }
+        btnY += 23;
+        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+            this.client.setScreen(new OptionsScreen(this, this.client.options));
+            cir.setReturnValue(true); return;
+        }
+        btnY += 28;
+        int quitW = Math.min(118, btnW);
+        if (MathUtils.isHovered(mouseX, mouseY, centerX - quitW / 2, btnY, quitW, btnH)) {
             this.client.scheduleStop();
-            cir.setReturnValue(true);
-            return;
+            cir.setReturnValue(true); return;
         }
-        btnY += 24;
 
-        if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, thirdW, 18)) {
-            this.client.setScreen(new LanguageOptionsScreen(this, this.client.options, this.client.getLanguageManager()));
-            cir.setReturnValue(true);
-            return;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + thirdW + 4, btnY, thirdW, 18)) {
-            this.client.setScreen(new AccessibilityOptionsScreen(this, this.client.options));
-            cir.setReturnValue(true);
-            return;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, btnX + (thirdW + 4) * 2, btnY, btnW - (thirdW + 4) * 2, 18)) {
-            if (ReplayModIntegration.isReplayModLoaded()) {
-                ReplayModIntegration.openReplayViewerIfAvailable(this);
-            } else {
-                ReplayModIntegration.openStatisticsScreen(this);
+        // Bangla SMP Corner Card Click -> Copy IP
+        if (MathUtils.isHovered(mouseX, mouseY, this.width - 126, this.height - 36, 118, 28)) {
+            if (this.client.keyboard != null) {
+                this.client.keyboard.setClipboard("play.banglasmp.net");
+                bangla.getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
             }
-            cir.setReturnValue(true);
-            return;
+            cir.setReturnValue(true); return;
         }
 
-        List<ClickableWidget> externalButtons = MainMenuButtonBridge.collectThirdPartyButtons(this);
-        if (!externalButtons.isEmpty()) {
-            int dockX = 10;
-            int dockY = 50;
-            for (ClickableWidget ext : externalButtons) {
-                String extLabel = ext.getMessage() != null && !ext.getMessage().getString().isBlank()
-                        ? ext.getMessage().getString()
-                        : "Mod Button";
-                int extW = Math.max(92, this.textRenderer.getWidth(extLabel) + 16);
-                if (MathUtils.isHovered(mouseX, mouseY, dockX, dockY, extW, 20)) {
-                    ext.onClick(new net.minecraft.client.gui.Click(mouseX, mouseY, new net.minecraft.client.input.MouseInput(0, 0)), false);
-                    cir.setReturnValue(true);
-                    return;
-                }
-                dockY += 24;
+        // Third-party buttons
+        List<ClickableWidget> extList = MainMenuButtonBridge.collectThirdPartyButtons(this);
+        int extY = 8;
+        for (ClickableWidget ext : extList) {
+            String lbl = ext.getMessage() != null ? ext.getMessage().getString() : "Mod";
+            if (lbl.isBlank()) continue;
+            int ew = Math.min(110, this.textRenderer.getWidth(lbl) + 12);
+            if (MathUtils.isHovered(mouseX, mouseY, 8, extY, ew, 18)) {
+                ext.onClick(new Click(mouseX, mouseY, new MouseInput(0, 0)), false);
+                cir.setReturnValue(true); return;
             }
+            extY += 20;
         }
-
         cir.setReturnValue(true);
     }
 }
