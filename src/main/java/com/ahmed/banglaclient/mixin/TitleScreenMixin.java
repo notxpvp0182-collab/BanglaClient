@@ -200,7 +200,10 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void banglaclient$onMouseClickedTitleScreen(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+    private void banglaclient$onMouseClickedTitleScreen(net.minecraft.client.gui.Click click, boolean doubled, CallbackInfoReturnable<Boolean> cir) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (button != 0 || this.client == null) {
             return;
         }
