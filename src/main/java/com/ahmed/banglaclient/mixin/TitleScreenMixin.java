@@ -43,8 +43,8 @@ public abstract class TitleScreenMixin extends Screen {
         if (bangla == null || bangla.getConfigManager() == null) return;
         if (!bangla.getConfigManager().isCustomMainMenuEnabled()) return;
 
-        this.renderPanoramaBackground(context, delta);
-        BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 1.0f);
+        renderCinematicMinecraftLandscape(context, this.width, this.height);
+        BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 0.55f);
 
         Theme theme = GlassRenderer.getTheme();
         int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
@@ -79,12 +79,24 @@ public abstract class TitleScreenMixin extends Screen {
         int centerX = this.width / 2;
         int startY = Math.max(30, (this.height - 168) / 2);
 
-        String bnTitle = "বাংলা  CLIENT";
-        int bnW = this.textRenderer.getWidth(bnTitle);
-        context.drawText(this.textRenderer, bnTitle, centerX - bnW / 2 + 1, startY + 1, 0xAA000000, false);
-        context.drawTextWithShadow(this.textRenderer, "বাংলা", centerX - bnW / 2, startY, accent);
-        int bnWordW = this.textRenderer.getWidth("বাংলা  ");
-        context.drawTextWithShadow(this.textRenderer, "CLIENT", centerX - bnW / 2 + bnWordW, startY, 0xFFFFFFFF);
+        org.joml.Matrix3x2fStack matrices = context.getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(centerX, startY - 8);
+        matrices.scale(2.2f, 2.2f);
+        String w1 = "Bangla ";
+        String w2 = "Client";
+        int totalLogoW = this.textRenderer.getWidth(w1 + w2);
+        int lx = -totalLogoW / 2;
+        int w1W = this.textRenderer.getWidth(w1);
+        // 3D Extruded Depth Layers for "Bangla" (Smooth Premium Red)
+        context.drawText(this.textRenderer, w1, lx + 2, 2, 0xFF450A0A, false);
+        context.drawText(this.textRenderer, w1, lx + 1, 1, 0xFF991B1B, false);
+        context.drawText(this.textRenderer, w1, lx, 0, 0xFFEF4444, false);
+        // 3D Extruded Depth Layers for "Client" (Clean White)
+        context.drawText(this.textRenderer, w2, lx + w1W + 2, 2, 0xFF1E293B, false);
+        context.drawText(this.textRenderer, w2, lx + w1W + 1, 1, 0xFF64748B, false);
+        context.drawText(this.textRenderer, w2, lx + w1W, 0, 0xFFFFFFFF, false);
+        matrices.popMatrix();
 
         // 3. FastClient-Style Centered Vertical Button Stack
         int btnW = Math.min(156, this.width - 40);

@@ -6,11 +6,13 @@
   "client": [
     "BossBarHudMixin",
     "ChatHudMixin",
+    "ClickableWidgetMixin",
     "GameMenuScreenMixin",
     "GameRendererMixin",
     "InGameHudMixin",
     "InGameOverlayRendererMixin",
     "MouseMixin",
+    "ServerListMixin",
     "SplashOverlayMixin",
     "TitleScreenMixin"
   ],
