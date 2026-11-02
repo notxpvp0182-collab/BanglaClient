@@ -215,7 +215,7 @@ public final class SkinCapeManager {
             }
 
             Path targetFolder = importAsCape ? capesDir : skinsDir;
-            String safeFileName = sourceFile.getFileName().toString().replaceAll("[^a-zA-Z0-9._\-]", "_");
+            String safeFileName = sourceFile.getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
             Path destination = targetFolder.resolve(safeFileName);
             Files.copy(sourceFile, destination, StandardCopyOption.REPLACE_EXISTING);
             refreshLibraries();
