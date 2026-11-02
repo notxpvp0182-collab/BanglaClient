@@ -430,11 +430,7 @@ public abstract class GameMenuScreenMixin extends Screen {
         // Save & Quit / Disconnect
         int quitW = Math.min(142, btnW);
         if (MathUtils.isHovered(mouseX, mouseY, centerX - quitW / 2, btnY, quitW, btnH)) {
-            if (this.client.world != null) {
-                this.client.world.disconnectClient(Text.translatable("menu.savingLevel"));
-            }
-            this.client.disconnect();
-            this.client.setScreen(new TitleScreen());
+            this.client.disconnectWithProgressScreen();
             cir.setReturnValue(true); return;
         }
 
