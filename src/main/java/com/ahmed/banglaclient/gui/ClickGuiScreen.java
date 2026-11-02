@@ -191,7 +191,7 @@ public final class ClickGuiScreen extends Screen {
         }
 
         mainScroll.tickAndInterpolate();
-        mainScroll.updateDimensions(height, 370);
+        mainScroll.updateDimensions(height, 420);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
             int curY = Math.round(y - mainScroll.getScrollOffset()) + 4;
