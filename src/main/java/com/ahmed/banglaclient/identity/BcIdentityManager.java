@@ -13,7 +13,6 @@ import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
-import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 import java.util.Collections;
@@ -22,9 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages BANGLA CLIENT identity detection and rendering across Nametags, Tab List, and Chat.
- * Uses a safe, versioned custom payload channel ("banglaclient:identity_v1") that exchanges
- * only protocolVersion and player UUID—never credentials or tokens.
+ * Manages BANGLA CLIENT identity detection and rendering using a custom graphical symbol
+ * across Nametags, Tab List, and Chat.
  */
 public final class BcIdentityManager {
     public static final int PROTOCOL_VERSION = 1;
@@ -106,42 +104,22 @@ public final class BcIdentityManager {
 
     public static boolean isVerifiedBcUser(UUID uuid) {
         if (uuid == null) return false;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        markLocalPlayerVerified(mc);
+        markLocalPlayerVerified(MinecraftClient.getInstance());
         return verifiedBcUuids.contains(uuid);
     }
 
     public static boolean isVerifiedBcUserByName(String username) {
         if (username == null || username.isBlank()) return false;
-        MinecraftClient mc = MinecraftClient.getInstance();
-        markLocalPlayerVerified(mc);
+        markLocalPlayerVerified(MinecraftClient.getInstance());
         return verifiedBcNames.contains(username.trim().toLowerCase());
     }
 
     /**
-     * Renders the recognizable BANGLA CLIENT vector emblem (Red rounded badge + Golden Crown + BC mark).
-     */
-    public static void drawBcBadge(DrawContext context, int x, int y, int size) {
-        if (context == null || size < 6) return;
-        context.fill(x, y, x + size, y + size, 0xFFDC2626);
-        context.fill(x + 1, y + 1, x + size - 1, y + size - 1, 0xFF991B1B);
-        // Top golden crown pixels
-        context.fill(x + 1, y, x + size - 1, y + 2, 0xFFFBBF24);
-        // Inner white BC pixel mark
-        int mid = y + size / 2;
-        context.fill(x + 2, y + 3, x + 4, y + size - 2, 0xFFFFFFFF);
-        context.fill(x + size - 4, y + 3, x + size - 2, mid, 0xFFFFFFFF);
-        context.fill(x + size - 4, mid + 1, x + size - 2, y + size - 2, 0xFFFFFFFF);
-    }
-
-    /**
-     * Creates a styled [BC] prefix badge for Nametags, Tab List, and Chat.
+     * Creates a distinctive graphical symbol (✦ in glowing red with gold shadow)
+     * instead of plain text "[BC]".
      */
     public static MutableText createBcPrefixBadge() {
-        MutableText left = Text.literal("[").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFBBF24)));
-        MutableText bc = Text.literal("BC").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xEF4444)).withBold(true));
-        MutableText right = Text.literal("] ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFBBF24)).withBold(false));
-        return left.append(bc).append(right);
+        return Text.literal("✦ ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xEF4444)).withBold(true));
     }
 
     public static Set<UUID> getVerifiedBcUuids() {
