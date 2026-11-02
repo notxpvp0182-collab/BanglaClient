@@ -159,15 +159,15 @@ public final class SkinCustomizationScreen extends Screen {
         libraryScroll.tickAndInterpolate();
         libraryScroll.updateDimensions(listH, rows * (cardH + cardGap) + 6);
 
-        ClipRenderer.renderClipped(context, rightX + 4, listStartY, rightW - 8, listH, () -> {
-            int startY = Math.round(listStartY - libraryScroll.getScrollOffset());
+        final int finalListStartY = listStartY; ClipRenderer.renderClipped(context, rightX + 4, finalListStartY, rightW - 8, listH, () -> {
+            int startY = Math.round(finalListStartY - libraryScroll.getScrollOffset());
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
                 int c = i % cols;
                 int r = i / cols;
                 int cx = rightX + 6 + c * (cardW + cardGap);
                 int cy = startY + r * (cardH + cardGap);
-                if (cy + cardH < listStartY || cy > listStartY + listH) continue;
+                if (cy + cardH < finalListStartY || cy > finalListStartY + listH) continue;
 
                 boolean selected = viewingCapesTab
                         ? (selCape != null && selCape.getId().equals(entry.getId()))
@@ -284,7 +284,7 @@ public final class SkinCustomizationScreen extends Screen {
             int cardGap = 6;
             int cardW = (rightW - 16 - (cols - 1) * cardGap) / cols;
             int cardH = 36;
-            int startY = Math.round(listStartY - libraryScroll.getScrollOffset());
+            int startY = Math.round(finalListStartY - libraryScroll.getScrollOffset());
 
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
