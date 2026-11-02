@@ -52,58 +52,47 @@ dependencies {
 
 tasks.register('generateModIcon') {
     def iconFile = file('src/main/resources/assets/banglaclient/icon.png')
-    outputs.file(iconFile)
+    def rawJpg = file('src/main/resources/assets/banglaclient/textures/gui/raw_bg.jpg')
+    def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/main_menu_background.png')
+    outputs.files(iconFile, bgFile)
     doLast {
         if (!iconFile.exists()) {
             iconFile.parentFile.mkdirs()
             BufferedImage img = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB)
             def g = img.createGraphics()
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
-
-            // Dark Liquid Glass rounded background (#080A0F to #10141B)
             g.setPaint(new GradientPaint(0f, 0f, new Color(16, 20, 27, 245), 128f, 128f, new Color(8, 10, 15, 255)))
             g.fillRoundRect(4, 4, 120, 120, 28, 28)
-
-            // Sky Blue specular rim border (#38BDF8)
-            g.setColor(new Color(56, 189, 248, 190))
+            g.setColor(new Color(239, 68, 68, 210))
             g.drawRoundRect(4, 4, 120, 120, 28, 28)
-
-            // Minimalist "BC" typography mark
             g.setColor(new Color(244, 247, 250))
             g.setFont(new Font('SansSerif', Font.BOLD, 54))
             def fm = g.getFontMetrics()
             String text = 'BC'
-            int tx = (128 - fm.stringWidth(text)) / 2
-            int ty = ((128 - fm.getHeight()) / 2) + fm.getAscent()
-            g.drawString(text, tx, ty)
-
+            g.drawString(text, (128 - fm.stringWidth(text)) / 2, ((128 - fm.getHeight()) / 2) + fm.getAscent())
             g.dispose()
             ImageIO.write(img, 'PNG', iconFile)
         }
-                def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/main_menu_background.png')
-        if (!bgFile.exists() || bgFile.length() < 10000) {
-            bgFile.parentFile.mkdirs()
-            def url = new URL('https://cdn.modrinth.com/data/cached_images/ac86318d5ad73fd069b32cf0656f869679934733.png')
+
+        bgFile.parentFile.mkdirs()
+        BufferedImage srcBg = null
+        if (rawJpg.exists() && rawJpg.length() > 5000) {
+            srcBg = ImageIO.read(rawJpg)
+        }
+        if (srcBg == null) {
+            def url = new URL('https://i.postimg.cc/05X5w9Vm/0b436142caf939e1091ed9c1b48bd323.jpg')
             def conn = url.openConnection()
             conn.setRequestProperty('User-Agent', 'Mozilla/5.0')
-            BufferedImage srcImg = ImageIO.read(conn.getInputStream())
-            BufferedImage scaled = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB)
-            def g2 = scaled.createGraphics()
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            g2.drawImage(srcImg, 0, 0, 1280, 720, null)
+            srcBg = ImageIO.read(conn.getInputStream())
+        }
+        if (srcBg != null) {
+            int w = srcBg.getWidth()
+            int h = srcBg.getHeight()
+            BufferedImage argbPng = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+            def g2 = argbPng.createGraphics()
+            g2.drawImage(srcBg, 0, 0, w, h, null)
             g2.dispose()
-            ImageIO.write(scaled, 'PNG', bgFile)
-        } else {
-            BufferedImage checkImg = ImageIO.read(bgFile)
-            if (checkImg != null && checkImg.getWidth() > 1280) {
-                BufferedImage scaled = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB)
-                def g2 = scaled.createGraphics()
-                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-                g2.drawImage(checkImg, 0, 0, 1280, 720, null)
-                g2.dispose()
-                ImageIO.write(scaled, 'PNG', bgFile)
-            }
+            ImageIO.write(argbPng, 'PNG', bgFile)
         }
     }
 }
