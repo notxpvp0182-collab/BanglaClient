@@ -81,17 +81,29 @@ tasks.register('generateModIcon') {
             g.dispose()
             ImageIO.write(img, 'PNG', iconFile)
         }
-        def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/title_background.png')
-        if (!bgFile.exists()) {
+                def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/main_menu_background.png')
+        if (!bgFile.exists() || bgFile.length() < 10000) {
             bgFile.parentFile.mkdirs()
-            BufferedImage bg = new BufferedImage(640, 360, BufferedImage.TYPE_INT_ARGB)
-            def g2 = bg.createGraphics()
-            g2.setPaint(new GradientPaint(0f, 0f, new Color(11, 15, 29), 0f, 220f, new Color(45, 27, 48)))
-            g2.fillRect(0, 0, 640, 220)
-            g2.setPaint(new GradientPaint(0f, 220f, new Color(18, 28, 42), 0f, 360f, new Color(8, 12, 20)))
-            g2.fillRect(0, 220, 640, 140)
+            def url = new URL('https://cdn.modrinth.com/data/cached_images/ac86318d5ad73fd069b32cf0656f869679934733.png')
+            def conn = url.openConnection()
+            conn.setRequestProperty('User-Agent', 'Mozilla/5.0')
+            BufferedImage srcImg = ImageIO.read(conn.getInputStream())
+            BufferedImage scaled = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB)
+            def g2 = scaled.createGraphics()
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            g2.drawImage(srcImg, 0, 0, 1280, 720, null)
             g2.dispose()
-            ImageIO.write(bg, 'PNG', bgFile)
+            ImageIO.write(scaled, 'PNG', bgFile)
+        } else {
+            BufferedImage checkImg = ImageIO.read(bgFile)
+            if (checkImg != null && checkImg.getWidth() > 1280) {
+                BufferedImage scaled = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB)
+                def g2 = scaled.createGraphics()
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+                g2.drawImage(checkImg, 0, 0, 1280, 720, null)
+                g2.dispose()
+                ImageIO.write(scaled, 'PNG', bgFile)
+            }
         }
     }
 }

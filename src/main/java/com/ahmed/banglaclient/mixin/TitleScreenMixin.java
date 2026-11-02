@@ -1,25 +1,23 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
-import com.ahmed.banglaclient.gui.AboutScreen;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.util.ColorUtils;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
-import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.input.MouseInput;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.realms.gui.screen.RealmsMainScreen;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -32,202 +30,233 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
 
     @Unique
-    private static final Identifier BG_IMAGE = Identifier.of("banglaclient", "textures/gui/title_background.png");
+    private static final Identifier BG_IMAGE = Identifier.of("banglaclient", "textures/gui/main_menu_background.png");
+
+    @Unique
+    private final Set<ClickableWidget> banglaMenuWidgets = new HashSet<>();
+
+    @Unique
+    private final List<ClickableWidget> capturedModWidgets = new ArrayList<>();
 
     protected TitleScreenMixin(Text title) {
         super(title);
     }
 
-    @Inject(method = "init", at = @At("TAIL"))
-    private void banglaclient$setupNativeMainMenuButtons(CallbackInfo ci) {
-        BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla == null || bangla.getConfigManager() == null) return;
+    @Unique
+    private void registerBanglaButton(ButtonWidget btn) {
+        banglaMenuWidgets.add(btn);
+        this.addDrawableChild(btn);
+    }
 
-        if (!bangla.getConfigManager().isCustomMainMenuEnabled()) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_BC__"), b -> {
-                bangla.getConfigManager().setCustomMainMenuEnabled(true);
-                if (this.client != null) this.client.setScreen(new TitleScreen());
-            }).dimensions(this.width - 28, 8, 20, 20).tooltip(Tooltip.of(Text.literal("Switch to BANGLA CLIENT Theme"))).build());
+    @Inject(method = "init", at = @At("TAIL"))
+    private void banglaclient$setupImage3MainMenu(CallbackInfo ci) {
+        banglaMenuWidgets.clear();
+        capturedModWidgets.clear();
+
+        BanglaClient bangla = BanglaClient.getInstance();
+        if (bangla == null || bangla.getConfigManager() == null || !bangla.getConfigManager().isCustomMainMenuEnabled()) {
             return;
         }
 
-        // Capture any third-party mod buttons (ModMenu / IAS) before clearing vanilla buttons & duplicate IAS text labels
-        List<ClickableWidget> modButtons = new ArrayList<>();
         for (Element child : this.children()) {
-            if (child instanceof ClickableWidget cw && cw.visible) {
-                String msg = cw.getMessage() != null ? cw.getMessage().getString().toLowerCase(Locale.ROOT) : "";
-                String cls = cw.getClass().getName().toLowerCase(Locale.ROOT);
-                if (msg.contains("mod") || cls.contains("modmenu") || msg.contains("account") || cls.contains("ias")) {
-                    modButtons.add(cw);
-                }
+            if (child instanceof ClickableWidget cw) {
+                capturedModWidgets.add(cw);
             }
         }
-
-        // Remove all vanilla buttons & duplicate bottom account labels so there is zero hitbox conflict or overlapping text
         this.clearChildren();
 
         int w = this.width;
         int h = this.height;
         int centerX = w / 2;
 
-        // 1. Top-Left Compact Mod Icon Buttons (Mods & In-Game Account Switcher)
-        int tlX = 10, tlY = 10, sq = 20, gap = 5;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_MODS__"), b -> openModMenuOrFallback(modButtons, "mod"))
-                .dimensions(tlX, tlY, sq, sq).tooltip(Tooltip.of(Text.literal("Mods"))).build());
+        // 1. Left-Side Dynamic Installed-Mod Shortcuts (IMAGE 3: Only shown if the mod is actually installed!)
+        int leftX = 8;
+        int leftW = 78;
+        int leftH = 20;
+        int leftY = Math.max(58, (h - 96) / 2);
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_IAS__"), b -> openIasOrFallback(modButtons))
-                .dimensions(tlX + sq + gap, tlY, sq, sq).tooltip(Tooltip.of(Text.literal("Account Switcher"))).build());
+        if (FabricLoader.getInstance().isModLoaded("ias")) {
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_IAS__:Account"), b -> triggerExternalMod("ias", "account"))
+                    .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("In-Game Account Switcher"))).build());
+            leftY += 24;
+        }
+        if (FabricLoader.getInstance().isModLoaded("replaymod")) {
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_REPLAY__:Replay Mod"), b -> triggerExternalMod("replay", "replay"))
+                    .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("Replay Mod Viewer"))).build());
+            leftY += 24;
+        }
+        if (FabricLoader.getInstance().isModLoaded("flashback")) {
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_FLASHBACK__:Flashback"), b -> triggerExternalMod("flashback", "flashback"))
+                    .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("Flashback Replays"))).build());
+            leftY += 24;
+        }
+        if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_MODS__:More Mods"), b -> openModMenuScreen())
+                    .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("Open Mod Menu"))).build());
+        }
 
-        // 2. Top-Right Toolbar: [• Username] [Color Changer] [HUD Editor] [Resource Packs] [Info] [Theme Switcher]
-        int trSq = 20, trGap = 4;
-        int curRight = w - 10;
+        // 2. Top-Right Toolbar (IMAGE 3: [• Username] [Click GUI] [HUD Editor] [Theme] [Options] [Cosmetics/GUI])
+        int trSq = 18, trGap = 4;
+        int curRight = w - 8;
 
-        // [1] Theme Switcher (BC)
+        // Rightmost: Cosmetics / Quick GUI shortcut
         curRight -= trSq;
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_BC__"), b -> {
-            bangla.getConfigManager().setCustomMainMenuEnabled(false);
-            if (this.client != null) this.client.setScreen(new TitleScreen());
-        }).dimensions(curRight, 10, trSq, trSq).tooltip(Tooltip.of(Text.literal("Switch Menu Theme"))).build());
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_COSM__"), b -> {
+            if (this.client != null) this.client.setScreen(new ClickGuiScreen(false));
+        }).dimensions(curRight, 8, trSq, trSq).tooltip(Tooltip.of(Text.literal("Cosmetics & Modules"))).build());
 
-        // [2] Info / About Button
+        // Settings / Options shortcut
         curRight -= (trSq + trGap);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_INFO__"), b -> {
-            if (this.client != null) this.client.setScreen(new AboutScreen(this));
-        }).dimensions(curRight, 10, trSq, trSq).tooltip(Tooltip.of(Text.literal("About Bangla Client"))).build());
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_OPT__"), b -> {
+            if (this.client != null) this.client.setScreen(new OptionsScreen(this, this.client.options));
+        }).dimensions(curRight, 8, trSq, trSq).tooltip(Tooltip.of(Text.literal("Minecraft Options"))).build());
 
-        // [3] Resource Packs Button
+        // Theme / Color Changer shortcut
         curRight -= (trSq + trGap);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_PACKS__"), b -> {
-            if (this.client != null) {
-                this.client.setScreen(new PackScreen(
-                        this.client.getResourcePackManager(),
-                        manager -> {
-                            this.client.options.refreshResourcePacks(manager);
-                            this.client.setScreen(this);
-                        },
-                        this.client.getResourcePackDir(),
-                        Text.translatable("resourcePack.title")
-                ));
-            }
-        }).dimensions(curRight, 10, trSq, trSq).tooltip(Tooltip.of(Text.literal("Resource Packs"))).build());
-
-        // [4] Dedicated HUD Editor Button (Requirement #2)
-        curRight -= (trSq + trGap);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_HUD__"), b -> {
-            if (this.client != null) this.client.setScreen(new HudEditorScreen(this));
-        }).dimensions(curRight, 10, trSq, trSq).tooltip(Tooltip.of(Text.literal("HUD Editor"))).build());
-
-        // [5] Color / Theme Changer Button
-        curRight -= (trSq + trGap);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__ICON_COLOR__"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_COLOR__"), b -> {
             bangla.getThemeManager().cycleNextTheme();
-        }).dimensions(curRight, 10, trSq, trSq).tooltip(Tooltip.of(Text.literal("Switch Red / Custom Theme"))).build());
+        }).dimensions(curRight, 8, trSq, trSq).tooltip(Tooltip.of(Text.literal("Switch Red / Custom Theme"))).build());
 
-        // [6] Top-Right Account Display Pill
+        // Dedicated HUD Editor shortcut (Requirement #2)
+        curRight -= (trSq + trGap);
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_HUD__"), b -> {
+            if (this.client != null) this.client.setScreen(new HudEditorScreen(this));
+        }).dimensions(curRight, 8, trSq, trSq).tooltip(Tooltip.of(Text.literal("HUD Editor"))).build());
+
+        // Click GUI shortcut
+        curRight -= (trSq + trGap);
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_GUI__"), b -> {
+            if (this.client != null) this.client.setScreen(new ClickGuiScreen(false));
+        }).dimensions(curRight, 8, trSq, trSq).tooltip(Tooltip.of(Text.literal("Open Click GUI"))).build());
+
+        // Account Name Pill
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int userW = Math.max(58, this.textRenderer.getWidth("• " + username) + 16);
+        int userW = Math.max(54, this.textRenderer.getWidth("• " + username) + 14);
         curRight -= (userW + trGap);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> openIasOrFallback(modButtons))
-                .dimensions(curRight, 10, userW, trSq).tooltip(Tooltip.of(Text.literal("Logged in as " + username))).build());
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> triggerExternalMod("ias", "account"))
+                .dimensions(curRight, 8, userW, trSq).tooltip(Tooltip.of(Text.literal("Account: " + username))).build());
 
-        // 3. Center Main Menu Buttons (Real ButtonWidgets -> 100% Exact Hitboxes!)
-        int logoCenterY = Math.max(32, (h - 196) / 2);
-        int btnW = Math.min(182, w - 40);
-        int btnH = 20;
+        // 3. Compact Centered Main Menu Button Stack (IMAGE 3)
+        int logoCenterY = Math.max(30, (h - 190) / 2);
+        int btnW = Math.min(144, w - 60);
+        int btnH = 18;
         int btnX = centerX - btnW / 2;
-        int btnY = logoCenterY + 52;
+        int btnY = logoCenterY + 50;
 
-        // Singleplayer
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Singleplayer"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Singleplayer"), b -> {
             if (this.client != null) this.client.setScreen(new SelectWorldScreen(this));
         }).dimensions(btnX, btnY, btnW, btnH).build());
-        btnY += 22;
+        btnY += 20;
 
-        // Multiplayer
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Multiplayer"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Multiplayer"), b -> {
             if (this.client != null) this.client.setScreen(new MultiplayerScreen(this));
         }).dimensions(btnX, btnY, btnW, btnH).build());
-        btnY += 22;
+        btnY += 20;
 
-        // Realms
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Realms"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Realms"), b -> {
             if (this.client != null) this.client.setScreen(new RealmsMainScreen(this));
         }).dimensions(btnX, btnY, btnW, btnH).build());
-        btnY += 22;
+        btnY += 20;
 
-        // Cosmetics -> Opens actual Click GUI screen (Requirement #1)
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Cosmetics"), b -> {
+        // Cosmetics -> Opens actual Click GUI screen
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Cosmetics"), b -> {
             if (this.client != null) this.client.setScreen(new ClickGuiScreen(false));
-        }).dimensions(btnX, btnY, btnW, btnH).tooltip(Tooltip.of(Text.literal("Open BANGLA CLIENT Click GUI"))).build());
-        btnY += 22;
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+        btnY += 20;
 
-        // Options
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Options"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Options"), b -> {
             if (this.client != null) this.client.setScreen(new OptionsScreen(this, this.client.options));
         }).dimensions(btnX, btnY, btnW, btnH).build());
-        btnY += 25;
+        btnY += 21;
 
-        // Quit Game (Red Capsule)
-        int quitW = Math.min(142, btnW);
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Quit Game"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Quit Game"), b -> {
             if (this.client != null) this.client.scheduleStop();
-        }).dimensions(centerX - quitW / 2, btnY, quitW, btnH).build());
+        }).dimensions(btnX, btnY, btnW, btnH).build());
 
-        // 4. Bottom-Right BANGLA SMP Server Panel Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("__BANGLA_SMP__"), b -> {
+        // 4. Bottom-Right BANGLA SMP Server Card
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__BANGLA_SMP__"), b -> {
             if (this.client != null && this.client.keyboard != null) {
                 this.client.keyboard.setClipboard("play.banglasmp.net");
                 bangla.getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
             }
-        }).dimensions(w - 130, h - 38, 120, 28).tooltip(Tooltip.of(Text.literal("Click to copy play.banglasmp.net"))).build());
+        }).dimensions(w - 122, h - 34, 114, 26).tooltip(Tooltip.of(Text.literal("Click to copy play.banglasmp.net"))).build());
+    }
+
+    @Unique
+    private void sanitizePostInitWidgets() {
+        // Intercept and hide any widgets added after init() by ScreenEvents.AFTER_INIT (such as IAS's [In] button & bottom label)
+        for (Element child : this.children()) {
+            if (child instanceof ClickableWidget cw && !banglaMenuWidgets.contains(cw)) {
+                if (!capturedModWidgets.contains(cw)) {
+                    capturedModWidgets.add(cw);
+                }
+                cw.visible = false;
+                cw.active = false;
+                cw.setX(-2000);
+                cw.setY(-2000);
+            }
+        }
     }
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void banglaclient$renderMainMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void banglaclient$renderImage3MainMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getConfigManager() == null || !bangla.getConfigManager().isCustomMainMenuEnabled()) {
             return;
         }
+
+        sanitizePostInitWidgets();
 
         int w = this.width;
         int h = this.height;
         int centerX = w / 2;
         int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
 
-        // 1. Render Valid Custom Cherry Blossom Sunset PNG Texture Across Entire Screen
+        // 1. Aspect-Ratio-Preserving Cover Scaling of Verified Cherry Blossom Background PNG
+        int texW = 1280, texH = 720;
+        float scale = Math.max((float) w / (float) texW, (float) h / (float) texH);
+        int drawW = Math.round(texW * scale);
+        int drawH = Math.round(texH * scale);
+        int drawX = (w - drawW) / 2;
+        int drawY = (h - drawH) / 2;
+
         try {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, BG_IMAGE, 0, 0, 0.0f, 0.0f, w, h, w, h);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, BG_IMAGE, drawX, drawY, 0.0f, 0.0f, drawW, drawH, drawW, drawH);
         } catch (Throwable t) {
             this.renderPanoramaBackground(context, delta);
         }
-        context.fillGradient(0, 0, w, h, 0x26000000, 0x55080A10);
 
-        // 2. Render Centered 3D "Bangla Client" Logo with Golden Crown & Red Energy Rings
-        int logoCenterY = Math.max(32, (h - 196) / 2);
-        drawGoldenCrown(context, centerX - 56, logoCenterY - 18);
-        drawRedEnergyRings(context, centerX, logoCenterY + 4, accent);
+        // Subtle atmospheric vignette so Liquid Glass buttons pop with crisp contrast
+        context.fillGradient(0, 0, w, h, 0x18000000, 0x44080A10);
+
+        // 2. Large 3D "Bangla Client" Logo with Golden Crown & Red Energy Rings (IMAGE 3)
+        int logoCenterY = Math.max(30, (h - 190) / 2);
+        drawGoldenCrown(context, centerX - 54, logoCenterY - 18);
+        drawRedEnergyRings(context, centerX, logoCenterY + 5, accent);
 
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(centerX, logoCenterY);
+        matrices.translate(centerX, logoCenterY - 2);
         matrices.scale(2.8f, 2.8f);
         String txtBangla = "Bangla";
         int bx = -this.textRenderer.getWidth(txtBangla) / 2;
-        context.drawText(this.textRenderer, txtBangla, bx + 2, 2, 0xFF2D0404, false);
+        context.drawText(this.textRenderer, txtBangla, bx + 2, 2, 0xFF280404, false);
         context.drawText(this.textRenderer, txtBangla, bx + 1, 1, 0xFF7F1D1D, false);
         context.drawTextWithShadow(this.textRenderer, txtBangla, bx, 0, 0xFFEF4444);
         matrices.popMatrix();
 
         matrices.pushMatrix();
-        matrices.translate(centerX, logoCenterY + 23);
-        matrices.scale(2.4f, 2.4f);
+        matrices.translate(centerX, logoCenterY + 21);
+        matrices.scale(2.35f, 2.35f);
         String txtClient = "Client";
         int cx = -this.textRenderer.getWidth(txtClient) / 2;
         context.drawText(this.textRenderer, txtClient, cx + 2, 2, 0xFF0F172A, false);
@@ -235,9 +264,9 @@ public abstract class TitleScreenMixin extends Screen {
         context.drawTextWithShadow(this.textRenderer, txtClient, cx, 0, 0xFFFFFFFF);
         matrices.popMatrix();
 
-        // 3. Render all registered native ButtonWidgets (Zero duplicate bottom text!)
-        for (Element child : this.children()) {
-            if (child instanceof ClickableWidget cw && cw.visible) {
+        // 3. Render ONLY our owned BANGLA CLIENT widgets (Zero stray [In] or bottom Current Account text!)
+        for (ClickableWidget cw : banglaMenuWidgets) {
+            if (cw.visible) {
                 cw.render(context, mouseX, mouseY, delta);
             }
         }
@@ -249,14 +278,22 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     @Unique
-    private void openModMenuOrFallback(List<ClickableWidget> captured, String keyword) {
-        for (ClickableWidget cw : captured) {
+    private void triggerExternalMod(String classHint, String labelHint) {
+        for (ClickableWidget cw : capturedModWidgets) {
             String msg = cw.getMessage() != null ? cw.getMessage().getString().toLowerCase(Locale.ROOT) : "";
-            if (msg.contains(keyword) || cw.getClass().getName().toLowerCase(Locale.ROOT).contains("modmenu")) {
+            String cls = cw.getClass().getName().toLowerCase(Locale.ROOT);
+            if (cls.contains(classHint) || msg.contains(labelHint) || cls.contains("account")) {
+                cw.active = true;
+                cw.visible = true;
                 cw.onClick(new Click(cw.getX() + 2, cw.getY() + 2, new MouseInput(0, 0)), false);
                 return;
             }
         }
+        openModMenuScreen();
+    }
+
+    @Unique
+    private void openModMenuScreen() {
         if (FabricLoader.getInstance().isModLoaded("modmenu")) {
             try {
                 Class<?> cls = Class.forName("com.terraformersmc.modmenu.gui.ModsScreen");
@@ -266,20 +303,6 @@ public abstract class TitleScreenMixin extends Screen {
             } catch (Throwable ignored) {}
         }
         if (this.client != null) this.client.setScreen(new ClickGuiScreen(false));
-    }
-
-    @Unique
-    private void openIasOrFallback(List<ClickableWidget> captured) {
-        for (ClickableWidget cw : captured) {
-            String msg = cw.getMessage() != null ? cw.getMessage().getString().toLowerCase(Locale.ROOT) : "";
-            String cls = cw.getClass().getName().toLowerCase(Locale.ROOT);
-            if (msg.contains("account") || cls.contains("ias") || cls.contains("account")) {
-                cw.onClick(new Click(cw.getX() + 2, cw.getY() + 2, new MouseInput(0, 0)), false);
-                return;
-            }
-        }
-        String user = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        BanglaClient.getInstance().getNotificationManager().pushInfo("Account", "Active Account: " + user);
     }
 
     @Unique
@@ -296,10 +319,10 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private void drawRedEnergyRings(DrawContext context, int cx, int cy, int accent) {
-        int rx = 76;
-        context.fill(cx - rx, cy - 1, cx + rx, cy + 1, ColorUtils.withAlpha(accent, 0.40f));
-        context.fill(cx - rx + 4, cy - 2, cx + rx - 4, cy + 2, ColorUtils.withAlpha(accent, 0.22f));
-        context.fill(cx - rx - 3, cy, cx - rx + 3, cy + 2, 0xFFEF4444);
-        context.fill(cx + rx - 3, cy, cx + rx + 3, cy + 2, 0xFFEF4444);
+        int rx = 78;
+        context.fill(cx - rx, cy - 2, cx + rx, cy, ColorUtils.withAlpha(accent, 0.55f));
+        context.fill(cx - rx + 6, cy + 4, cx + rx - 6, cy + 6, ColorUtils.withAlpha(accent, 0.35f));
+        context.fill(cx - rx - 4, cy - 1, cx - rx + 4, cy + 2, 0xFFEF4444);
+        context.fill(cx + rx - 4, cy - 1, cx + rx + 4, cy + 2, 0xFFEF4444);
     }
 }
