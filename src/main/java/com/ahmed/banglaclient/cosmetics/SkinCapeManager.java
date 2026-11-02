@@ -4,13 +4,14 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.config.ConfigManager;
 import com.ahmed.banglaclient.config.ConfigValidator;
 import com.google.gson.JsonObject;
-import com.mojang.authlib.GameProfile;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.DefaultSkinHelper;
-import net.minecraft.client.util.SkinTextures;
+import net.minecraft.entity.player.PlayerSkinType;
+import net.minecraft.entity.player.SkinTextures;
+import net.minecraft.util.AssetInfo;
 import net.minecraft.util.Identifier;
 
 import javax.imageio.ImageIO;
@@ -59,7 +60,7 @@ public final class SkinCapeManager {
             Files.createDirectories(capesDir);
             Files.createDirectories(selectedFile.getParent());
 
-            // Permanently remove any legacy auto-generated placeholder files
+            // Permanently remove any legacy placeholder files
             Files.deleteIfExists(skinsDir.resolve("skin_001.png"));
             Files.deleteIfExists(skinsDir.resolve("skin_002.png"));
             Files.deleteIfExists(capesDir.resolve("cape_001.png"));
@@ -113,10 +114,10 @@ public final class SkinCapeManager {
             String safeTexName = fileName.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_");
             Identifier texIdentifier = Identifier.of("banglaclient", (asCape ? "capes/" : "skins/") + safeTexName);
 
-            // Register native OpenGL texture once on GPU
+            // Register native OpenGL texture using 1.21.11 Supplier<String> name constructor
             try (InputStream nativeIn = Files.newInputStream(file)) {
                 NativeImage nativeImage = NativeImage.read(nativeIn);
-                NativeImageBackedTexture nativeTexture = new NativeImageBackedTexture(nativeImage);
+                NativeImageBackedTexture nativeTexture = new NativeImageBackedTexture(() -> safeTexName, nativeImage);
                 MinecraftClient.getInstance().getTextureManager().registerTexture(texIdentifier, nativeTexture);
             }
 
@@ -200,10 +201,6 @@ public final class SkinCapeManager {
         }
     }
 
-    /**
-     * Resolves the genuine SkinTextures: uses the authenticated account skin (Steve/Alex fallback by UUID)
-     * if no custom local skin is chosen, or returns the verified local texture.
-     */
     public SkinTextures getActiveSkinTextures() {
         MinecraftClient mc = MinecraftClient.getInstance();
         SkinTextures vanillaDefault = getAuthenticatedAccountDefaultSkin(mc);
@@ -211,28 +208,29 @@ public final class SkinCapeManager {
         SkinEntry skin = getSelectedSkin();
         SkinEntry cape = getSelectedCape();
 
-        Identifier skinTexture = (skin != null) ? skin.getTextureId() : vanillaDefault.texture();
-        SkinTextures.Model model = (skin != null)
-                ? (skin.isSlimModel() ? SkinTextures.Model.SLIM : SkinTextures.Model.WIDE)
+        AssetInfo.TextureAsset body = (skin != null)
+                ? new AssetInfo.TextureAssetInfo(skin.getTextureId(), skin.getTextureId())
+                : vanillaDefault.body();
+        AssetInfo.TextureAsset capeAsset = (cape != null)
+                ? new AssetInfo.TextureAssetInfo(cape.getTextureId(), cape.getTextureId())
+                : vanillaDefault.cape();
+        PlayerSkinType model = (skin != null)
+                ? (skin.isSlimModel() ? PlayerSkinType.SLIM : PlayerSkinType.WIDE)
                 : vanillaDefault.model();
-        Identifier capeTexture = (cape != null) ? cape.getTextureId() : vanillaDefault.capeTexture();
 
         return new SkinTextures(
-                skinTexture,
-                vanillaDefault.textureUrl(),
-                capeTexture,
-                vanillaDefault.elytraTexture(),
+                body,
+                capeAsset,
+                vanillaDefault.elytra(),
                 model,
                 true
         );
     }
 
     public static SkinTextures getAuthenticatedAccountDefaultSkin(MinecraftClient mc) {
-        if (mc == null) return DefaultSkinHelper.getSkinTextures(DefaultSkinHelper.ZERO_UUID);
-        GameProfile profile = mc.getSession() != null ? mc.getSession().getProfile() : null;
-        UUID uuid = profile != null ? profile.id() : DefaultSkinHelper.ZERO_UUID;
-        if (mc.getSkinProvider() != null && profile != null) {
-            return mc.getSkinProvider().getSkinTextures(profile);
+        UUID uuid = new UUID(0L, 0L);
+        if (mc != null && mc.getSession() != null && mc.getSession().getUuidOrNull() != null) {
+            uuid = mc.getSession().getUuidOrNull();
         }
         return DefaultSkinHelper.getSkinTextures(uuid);
     }

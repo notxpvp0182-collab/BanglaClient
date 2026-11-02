@@ -4,8 +4,9 @@ import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.cosmetics.SkinEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.util.SkinTextures;
-import net.minecraft.util.Identifier;
+import net.minecraft.entity.player.PlayerSkinType;
+import net.minecraft.entity.player.SkinTextures;
+import net.minecraft.util.AssetInfo;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -25,18 +26,21 @@ public abstract class AbstractClientPlayerEntityMixin {
                 SkinEntry skin = scm.getSelectedSkin();
                 SkinEntry cape = scm.getSelectedCape();
 
-                Identifier skinId = (skin != null) ? skin.getTextureId() : (orig != null ? orig.texture() : null);
-                Identifier capeId = (cape != null) ? cape.getTextureId() : (orig != null ? orig.capeTexture() : null);
-                SkinTextures.Model model = (skin != null)
-                        ? (skin.isSlimModel() ? SkinTextures.Model.SLIM : SkinTextures.Model.WIDE)
-                        : (orig != null ? orig.model() : SkinTextures.Model.WIDE);
+                AssetInfo.TextureAsset body = (skin != null)
+                        ? new AssetInfo.TextureAssetInfo(skin.getTextureId(), skin.getTextureId())
+                        : (orig != null ? orig.body() : null);
+                AssetInfo.TextureAsset capeAsset = (cape != null)
+                        ? new AssetInfo.TextureAssetInfo(cape.getTextureId(), cape.getTextureId())
+                        : (orig != null ? orig.cape() : null);
+                PlayerSkinType model = (skin != null)
+                        ? (skin.isSlimModel() ? PlayerSkinType.SLIM : PlayerSkinType.WIDE)
+                        : (orig != null ? orig.model() : PlayerSkinType.WIDE);
 
-                if (skinId != null) {
+                if (body != null) {
                     cir.setReturnValue(new SkinTextures(
-                            skinId,
-                            orig != null ? orig.textureUrl() : null,
-                            capeId,
-                            orig != null ? orig.elytraTexture() : null,
+                            body,
+                            capeAsset,
+                            orig != null ? orig.elytra() : null,
                             model,
                             true
                     ));

@@ -5,14 +5,10 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.gui.widget.PlayerSkinWidget;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
-import net.minecraft.client.util.SkinTextures;
+import net.minecraft.entity.player.SkinTextures;
 
 import java.util.function.Supplier;
 
-/**
- * High-performance, GPU-accelerated player preview helper utilizing native Minecraft 1.21.11
- * PlayerSkinWidget and PlayerSkinDrawer (Zero CPU pixel loops, solid 60+ FPS).
- */
 public final class PlayerPreviewRenderer {
 
     private PlayerPreviewRenderer() {}
