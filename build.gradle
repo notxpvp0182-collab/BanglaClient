@@ -81,7 +81,7 @@ tasks.register('generateModIcon') {
             g.dispose()
             ImageIO.write(img, 'PNG', iconFile)
         }
-        def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/background.png')
+        def bgFile = file('src/main/resources/assets/banglaclient/textures/gui/title_background.png')
         if (!bgFile.exists()) {
             bgFile.parentFile.mkdirs()
             BufferedImage bg = new BufferedImage(640, 360, BufferedImage.TYPE_INT_ARGB)
