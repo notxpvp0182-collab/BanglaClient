@@ -4,13 +4,12 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.gui.AboutScreen;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
-import com.ahmed.banglaclient.gui.TutorialCenterScreen;
-import com.ahmed.banglaclient.integration.MainMenuButtonBridge;
-import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
 import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -18,20 +17,22 @@ import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.gui.screen.world.SelectWorldScreen;
-import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.realms.gui.screen.RealmsMainScreen;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.List;
+import java.lang.reflect.Constructor;
 
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
+
+    private static final Identifier BG_IMAGE = Identifier.of("banglaclient", "textures/gui/title_background.png");
 
     protected TitleScreenMixin(Text title) {
         super(title);
@@ -43,110 +44,194 @@ public abstract class TitleScreenMixin extends Screen {
         if (bangla == null || bangla.getConfigManager() == null) return;
         if (!bangla.getConfigManager().isCustomMainMenuEnabled()) return;
 
-        renderCinematicMinecraftLandscape(context, this.width, this.height);
-        BlurRenderer.renderScreenBackdrop(context, this.width, this.height, 0.55f);
+        int w = this.width;
+        int h = this.height;
+
+        // 1. Fullscreen Cherry Blossom Japanese Temple Landscape Background
+        try {
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, BG_IMAGE, 0, 0, 0.0f, 0.0f, w, h, w, h);
+        } catch (Throwable t) {
+            this.renderPanoramaBackground(context, delta);
+        }
+
+        // Subtle dark vignette to maximize contrast behind Liquid Glass
+        context.fillGradient(0, 0, w, h, 0x44000000, 0x77080A10);
 
         Theme theme = GlassRenderer.getTheme();
         int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
+        int centerX = w / 2;
 
-        // 1. FastClient-Style Top-Right Utility Dock: [👤 User] [⊞ GUI] [HUD] [🎨 Theme] [⚙ Opt] [ℹ SMP] [BC]
-        int topY = 8, sq = 18, gap = 4;
-        int rightCursor = this.width - 8;
+        // 2. Top-Left Icons: [🧩 Mods] and [👤 In-Game Account Switcher] (NO TEXT, ICONS ONLY)
+        int iconSq = 20, iconGap = 5;
+        int tlX = 10, tlY = 10;
 
-        // [BC] Switch to Vanilla button (Rightmost accent square)
-        rightCursor -= sq;
-        boolean bcHov = MathUtils.isHovered(mouseX, mouseY, rightCursor, topY, sq, sq);
-        context.fill(rightCursor, topY, rightCursor + sq, topY + sq, bcHov ? ColorUtils.scaleBrightness(accent, 1.2f) : accent);
-        context.drawTextWithShadow(this.textRenderer, "BC", rightCursor + 3, topY + 5, 0xFFFFFFFF);
+        boolean modsHov = MathUtils.isHovered(mouseX, mouseY, tlX, tlY, iconSq, iconSq);
+        drawPillCapsule(context, tlX, tlY, iconSq, iconSq, 0x40121622, 0x55080A10, modsHov ? 0xFFFFFFFF : 0x77FFFFFF, modsHov);
+        context.drawTextWithShadow(this.textRenderer, "🧩", tlX + 5, tlY + 6, modsHov ? accent : 0xFFFFFFFF);
 
-        String[] topIcons = {"ℹ", "⚙", "🎨", "⊞", "★"};
-        for (String ic : topIcons) {
-            rightCursor -= (sq + gap);
-            boolean hov = MathUtils.isHovered(mouseX, mouseY, rightCursor, topY, sq, sq);
-            GlassRenderer.drawGlassPanel(context, rightCursor, topY, sq, sq, true, hov, hov);
+        boolean acctHov = MathUtils.isHovered(mouseX, mouseY, tlX + iconSq + iconGap, tlY, iconSq, iconSq);
+        drawPillCapsule(context, tlX + iconSq + iconGap, tlY, iconSq, iconSq, 0x40121622, 0x55080A10, acctHov ? 0xFFFFFFFF : 0x77FFFFFF, acctHov);
+        context.drawTextWithShadow(this.textRenderer, "👤", tlX + iconSq + iconGap + 5, tlY + 6, acctHov ? accent : 0xFFFFFFFF);
+
+        // 3. Top-Right Dock: • <Username> and [★] [⊞] [👁] [⚙] [BC]
+        int trSq = 18, trGap = 4;
+        int curRight = w - 10;
+
+        // [BC] Toggle
+        curRight -= trSq;
+        boolean bcHov = MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq);
+        context.fill(curRight, 10, curRight + trSq, 10 + trSq, bcHov ? ColorUtils.scaleBrightness(accent, 1.2f) : accent);
+        context.drawTextWithShadow(this.textRenderer, "BC", curRight + 3, 15, 0xFFFFFFFF);
+
+        String[] trIcons = {"⚙", "👁", "⊞", "★"};
+        for (String ic : trIcons) {
+            curRight -= (trSq + trGap);
+            boolean hov = MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq);
+            drawPillCapsule(context, curRight, 10, trSq, trSq, 0x40121622, 0x55080A10, hov ? 0xFFFFFFFF : 0x77FFFFFF, hov);
             int iw = this.textRenderer.getWidth(ic);
-            context.drawTextWithShadow(this.textRenderer, ic, rightCursor + (sq - iw) / 2, topY + 5, hov ? accent : theme.getTextPrimary());
+            context.drawTextWithShadow(this.textRenderer, ic, curRight + (trSq - iw) / 2, 15, hov ? accent : 0xFFFFFFFF);
         }
 
-        // Username Pill
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int userW = Math.max(54, this.textRenderer.getWidth(username) + 18);
-        rightCursor -= (userW + gap);
-        GlassRenderer.drawGlassPanel(context, rightCursor, topY, userW, sq, true, false, false);
-        context.drawTextWithShadow(this.textRenderer, "• " + username, rightCursor + 6, topY + 5, theme.getTextPrimary());
+        String userLabel = "• " + username;
+        int userW = this.textRenderer.getWidth(userLabel) + 16;
+        curRight -= (userW + trGap);
+        drawPillCapsule(context, curRight, 10, userW, trSq, 0x40121622, 0x55080A10, 0x66FFFFFF, false);
+        context.drawTextWithShadow(this.textRenderer, userLabel, curRight + 8, 15, 0xFFFFFFFF);
 
-        // 2. Center 3D Brand Header ("বাংলা CLIENT")
-        int centerX = this.width / 2;
-        int startY = Math.max(30, (this.height - 168) / 2);
+        // 4. Large 3D Centered "Bangla Client" Logo with Golden Crown & Glowing Red Rings
+        int logoCenterY = Math.max(34, (h - 200) / 2);
 
-        org.joml.Matrix3x2fStack matrices = context.getMatrices();
+        // Golden Crown over "Bangla"
+        drawGoldenCrown(context, centerX - 56, logoCenterY - 18);
+
+        // Orbiting glowing red energy rings around "Bangla"
+        drawRedEnergyRings(context, centerX, logoCenterY + 4, accent);
+
+        // 3D "Bangla" in Vibrant Extruded Red
+        Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(centerX, startY - 8);
-        matrices.scale(2.2f, 2.2f);
-        String w1 = "Bangla ";
-        String w2 = "Client";
-        int totalLogoW = this.textRenderer.getWidth(w1 + w2);
-        int lx = -totalLogoW / 2;
-        int w1W = this.textRenderer.getWidth(w1);
-        // 3D Extruded Depth Layers for "Bangla" (Smooth Premium Red)
-        context.drawText(this.textRenderer, w1, lx + 2, 2, 0xFF450A0A, false);
-        context.drawText(this.textRenderer, w1, lx + 1, 1, 0xFF991B1B, false);
-        context.drawText(this.textRenderer, w1, lx, 0, 0xFFEF4444, false);
-        // 3D Extruded Depth Layers for "Client" (Clean White)
-        context.drawText(this.textRenderer, w2, lx + w1W + 2, 2, 0xFF1E293B, false);
-        context.drawText(this.textRenderer, w2, lx + w1W + 1, 1, 0xFF64748B, false);
-        context.drawText(this.textRenderer, w2, lx + w1W, 0, 0xFFFFFFFF, false);
+        matrices.translate(centerX, logoCenterY);
+        matrices.scale(2.8f, 2.8f);
+        String txtBangla = "Bangla";
+        int bw = this.textRenderer.getWidth(txtBangla);
+        int bx = -bw / 2;
+        context.drawText(this.textRenderer, txtBangla, bx + 2, 2, 0xFF2D0404, false);
+        context.drawText(this.textRenderer, txtBangla, bx + 1, 1, 0xFF7F1D1D, false);
+        context.drawTextWithShadow(this.textRenderer, txtBangla, bx, 0, 0xFFEF4444);
         matrices.popMatrix();
 
-        // 3. FastClient-Style Centered Vertical Button Stack
-        int btnW = Math.min(156, this.width - 40);
+        // 3D "Client" in Bold Extruded White
+        matrices.pushMatrix();
+        matrices.translate(centerX, logoCenterY + 23);
+        matrices.scale(2.4f, 2.4f);
+        String txtClient = "Client";
+        int cw = this.textRenderer.getWidth(txtClient);
+        int cx = -cw / 2;
+        context.drawText(this.textRenderer, txtClient, cx + 2, 2, 0xFF0F172A, false);
+        context.drawText(this.textRenderer, txtClient, cx + 1, 1, 0xFF475569, false);
+        context.drawTextWithShadow(this.textRenderer, txtClient, cx, 0, 0xFFFFFFFF);
+        matrices.popMatrix();
+
+        // 5. Centered Rounded Glass Capsule Button Stack
+        int btnW = Math.min(182, w - 40);
         int btnH = 20;
         int btnX = centerX - btnW / 2;
-        int btnY = startY + 22;
+        int btnY = logoCenterY + 54;
 
-        drawFastButton(context, "Singleplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
-        btnY += 23;
-        drawFastButton(context, "Multiplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
-        btnY += 23;
-        drawFastButton(context, "Realms", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
-        btnY += 23;
-        drawFastButton(context, "Mods & Click GUI", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
-        btnY += 23;
-        drawFastButton(context, "Options", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
-        btnY += 28;
+        drawPillMenuButton(context, "👥", "Singleplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 22;
+        drawPillMenuButton(context, "📖", "Multiplayer", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 22;
+        drawPillMenuButton(context, "🏰", "Realms", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 22;
+        drawPillMenuButton(context, "🥼", "Cosmetics", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 22;
+        drawPillMenuButton(context, "⚙", "Options", btnX, btnY, btnW, btnH, mouseX, mouseY, false, accent);
+        btnY += 25;
 
-        // Bottom Separate Accent-Filled Quit Button (FastClient signature style)
-        int quitW = Math.min(118, btnW);
+        // Quit Game Button (Solid Glowing Red Glass Capsule)
+        int quitW = Math.min(142, btnW);
         int quitX = centerX - quitW / 2;
-        drawFastButton(context, "Quit Game", quitX, btnY, quitW, btnH, mouseX, mouseY, true, accent);
+        drawPillMenuButton(context, "", "Quit Game", quitX, btnY, quitW, btnH, mouseX, mouseY, true, accent);
 
-        String verFooter = "BANGLA CLIENT " + BanglaClient.CLIENT_VERSION + " (Developed by Ahmed)";
-        int vfW = this.textRenderer.getWidth(verFooter);
-        context.drawTextWithShadow(this.textRenderer, verFooter, centerX - vfW / 2, btnY + 24, theme.getTextSecondary());
+        // 6. Bottom Center Credits & Account
+        String verStr = "BANGLA CLIENT " + BanglaClient.CLIENT_VERSION + " (Developed by Ahmed)";
+        int vw = this.textRenderer.getWidth(verStr);
+        context.drawTextWithShadow(this.textRenderer, verStr, centerX - vw / 2, h - 23, 0xFFFFFFFF);
 
-        // Bottom-Right Bangla SMP Badge (matching FastClient corner card placement)
-        int smpW = 118, smpH = 28;
-        int smpX = this.width - smpW - 8, smpY = this.height - smpH - 8;
+        String currentAcct = "Current Account: " + username;
+        int aw = this.textRenderer.getWidth(currentAcct);
+        context.drawTextWithShadow(this.textRenderer, currentAcct, centerX - aw / 2, h - 12, 0xFFEF4444);
+
+        // 7. Bottom Right: BANGLA SMP Server Card
+        int smpW = 120, smpH = 28;
+        int smpX = w - smpW - 10, smpY = h - smpH - 10;
         boolean smpHov = MathUtils.isHovered(mouseX, mouseY, smpX, smpY, smpW, smpH);
-        GlassRenderer.drawGlassPanel(context, smpX, smpY, smpW, smpH, true, smpHov, smpHov);
-        context.drawTextWithShadow(this.textRenderer, "BANGLA SMP", smpX + 8, smpY + 5, accent);
-        context.drawTextWithShadow(this.textRenderer, "play.banglasmp.net", smpX + 8, smpY + 15, theme.getTextPrimary());
-
-        // Third-party Mod Extensions (top-left compact)
-        List<ClickableWidget> extList = MainMenuButtonBridge.collectThirdPartyButtons(this);
-        int extY = 8;
-        for (ClickableWidget ext : extList) {
-            String lbl = ext.getMessage() != null ? ext.getMessage().getString() : "Mod";
-            if (lbl.isBlank()) continue;
-            int ew = Math.min(110, this.textRenderer.getWidth(lbl) + 12);
-            drawFastButton(context, this.textRenderer.trimToWidth(lbl, 98), 8, extY, ew, 18, mouseX, mouseY, false, accent);
-            extY += 20;
-        }
+        drawPillCapsule(context, smpX, smpY, smpW, smpH, 0x55080A10, 0x66080A10, smpHov ? 0xFFEF4444 : 0x88EF4444, smpHov);
+        context.drawTextWithShadow(this.textRenderer, "BANGLA SMP", smpX + 10, smpY + 5, 0xFFEF4444);
+        context.drawTextWithShadow(this.textRenderer, "play.banglasmp.net", smpX + 10, smpY + 16, 0xFFFFFFFF);
 
         if (bangla.getNotificationManager() != null) {
-            bangla.getNotificationManager().render(context, this.width, this.height);
+            bangla.getNotificationManager().render(context, w, h);
         }
         ci.cancel();
+    }
+
+    private void drawGoldenCrown(DrawContext context, int x, int y) {
+        // Pixel-art golden crown matching the reference image over 'Bangla'
+        context.fill(x + 2, y, x + 5, y + 3, 0xFFF59E0B);
+        context.fill(x + 9, y - 3, x + 12, y + 3, 0xFFF59E0B);
+        context.fill(x + 16, y, x + 19, y + 3, 0xFFF59E0B);
+        context.fill(x, y + 3, x + 21, y + 9, 0xFFD97706);
+        context.fill(x + 2, y + 4, x + 19, y + 8, 0xFFFBBF24);
+        // Crown jewels
+        context.fill(x + 3, y + 5, x + 5, y + 7, 0xFFEF4444);
+        context.fill(x + 9, y + 4, x + 12, y + 7, 0xFF38BDF8);
+        context.fill(x + 16, y + 5, x + 18, y + 7, 0xFFEF4444);
+    }
+
+    private void drawRedEnergyRings(DrawContext context, int cx, int cy, int accent) {
+        // Red glowing orbital aura ellipses
+        int rx = 76, ry = 18;
+        int ringColor = ColorUtils.withAlpha(accent, 0.40f);
+        context.fill(cx - rx, cy - 1, cx + rx, cy + 1, ringColor);
+        context.fill(cx - rx + 4, cy - 2, cx + rx - 4, cy + 2, ColorUtils.withAlpha(accent, 0.22f));
+        context.fill(cx - rx - 3, cy, cx - rx + 3, cy + 2, 0xFFEF4444);
+        context.fill(cx + rx - 3, cy, cx + rx + 3, cy + 2, 0xFFEF4444);
+    }
+
+    private void drawPillCapsule(DrawContext context, int x, int y, int w, int h, int bgTop, int bgBot, int borderCol, boolean hov) {
+        context.fillGradient(x + 2, y, x + w - 2, y + h, bgTop, bgBot);
+        context.fillGradient(x + 1, y + 1, x + 2, y + h - 1, bgTop, bgBot);
+        context.fillGradient(x + w - 2, y + 1, x + w - 1, y + h - 1, bgTop, bgBot);
+        context.fill(x, y + 2, x + 1, y + h - 2, bgTop);
+        context.fill(x + w - 1, y + 2, x + w, y + h - 2, bgTop);
+        // Top specular reflection
+        context.fill(x + 3, y + 1, x + w - 3, y + 2, 0x44FFFFFF);
+        GlassRenderer.drawOutlineBorder(context, x, y, w, h, borderCol);
+    }
+
+    private void drawPillMenuButton(DrawContext context, String icon, String text, int x, int y, int w, int h, int mx, int my, boolean isQuit, int accent) {
+        boolean hov = MathUtils.isHovered(mx, my, x, y, w, h);
+        int bgTop, bgBot, borderCol;
+        if (isQuit) {
+            bgTop = hov ? 0xE8EF4444 : 0xCFDC2626;
+            bgBot = hov ? 0xE8B91C1C : 0xCF991B1B;
+            borderCol = hov ? 0xFFFFFFFF : 0x99FFFFFF;
+        } else {
+            bgTop = hov ? 0x55FFFFFF : 0x38181A24;
+            bgBot = hov ? 0x35FFFFFF : 0x4A0C0E14;
+            borderCol = hov ? 0xFFFFFFFF : 0x66FFFFFF;
+        }
+
+        drawPillCapsule(context, x, y, w, h, bgTop, bgBot, borderCol, hov);
+
+        if (!icon.isEmpty()) {
+            context.drawTextWithShadow(this.textRenderer, icon, x + 14, y + (h - 8) / 2, 0xFFFFFFFF);
+        }
+        int tw = this.textRenderer.getWidth(text);
+        context.drawTextWithShadow(this.textRenderer, text, x + (w - tw) / 2, y + (h - 8) / 2, 0xFFFFFFFF);
     }
 
     @Inject(method = "render", at = @At("TAIL"))
@@ -154,24 +239,8 @@ public abstract class TitleScreenMixin extends Screen {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getConfigManager() != null && !bangla.getConfigManager().isCustomMainMenuEnabled()) {
             int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
-            drawFastButton(context, "BC Theme", this.width - 68, 8, 60, 18, mouseX, mouseY, true, accent);
+            drawPillMenuButton(context, "", "BC Theme", this.width - 68, 8, 60, 18, mouseX, mouseY, true, accent);
         }
-    }
-
-    private void drawFastButton(DrawContext context, String text, int x, int y, int w, int h, int mx, int my, boolean solidAccent, int accent) {
-        Theme theme = GlassRenderer.getTheme();
-        boolean hov = MathUtils.isHovered(mx, my, x, y, w, h);
-        if (solidAccent) {
-            int fill = hov ? ColorUtils.withAlpha(accent, 0.88f) : ColorUtils.withAlpha(accent, 0.68f);
-            context.fill(x + 1, y, x + w - 1, y + h, fill);
-            context.fill(x, y + 1, x + 1, y + h - 1, fill);
-            context.fill(x + w - 1, y + 1, x + w, y + h - 1, fill);
-            GlassRenderer.drawOutlineBorder(context, x, y, w, h, ColorUtils.withAlpha(0xFFFFFFFF, hov ? 0.55f : 0.28f));
-        } else {
-            GlassRenderer.drawGlassPanel(context, x, y, w, h, true, hov, hov);
-        }
-        int tw = this.textRenderer.getWidth(text);
-        context.drawTextWithShadow(this.textRenderer, text, x + (w - tw) / 2, y + (h - 8) / 2, 0xFFFFFFFF);
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -189,80 +258,98 @@ public abstract class TitleScreenMixin extends Screen {
             return;
         }
 
-        // Top-right icon bar clicks
-        int topY = 8, sq = 18, gap = 4;
-        int rc = this.width - 8 - sq;
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            bangla.getConfigManager().setCustomMainMenuEnabled(false);
-            cir.setReturnValue(true); return;
+        int w = this.width;
+        int h = this.height;
+        int centerX = w / 2;
+
+        // 1. Top-Left Icons: [🧩 Mods] and [👤 IAS]
+        int iconSq = 20, iconGap = 5;
+        if (MathUtils.isHovered(mouseX, mouseY, 10, 10, iconSq, iconSq)) {
+            openModMenuScreen();
+            cir.setReturnValue(true);
+            return;
         }
-        rc -= (sq + gap);
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            this.client.setScreen(new AboutScreen(this));
-            cir.setReturnValue(true); return;
-        }
-        rc -= (sq + gap);
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            this.client.setScreen(new OptionsScreen(this, this.client.options));
-            cir.setReturnValue(true); return;
-        }
-        rc -= (sq + gap);
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            bangla.getThemeManager().cycleNextTheme();
-            cir.setReturnValue(true); return;
-        }
-        rc -= (sq + gap);
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            this.client.setScreen(new ClickGuiScreen(false));
-            cir.setReturnValue(true); return;
-        }
-        rc -= (sq + gap);
-        if (MathUtils.isHovered(mouseX, mouseY, rc, topY, sq, sq)) {
-            this.client.setScreen(new HudEditorScreen(this));
-            cir.setReturnValue(true); return;
+        if (MathUtils.isHovered(mouseX, mouseY, 10 + iconSq + iconGap, 10, iconSq, iconSq)) {
+            openAccountSwitcherScreen();
+            cir.setReturnValue(true);
+            return;
         }
 
-        // Center stack clicks
-        int centerX = this.width / 2;
-        int startY = Math.max(30, (this.height - 168) / 2);
-        int btnW = Math.min(156, this.width - 40);
+        // 2. Top-Right Icons: [BC] [⚙] [👁] [⊞] [★]
+        int trSq = 18, trGap = 4;
+        int curRight = w - 10 - trSq;
+        if (MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq)) {
+            bangla.getConfigManager().setCustomMainMenuEnabled(false);
+            cir.setReturnValue(true);
+            return;
+        }
+        curRight -= (trSq + trGap);
+        if (MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq)) {
+            this.client.setScreen(new OptionsScreen(this, this.client.options));
+            cir.setReturnValue(true);
+            return;
+        }
+        curRight -= (trSq + trGap);
+        if (MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq)) {
+            this.client.setScreen(new HudEditorScreen(this));
+            cir.setReturnValue(true);
+            return;
+        }
+        curRight -= (trSq + trGap);
+        if (MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq)) {
+            this.client.setScreen(new ClickGuiScreen(false));
+            cir.setReturnValue(true);
+            return;
+        }
+        curRight -= (trSq + trGap);
+        if (MathUtils.isHovered(mouseX, mouseY, curRight, 10, trSq, trSq)) {
+            this.client.setScreen(new ClickGuiScreen(false));
+            cir.setReturnValue(true);
+            return;
+        }
+
+        // 3. Center Capsule Buttons
+        int logoCenterY = Math.max(34, (h - 200) / 2);
+        int btnW = Math.min(182, w - 40);
         int btnH = 20;
         int btnX = centerX - btnW / 2;
-        int btnY = startY + 22;
+        int btnY = logoCenterY + 54;
 
         if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
             this.client.setScreen(new SelectWorldScreen(this));
             cir.setReturnValue(true); return;
         }
-        btnY += 23;
+        btnY += 22;
         if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
             this.client.setScreen(new MultiplayerScreen(this));
             cir.setReturnValue(true); return;
         }
-        btnY += 23;
+        btnY += 22;
         if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
             this.client.setScreen(new RealmsMainScreen(this));
             cir.setReturnValue(true); return;
         }
-        btnY += 23;
+        btnY += 22;
         if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
-            this.client.setScreen(new ClickGuiScreen(false));
+            this.client.setScreen(new HudEditorScreen(this));
             cir.setReturnValue(true); return;
         }
-        btnY += 23;
+        btnY += 22;
         if (MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
             this.client.setScreen(new OptionsScreen(this, this.client.options));
             cir.setReturnValue(true); return;
         }
-        btnY += 28;
-        int quitW = Math.min(118, btnW);
+        btnY += 25;
+
+        // Quit Button
+        int quitW = Math.min(142, btnW);
         if (MathUtils.isHovered(mouseX, mouseY, centerX - quitW / 2, btnY, quitW, btnH)) {
             this.client.scheduleStop();
             cir.setReturnValue(true); return;
         }
 
-        // Bangla SMP Corner Card Click -> Copy IP
-        if (MathUtils.isHovered(mouseX, mouseY, this.width - 126, this.height - 36, 118, 28)) {
+        // 4. Bottom-Right BANGLA SMP Server Card Click
+        if (MathUtils.isHovered(mouseX, mouseY, w - 130, h - 38, 120, 28)) {
             if (this.client.keyboard != null) {
                 this.client.keyboard.setClipboard("play.banglasmp.net");
                 bangla.getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
@@ -270,40 +357,31 @@ public abstract class TitleScreenMixin extends Screen {
             cir.setReturnValue(true); return;
         }
 
-        // Third-party buttons
-        List<ClickableWidget> extList = MainMenuButtonBridge.collectThirdPartyButtons(this);
-        int extY = 8;
-        for (ClickableWidget ext : extList) {
-            String lbl = ext.getMessage() != null ? ext.getMessage().getString() : "Mod";
-            if (lbl.isBlank()) continue;
-            int ew = Math.min(110, this.textRenderer.getWidth(lbl) + 12);
-            if (MathUtils.isHovered(mouseX, mouseY, 8, extY, ew, 18)) {
-                ext.onClick(new Click(mouseX, mouseY, new MouseInput(0, 0)), false);
-                cir.setReturnValue(true); return;
-            }
-            extY += 20;
-        }
         cir.setReturnValue(true);
     }
-    private void renderCinematicMinecraftLandscape(DrawContext context, int w, int h) {
-        int horizonY = (int) (h * 0.62f);
-        context.fillGradient(0, 0, w, horizonY, 0xFF090D1A, 0xFF2D1930);
-        context.fillGradient(0, horizonY - 35, w, horizonY, 0x002D1930, 0x667F1D1D);
-        for (int i = 0; i < 28; i++) {
-            int sx = ((i * 97) + 23) % Math.max(10, w);
-            int sy = ((i * 53) + 11) % Math.max(10, horizonY - 30);
-            context.fill(sx, sy, sx + 2, sy + 2, (i % 3 == 0) ? 0x99FFFFFF : 0x44FFFFFF);
+
+    private void openModMenuScreen() {
+        if (FabricLoader.getInstance().isModLoaded("modmenu")) {
+            try {
+                Class<?> screenClass = Class.forName("com.terraformersmc.modmenu.gui.ModsScreen");
+                Constructor<?> ctor = screenClass.getConstructor(Screen.class);
+                this.client.setScreen((Screen) ctor.newInstance(this));
+                return;
+            } catch (Throwable ignored) {}
         }
-        int moonX = (int) (w * 0.76f), moonY = (int) (h * 0.16f);
-        context.fill(moonX - 14, moonY - 14, moonX + 14, moonY + 14, 0x22F8FAFC);
-        context.fill(moonX - 9, moonY - 9, moonX + 9, moonY + 9, 0xDCF8FAFC);
-        for (int x = 0; x < w; x += 12) {
-            int m1 = (int) (Math.sin(x * 0.018) * 22 + Math.cos(x * 0.035) * 14) + 34;
-            context.fill(x, horizonY - m1, x + 12, horizonY, 0xFF131926);
-            int m2 = (int) (Math.cos(x * 0.028 + 1.4) * 15 + Math.sin(x * 0.06) * 8) + 18;
-            context.fill(x, horizonY - m2, x + 12, horizonY, 0xFF0C111B);
+        this.client.setScreen(new ClickGuiScreen(false));
+    }
+
+    private void openAccountSwitcherScreen() {
+        if (FabricLoader.getInstance().isModLoaded("ias")) {
+            try {
+                Class<?> iasClass = Class.forName("com.github.theodore_m.in_game_account_switcher.client.gui.GuiAccountSwitcher");
+                Constructor<?> ctor = iasClass.getConstructor(Screen.class);
+                this.client.setScreen((Screen) ctor.newInstance(this));
+                return;
+            } catch (Throwable ignored) {}
         }
-        context.fillGradient(0, horizonY, w, h, 0xFF141A29, 0xFF070A10);
-        context.fillGradient(0, horizonY, w, horizonY + 18, 0x44EF4444, 0x00070A10);
+        String user = this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
+        BanglaClient.getInstance().getNotificationManager().pushInfo("Account Switcher", "Logged in as: " + user);
     }
 }
