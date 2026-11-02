@@ -284,7 +284,7 @@ public final class SkinCustomizationScreen extends Screen {
             int cardGap = 6;
             int cardW = (rightW - 16 - (cols - 1) * cardGap) / cols;
             int cardH = 36;
-            int startY = Math.round(finalListStartY - libraryScroll.getScrollOffset());
+            int startY = Math.round(listStartY - libraryScroll.getScrollOffset());
 
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
