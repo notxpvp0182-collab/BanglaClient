@@ -106,7 +106,7 @@ public final class AccountSwitcherScreen extends Screen {
 
         int listH = Math.max(40, (winY + winH - 24) - listY);
         List<AccountEntry> accounts = accountManager.getAccounts();
-        SkinEntry activeSkin = skinManager != null ? skinManager.getSelectedSkin() : null;
+        net.minecraft.entity.player.SkinTextures activeTextures = skinManager != null ? skinManager.getActiveSkinTextures() : SkinCapeManager.getAuthenticatedAccountDefaultSkin(client);
 
         listScroll.tickAndInterpolate();
         listScroll.updateDimensions(listH, accounts.size() * 38 + 6);
@@ -119,7 +119,7 @@ public final class AccountSwitcherScreen extends Screen {
                 boolean hov = MathUtils.isHovered(mouseX, mouseY, winX + 8, rowY, winW - 20, 34);
                 GlassRenderer.drawGlassPanel(context, winX + 8, rowY, winW - 20, 34, true, hov, active);
 
-                PlayerPreviewRenderer.drawPlayerHead(context, activeSkin, winX + 14, rowY + 5, 24);
+                PlayerPreviewRenderer.drawPlayerHead(context, activeTextures, winX + 14, rowY + 5, 24);
                 context.drawTextWithShadow(textRenderer, acc.getUsername(), winX + 44, rowY + 6, 0xFFFFFFFF);
 
                 String typeStr = acc.getType().getLabel() + (active ? " • ACTIVE" : "");
