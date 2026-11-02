@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(EntityRenderer.class)
 public abstract class EntityRendererMixin<T extends Entity> {
 
-    @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true, require = 0)
+    @Inject(method = "getDisplayName(Lnet/minecraft/entity/Entity;)Lnet/minecraft/text/Text;", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$appendBcIdentityToNametag(T entity, CallbackInfoReturnable<Text> cir) {
         if (!(entity instanceof PlayerEntity player)) return;
         Text original = cir.getReturnValue();

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlayerListHud.class)
 public abstract class PlayerListHudMixin {
 
-    @Inject(method = "getPlayerName", at = @At("RETURN"), cancellable = true, require = 0)
+    @Inject(method = "getPlayerName(Lnet/minecraft/client/network/PlayerListEntry;)Lnet/minecraft/text/Text;", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$prependBcIdentityInTabList(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
         if (entry == null || entry.getProfile() == null) return;
         Text original = cir.getReturnValue();
