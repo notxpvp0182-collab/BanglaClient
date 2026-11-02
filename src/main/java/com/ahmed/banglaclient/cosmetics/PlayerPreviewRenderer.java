@@ -221,7 +221,7 @@ public final class PlayerPreviewRenderer {
             for (int ui = 0; ui < uSteps; ui++) {
                 int sampleU = q.u0 + (q.u1 >= q.u0 ? ui : -ui);
                 int sampleV = q.v0 + (q.v1 >= q.v0 ? vi : -vi);
-                int argb = q.texture.sampleUv(sampleU, sampleV, q.virtW, q.virtH);
+                int argb = q.texture.sampleUv(sampleU, sampleV, q.virtualW, q.virtualH);
                 if (((argb >>> 24) & 0xFF) < 25) continue;
 
                 float ut0 = (float) ui / uSteps;

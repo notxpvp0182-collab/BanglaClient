@@ -41,7 +41,7 @@ public final class AccountManager {
             UUID id = initialLaunchSession.getUuidOrNull() != null
                     ? initialLaunchSession.getUuidOrNull()
                     : offlineUuid(initialLaunchSession.getUsername());
-            AccountEntry.AccountType type = initialLaunchSession.getAccountType() == Session.AccountType.MSA
+            AccountEntry.AccountType type = (initialLaunchSession.getAccessToken() != null && !initialLaunchSession.getAccessToken().equals("0") && !initialLaunchSession.getAccessToken().isBlank())
                     ? AccountEntry.AccountType.MICROSOFT
                     : AccountEntry.AccountType.OFFLINE;
             accounts.add(new AccountEntry(initialLaunchSession.getUsername(), id, type));
@@ -116,8 +116,7 @@ public final class AccountManager {
                     offlineUuid(entry.getUsername()),
                     "0",
                     Optional.empty(),
-                    Optional.empty(),
-                    Session.AccountType.LEGACY
+                    Optional.empty()
             );
             ((MinecraftClientSessionAccessor) mc).banglaclient$setSession(offlineSession);
         }

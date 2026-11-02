@@ -58,8 +58,8 @@ public final class ChatHeadsModule extends Module {
         int headColor = 0xFFEF4444;
         if (client != null && client.getNetworkHandler() != null) {
             PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(detectedSender);
-            if (entry != null && entry.getProfile() != null && entry.getProfile().getId() != null) {
-                int hash = entry.getProfile().getId().hashCode();
+            if (entry != null && entry.getProfile() != null && entry.getProfile().id() != null) {
+                int hash = entry.getProfile().id().hashCode();
                 int r = 110 + (Math.abs(hash >> 16) % 135);
                 int g = 110 + (Math.abs(hash >> 8) % 135);
                 int b = 110 + (Math.abs(hash) % 135);
@@ -75,8 +75,8 @@ public final class ChatHeadsModule extends Module {
         if (client != null && client.getNetworkHandler() != null) {
             Collection<PlayerListEntry> entries = client.getNetworkHandler().getPlayerList();
             for (PlayerListEntry entry : entries) {
-                if (entry.getProfile() == null || entry.getProfile().getName() == null) continue;
-                String name = entry.getProfile().getName();
+                if (entry.getProfile() == null || entry.getProfile().name() == null) continue;
+                String name = entry.getProfile().name();
                 if (name.length() < 3) continue;
                 if (raw.contains("<" + name + ">") || raw.startsWith(name + ":") || raw.contains(" " + name + ":")) {
                     return name;

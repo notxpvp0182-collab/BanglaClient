@@ -29,8 +29,8 @@ public abstract class PlayerListHudMixin {
             }
         }
 
-        if (showBadge && (BcIdentityManager.isVerifiedBcUser(entry.getProfile().getId())
-                || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().getName()))) {
+        if (showBadge && (BcIdentityManager.isVerifiedBcUser(entry.getProfile().id())
+                || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name()))) {
             if (!original.getString().contains("[BC]")) {
                 cir.setReturnValue(BcIdentityManager.createBcPrefixBadge().append(original));
             }

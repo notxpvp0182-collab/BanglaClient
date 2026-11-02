@@ -66,8 +66,8 @@ public final class BcIdentityManager {
                     MinecraftClient mc = context.client();
                     if (mc != null && mc.getNetworkHandler() != null) {
                         var entry = mc.getNetworkHandler().getPlayerListEntry(payload.playerUuid());
-                        if (entry != null && entry.getProfile() != null && entry.getProfile().getName() != null) {
-                            verifiedBcNames.add(entry.getProfile().getName().toLowerCase());
+                        if (entry != null && entry.getProfile() != null && entry.getProfile().name() != null) {
+                            verifiedBcNames.add(entry.getProfile().name().toLowerCase());
                         }
                     }
                 }
