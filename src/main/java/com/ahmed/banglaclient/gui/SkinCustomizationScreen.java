@@ -9,10 +9,13 @@ import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.rendering.ClipRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
+import com.ahmed.banglaclient.theme.ThemeTokens;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.PlayerSkinWidget;
 import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
@@ -23,19 +26,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-/**
- * Dedicated Bedrock-inspired Skin & Cape Customization Screen with interactive 3D Character Preview,
- * Skin Library, Cape Library, Classic/Slim model switcher, and Drag-and-Drop PNG import.
- */
 public final class SkinCustomizationScreen extends Screen {
     private final Screen parentScreen;
     private final SkinCapeManager manager;
     private final SmoothScrollContainer libraryScroll = new SmoothScrollContainer();
 
+    private PlayerSkinWidget playerSkinWidget;
     private boolean viewingCapesTab = false;
-    private boolean draggingModel = false;
-    private float previewYaw = 22.0f;
-    private float previewPitch = 8.0f;
+
+    // Delete Confirmation Dialog state
+    private boolean confirmingDelete = false;
+    private SkinEntry deleteTarget = null;
 
     private boolean typingImportPath = false;
     private String manualImportPath = "";
@@ -51,10 +52,23 @@ public final class SkinCustomizationScreen extends Screen {
 
     @Override
     protected void init() {
-        this.winW = Math.min(540, Math.max(280, this.width - 20));
+        this.winW = Math.min(560, Math.max(280, this.width - 20));
         this.winH = Math.min(320, Math.max(190, this.height - 20));
         this.winX = (this.width - this.winW) / 2;
         this.winY = (this.height - this.winH) / 2;
+
+        int leftW = Math.min(156, winW / 3 + 18);
+        int bodyY = winY + 34;
+        int bodyH = winH - 64;
+
+        // Native 1.21.11 GPU-accelerated PlayerSkinWidget with mouse drag rotation & authentic cape
+        this.playerSkinWidget = PlayerPreviewRenderer.createSkinWidget(
+                leftW - 12,
+                bodyH - 30,
+                () -> manager.getActiveSkinTextures()
+        );
+        this.playerSkinWidget.setPosition(winX + 14, bodyY + 6);
+        this.addDrawableChild(this.playerSkinWidget);
     }
 
     @Override
@@ -79,7 +93,7 @@ public final class SkinCustomizationScreen extends Screen {
 
         GlassRenderer.drawGlassPanel(context, winX, winY, winW, winH, false, false, true);
 
-        // Top Bar: [← Return] | Title | [Skins Library] [Capes Library]
+        // Header
         boolean backHov = MathUtils.isHovered(mouseX, mouseY, winX + 8, winY + 7, 56, 18);
         GlassRenderer.drawPillBadge(context, winX + 8, winY + 7, 56, 18, accent, backHov);
         context.drawTextWithShadow(textRenderer, "← Back", winX + 16, winY + 12, 0xFFFFFFFF);
@@ -96,50 +110,44 @@ public final class SkinCustomizationScreen extends Screen {
 
         GlassRenderer.drawHorizontalDivider(context, winX + 8, winY + 29, winW - 16);
 
-        // Left Panel: Interactive 3D Character Preview + Model Type Toggle
+        // Left Panel: 3D Preview Frame
         int leftW = Math.min(156, winW / 3 + 18);
         int bodyY = winY + 34;
         int bodyH = winH - 64;
         GlassRenderer.drawGlassPanel(context, winX + 8, bodyY, leftW, bodyH, true, false, false);
 
-        String activeUser = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int uw = textRenderer.getWidth(activeUser);
-        context.drawTextWithShadow(textRenderer, activeUser, winX + 8 + (leftW - uw) / 2, bodyY + 8, accent);
+        if (this.playerSkinWidget != null) {
+            this.playerSkinWidget.render(context, mouseX, mouseY, delta);
+        }
 
-        SkinEntry selSkin = manager.getSelectedSkin();
-        SkinEntry selCape = manager.getSelectedCape();
+        // Arm Model Type Button: [Model: Classic / Slim]
         boolean slim = manager.isSelectedSlimModel();
-
-        int modelCx = winX + 8 + leftW / 2;
-        int modelCy = bodyY + bodyH / 2 + 2;
-        float modelScale = Math.max(2.0f, Math.min(3.4f, bodyH / 52.0f));
-        PlayerPreviewRenderer.renderPlayerModel3D(context, modelCx, modelCy, modelScale, previewYaw, previewPitch, selSkin, selCape, slim);
-
-        // Model Arm Type Button: [Model: Classic / Slim]
         int armBtnY = bodyY + bodyH - 22;
         String armLabel = slim ? "Model: Slim (3px)" : "Model: Classic (4px)";
         boolean armHov = MathUtils.isHovered(mouseX, mouseY, winX + 14, armBtnY, leftW - 12, 16);
         GlassRenderer.drawPillBadge(context, winX + 14, armBtnY, leftW - 12, 16, accent, armHov);
         context.drawTextWithShadow(textRenderer, armLabel, winX + 20, armBtnY + 4, 0xFFFFFFFF);
 
-        // Right Panel: Skin / Cape Library Grid + Action Toolbar
+        // Right Panel: Library Grid
         int rightX = winX + leftW + 14;
         int rightW = winW - leftW - 22;
         GlassRenderer.drawGlassPanel(context, rightX, bodyY, rightW, bodyH, true, false, false);
 
-        // Action Row inside Right Panel: [+ Import File] [Open Folder] [Unequip Cape / Delete]
+        // Action Toolbar: [+ Import PNG] [Open Folder] [Export] [No Cape / Delete]
         int actY = bodyY + 6;
-        int btn1W = 78, btn2W = 76, btn3W = 76;
-        GlassRenderer.drawPillBadge(context, rightX + 6, actY, btn1W, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 6, actY, btn1W, 16));
-        context.drawTextWithShadow(textRenderer, "+ Import PNG", rightX + 12, actY + 4, 0xFFFFFFFF);
+        int bW = (rightW - 28) / 4;
+        GlassRenderer.drawPillBadge(context, rightX + 6, actY, bW, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 6, actY, bW, 16));
+        context.drawTextWithShadow(textRenderer, "+ Import", rightX + 10, actY + 4, 0xFFFFFFFF);
 
-        GlassRenderer.drawPillBadge(context, rightX + 88, actY, btn2W, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 88, actY, btn2W, 16));
-        context.drawTextWithShadow(textRenderer, "Open Folder", rightX + 95, actY + 4, 0xFFFFFFFF);
+        GlassRenderer.drawPillBadge(context, rightX + 6 + (bW + 4), actY, bW, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4), actY, bW, 16));
+        context.drawTextWithShadow(textRenderer, "Folder", rightX + 14 + bW, actY + 4, 0xFFFFFFFF);
 
-        GlassRenderer.drawPillBadge(context, rightX + 168, actY, btn3W, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 168, actY, btn3W, 16));
-        context.drawTextWithShadow(textRenderer, viewingCapesTab ? "No Cape" : "Delete", rightX + 182, actY + 4, 0xFFFFFFFF);
+        GlassRenderer.drawPillBadge(context, rightX + 6 + (bW + 4) * 2, actY, bW, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 2, actY, bW, 16));
+        context.drawTextWithShadow(textRenderer, "Export", rightX + 14 + bW * 2, actY + 4, 0xFFFFFFFF);
 
-        // Optional Path Input Box when [+ Import PNG] is clicked on Android/Termux
+        GlassRenderer.drawPillBadge(context, rightX + 6 + (bW + 4) * 3, actY, bW, 16, ThemeTokens.STATUS_ERROR, MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 3, actY, bW, 16));
+        context.drawTextWithShadow(textRenderer, viewingCapesTab ? "No Cape" : "Delete", rightX + 10 + bW * 3, actY + 4, 0xFFFFFFFF);
+
         int listStartY = bodyY + 26;
         if (typingImportPath) {
             GlassRenderer.drawGlassPanel(context, rightX + 6, listStartY, rightW - 12, 18, false, false, true);
@@ -154,31 +162,49 @@ public final class SkinCustomizationScreen extends Screen {
         int cardGap = 6;
         int cardW = (rightW - 16 - (cols - 1) * cardGap) / cols;
         int cardH = 36;
-        int rows = (int) Math.ceil((double) items.size() / cols);
+        int rows = Math.max(1, (int) Math.ceil((double) (items.size() + 1) / cols));
 
         libraryScroll.tickAndInterpolate();
         libraryScroll.updateDimensions(listH, rows * (cardH + cardGap) + 6);
 
-        final int finalListStartY = listStartY; ClipRenderer.renderClipped(context, rightX + 4, finalListStartY, rightW - 8, listH, () -> {
-            int startY = Math.round(finalListStartY - libraryScroll.getScrollOffset());
+        final int finalListY = listStartY;
+        ClipRenderer.renderClipped(context, rightX + 4, finalListY, rightW - 8, listH, () -> {
+            int startY = Math.round(finalListY - libraryScroll.getScrollOffset());
+
+            // First entry: Default Authenticated Account entry
+            boolean isDefaultActive = viewingCapesTab ? !manager.hasCustomCapeSelected() : !manager.hasCustomSkinSelected();
+            int defCx = rightX + 6;
+            int defCy = startY;
+            boolean defHov = MathUtils.isHovered(mouseX, mouseY, defCx, defCy, cardW, cardH);
+            GlassRenderer.drawGlassPanel(context, defCx, defCy, cardW, cardH, true, defHov, isDefaultActive);
+
+            PlayerPreviewRenderer.drawPlayerHead(context, SkinCapeManager.getAuthenticatedAccountDefaultSkin(client), defCx + 6, defCy + 6, 24);
+            context.drawTextWithShadow(textRenderer, viewingCapesTab ? "Default Account Cape" : "Default Account Skin", defCx + 34, defCy + 7, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, isDefaultActive ? "ACTIVE (UUID)" : "Selectable", defCx + 34, defCy + 19, isDefaultActive ? accent : theme.getTextSecondary());
+
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
-                int c = i % cols;
-                int r = i / cols;
+                int slotIndex = i + 1;
+                int c = slotIndex % cols;
+                int r = slotIndex / cols;
                 int cx = rightX + 6 + c * (cardW + cardGap);
                 int cy = startY + r * (cardH + cardGap);
-                if (cy + cardH < finalListStartY || cy > finalListStartY + listH) continue;
+                if (cy + cardH < finalListY || cy > finalListY + listH) continue;
 
                 boolean selected = viewingCapesTab
-                        ? (selCape != null && selCape.getId().equals(entry.getId()))
-                        : (selSkin != null && selSkin.getId().equals(entry.getId()));
+                        ? (manager.getSelectedCape() != null && manager.getSelectedCape().getId().equals(entry.getId()))
+                        : (manager.getSelectedSkin() != null && manager.getSelectedSkin().getId().equals(entry.getId()));
                 boolean hov = MathUtils.isHovered(mouseX, mouseY, cx, cy, cardW, cardH);
 
                 GlassRenderer.drawGlassPanel(context, cx, cy, cardW, cardH, true, hov, selected);
                 if (entry.isCape()) {
-                    PlayerPreviewRenderer.drawCapeThumbnail(context, entry, cx + 6, cy + 4, 18, 28);
+                    try {
+                        context.drawTexture(RenderPipelines.GUI_TEXTURED, entry.getTextureId(), cx + 6, cy + 4, 1.0f, 1.0f, 18, 28, 64, 32);
+                    } catch (Throwable t) {
+                        context.fill(cx + 6, cy + 4, cx + 24, cy + 32, 0xFFEF4444);
+                    }
                 } else {
-                    PlayerPreviewRenderer.drawPlayerHead(context, entry, cx + 6, cy + 6, 24);
+                    PlayerPreviewRenderer.drawPlayerHead(context, manager.getActiveSkinTextures(), cx + 6, cy + 6, 24);
                 }
 
                 String title = textRenderer.trimToWidth(entry.getDisplayName(), cardW - 38);
@@ -187,9 +213,9 @@ public final class SkinCustomizationScreen extends Screen {
                 context.drawTextWithShadow(textRenderer, meta, cx + 34, cy + 19, selected ? accent : theme.getTextSecondary());
             }
         });
-        libraryScroll.renderScrollbar(context, rightX + rightW - 5, listStartY, 3, listH, mouseX, mouseY);
+        libraryScroll.renderScrollbar(context, rightX + rightW - 5, finalListY, 3, listH, mouseX, mouseY);
 
-        // Bottom Status & Apply Bar
+        // Bottom Bar
         int footY = winY + winH - 24;
         context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(statusBanner, winW - 96), winX + 10, footY + 6, theme.getTextSecondary());
 
@@ -197,22 +223,65 @@ public final class SkinCustomizationScreen extends Screen {
         boolean appHov = MathUtils.isHovered(mouseX, mouseY, applyX, footY, 70, 18);
         GlassRenderer.drawPillBadge(context, applyX, footY, 70, 18, accent, true);
         context.drawTextWithShadow(textRenderer, "Apply & Save", applyX + 6, footY + 5, appHov ? 0xFFFFFFFF : accent);
+
+        // Delete Confirmation Modal Dialog
+        if (confirmingDelete && deleteTarget != null) {
+            context.fill(0, 0, this.width, this.height, 0x88000000);
+            int mWidth = 260, mHeight = 90;
+            int mx = (this.width - mWidth) / 2;
+            int my = (this.height - mHeight) / 2;
+            GlassRenderer.drawGlassPanel(context, mx, my, mWidth, mHeight, false, false, true);
+
+            context.drawTextWithShadow(textRenderer, "Delete Confirmation", mx + 14, my + 10, ThemeTokens.STATUS_ERROR);
+            context.drawTextWithShadow(textRenderer, "Permanently delete '" + deleteTarget.getDisplayName() + "'?", mx + 14, my + 28, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, "This file will be deleted from disk.", mx + 14, my + 42, theme.getTextSecondary());
+
+            int btnHalfW = (mWidth - 36) / 2;
+            boolean canHov = MathUtils.isHovered(mouseX, mouseY, mx + 14, my + 60, btnHalfW, 18);
+            GlassRenderer.drawPillBadge(context, mx + 14, my + 60, btnHalfW, 18, 0x44FFFFFF, canHov);
+            context.drawTextWithShadow(textRenderer, "Cancel", mx + 14 + (btnHalfW - textRenderer.getWidth("Cancel")) / 2, my + 65, 0xFFFFFFFF);
+
+            boolean delHov = MathUtils.isHovered(mouseX, mouseY, mx + 22 + btnHalfW, my + 60, btnHalfW, 18);
+            GlassRenderer.drawPillBadge(context, mx + 22 + btnHalfW, my + 60, btnHalfW, 18, ThemeTokens.STATUS_ERROR, true);
+            context.drawTextWithShadow(textRenderer, "Delete", mx + 22 + btnHalfW + (btnHalfW - textRenderer.getWidth("Delete")) / 2, my + 65, 0xFFFFFFFF);
+        }
     }
 
     public boolean handleMouseClick(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
-        // Back button
+
+        // Modal Dialog interactions
+        if (confirmingDelete && deleteTarget != null) {
+            int mWidth = 260, mHeight = 90;
+            int mx = (this.width - mWidth) / 2;
+            int my = (this.height - mHeight) / 2;
+            int btnHalfW = (mWidth - 36) / 2;
+
+            if (MathUtils.isHovered(mouseX, mouseY, mx + 14, my + 60, btnHalfW, 18)) {
+                confirmingDelete = false;
+                deleteTarget = null;
+                return true;
+            }
+            if (MathUtils.isHovered(mouseX, mouseY, mx + 22 + btnHalfW, my + 60, btnHalfW, 18)) {
+                String name = deleteTarget.getDisplayName();
+                manager.removeEntry(deleteTarget);
+                statusBanner = "Deleted: " + name;
+                confirmingDelete = false;
+                deleteTarget = null;
+                return true;
+            }
+            return true;
+        }
+
         if (MathUtils.isHovered(mouseX, mouseY, winX + 8, winY + 7, 56, 18)) {
             close();
             return true;
         }
-        // Apply & Save button
         if (MathUtils.isHovered(mouseX, mouseY, winX + winW - 78, winY + winH - 24, 70, 18)) {
             manager.saveSelection();
             close();
             return true;
         }
-        // Tabs
         if (MathUtils.isHovered(mouseX, mouseY, winX + winW - 148, winY + 7, 68, 18)) {
             viewingCapesTab = false;
             libraryScroll.resetScroll();
@@ -228,54 +297,53 @@ public final class SkinCustomizationScreen extends Screen {
         int bodyY = winY + 34;
         int bodyH = winH - 64;
 
-        // Classic / Slim toggle
         if (MathUtils.isHovered(mouseX, mouseY, winX + 14, bodyY + bodyH - 22, leftW - 12, 16)) {
             manager.setSelectedSlimModel(!manager.isSelectedSlimModel());
-            return true;
-        }
-
-        // Start 3D character rotation drag
-        if (MathUtils.isHovered(mouseX, mouseY, winX + 8, bodyY, leftW, bodyH - 24)) {
-            draggingModel = true;
             return true;
         }
 
         int rightX = winX + leftW + 14;
         int rightW = winW - leftW - 22;
         int actY = bodyY + 6;
+        int bW = (rightW - 28) / 4;
 
-        // [+ Import PNG]
-        if (MathUtils.isHovered(mouseX, mouseY, rightX + 6, actY, 78, 16)) {
+        if (MathUtils.isHovered(mouseX, mouseY, rightX + 6, actY, bW, 16)) {
             typingImportPath = !typingImportPath;
             manager.refreshLibraries();
-            statusBanner = "Refreshed library (" + manager.getSkins().size() + " skins, " + manager.getCapes().size() + " capes).";
             return true;
         }
-        // [Open Folder]
-        if (MathUtils.isHovered(mouseX, mouseY, rightX + 88, actY, 76, 16)) {
+        if (MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4), actY, bW, 16)) {
             Path folder = viewingCapesTab ? manager.getCapesDir() : manager.getSkinsDir();
-            try {
-                Util.getOperatingSystem().open(folder.toFile());
-            } catch (Throwable ignored) {}
+            try { Util.getOperatingSystem().open(folder.toFile()); } catch (Throwable ignored) {}
             statusBanner = "Folder: " + folder.toAbsolutePath();
             return true;
         }
-        // [No Cape / Delete]
-        if (MathUtils.isHovered(mouseX, mouseY, rightX + 168, actY, 76, 16)) {
+        if (MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 2, actY, bW, 16)) {
+            SkinEntry sel = viewingCapesTab ? manager.getSelectedCape() : manager.getSelectedSkin();
+            if (sel != null && client != null && client.keyboard != null) {
+                client.keyboard.setClipboard(sel.getFilePath().toAbsolutePath().toString());
+                statusBanner = "Exported path: " + sel.getDisplayName();
+            } else {
+                statusBanner = "No imported file selected to export.";
+            }
+            return true;
+        }
+        if (MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 3, actY, bW, 16)) {
             if (viewingCapesTab) {
                 manager.setSelectedCapeId("");
                 statusBanner = "Unequipped Cape.";
             } else {
                 SkinEntry sel = manager.getSelectedSkin();
-                if (sel != null && manager.getSkins().size() > 1) {
-                    manager.removeEntry(sel);
-                    statusBanner = "Removed skin: " + sel.getDisplayName();
+                if (sel != null) {
+                    confirmingDelete = true;
+                    deleteTarget = sel;
+                } else {
+                    statusBanner = "Default account skin cannot be deleted.";
                 }
             }
             return true;
         }
 
-        // Library Card Clicks
         int listStartY = bodyY + 26 + (typingImportPath ? 22 : 0);
         int listH = Math.max(40, (bodyY + bodyH - 6) - listStartY);
         if (MathUtils.isHovered(mouseX, mouseY, rightX + 4, listStartY, rightW - 8, listH)) {
@@ -286,10 +354,23 @@ public final class SkinCustomizationScreen extends Screen {
             int cardH = 36;
             int startY = Math.round(listStartY - libraryScroll.getScrollOffset());
 
+            // Default account card
+            if (MathUtils.isHovered(mouseX, mouseY, rightX + 6, startY, cardW, cardH)) {
+                if (viewingCapesTab) {
+                    manager.setSelectedCapeId("");
+                    statusBanner = "Using official account cape (if equipped).";
+                } else {
+                    manager.setSelectedSkinId("");
+                    statusBanner = "Using official authenticated account skin.";
+                }
+                return true;
+            }
+
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
-                int c = i % cols;
-                int r = i / cols;
+                int slotIndex = i + 1;
+                int c = slotIndex % cols;
+                int r = slotIndex / cols;
                 int cx = rightX + 6 + c * (cardW + cardGap);
                 int cy = startY + r * (cardH + cardGap);
                 if (MathUtils.isHovered(mouseX, mouseY, cx, cy, cardW, cardH)) {
@@ -310,24 +391,6 @@ public final class SkinCustomizationScreen extends Screen {
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         return handleMouseClick(click.x(), click.y(), click.button()) || super.mouseClicked(click, doubled);
-    }
-
-    @Override
-    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
-        if (draggingModel) {
-            previewYaw += (float) deltaX * 1.6f;
-            previewPitch = MathUtils.clamp(previewPitch + (float) deltaY * 0.8f, -35.0f, 35.0f);
-            return true;
-        }
-        libraryScroll.onMouseScrolled(click.x(), click.y(), deltaY * 0.12, 0, 0, this.width, this.height);
-        return true;
-    }
-
-    @Override
-    public boolean mouseReleased(Click click) {
-        draggingModel = false;
-        libraryScroll.onMouseReleased(click.button());
-        return super.mouseReleased(click);
     }
 
     @Override
@@ -356,6 +419,19 @@ public final class SkinCustomizationScreen extends Screen {
                 return true;
             }
             return true;
+        }
+        if (confirmingDelete) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                confirmingDelete = false;
+                deleteTarget = null;
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ENTER && deleteTarget != null) {
+                manager.removeEntry(deleteTarget);
+                confirmingDelete = false;
+                deleteTarget = null;
+                return true;
+            }
         }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             close();

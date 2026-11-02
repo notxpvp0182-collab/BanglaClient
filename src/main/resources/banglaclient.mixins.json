@@ -4,6 +4,7 @@
   "package": "com.ahmed.banglaclient.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "AbstractClientPlayerEntityMixin",
     "BossBarHudMixin",
     "ChatHudMixin",
     "ClickableWidgetMixin",

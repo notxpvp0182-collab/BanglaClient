@@ -1,10 +1,8 @@
 package com.ahmed.banglaclient.cosmetics;
 
+import net.minecraft.util.Identifier;
 import java.nio.file.Path;
 
-/**
- * Represents a validated local skin or cape texture in the BANGLA CLIENT cosmetics library.
- */
 public final class SkinEntry {
     private final String id;
     private final String displayName;
@@ -13,7 +11,7 @@ public final class SkinEntry {
     private final int height;
     private final boolean cape;
     private boolean slimModel;
-    private final int[] argbPixels;
+    private final Identifier textureId;
 
     public SkinEntry(
             String id,
@@ -23,7 +21,7 @@ public final class SkinEntry {
             int height,
             boolean cape,
             boolean slimModel,
-            int[] argbPixels
+            Identifier textureId
     ) {
         this.id = id;
         this.displayName = displayName;
@@ -32,7 +30,7 @@ public final class SkinEntry {
         this.height = height;
         this.cape = cape;
         this.slimModel = slimModel;
-        this.argbPixels = argbPixels;
+        this.textureId = textureId;
     }
 
     public String getId() { return id; }
@@ -43,14 +41,5 @@ public final class SkinEntry {
     public boolean isCape() { return cape; }
     public boolean isSlimModel() { return slimModel; }
     public void setSlimModel(boolean slimModel) { this.slimModel = slimModel; }
-
-    /**
-     * Samples a texel at normalized 64x64 (for skins) or 64x32 (for capes) UV coordinates.
-     */
-    public int sampleUv(int u, int v, int virtualW, int virtualH) {
-        if (argbPixels == null || width <= 0 || height <= 0) return 0;
-        int sx = Math.max(0, Math.min(width - 1, (u * width) / Math.max(1, virtualW)));
-        int sy = Math.max(0, Math.min(height - 1, (v * height) / Math.max(1, virtualH)));
-        return argbPixels[sy * width + sx];
-    }
+    public Identifier getTextureId() { return textureId; }
 }
