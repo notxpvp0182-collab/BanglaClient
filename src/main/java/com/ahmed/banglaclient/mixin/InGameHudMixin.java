@@ -44,7 +44,7 @@ public abstract class InGameHudMixin {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getModuleManager() != null) {
             var sbOpt = bangla.getModuleManager().getModule(CustomScoreboardModule.class);
-            if (sbOpt.isPresent() && sbOpt.get().shouldHideEntirely()) {
+            if (sbOpt.isPresent() && sbOpt.get().isEnabled()) {
                 ci.cancel();
             }
         }

@@ -4,29 +4,27 @@ import com.ahmed.banglaclient.module.Module;
 import com.ahmed.banglaclient.module.ModuleCategory;
 import com.ahmed.banglaclient.module.setting.BooleanSetting;
 import com.ahmed.banglaclient.module.setting.NumberSetting;
-import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Module 28: Fullbright
- * Provides configurable client-side brightness enhancement using smooth gamma/lightmap scaling
- * or optional client-side night-vision preview, restoring vanilla brightness cleanly on disable.
+ * Module 28: Full Bright
+ * Provides full-game brightness/gamma visibility in dark caves and low-light environments,
+ * restoring normal rendering cleanly when disabled.
  */
 public final class FullbrightModule extends Module {
     private final NumberSetting brightnessFactorSetting;
-    private final BooleanSetting smoothTransitionSetting;
-    private final BooleanSetting nightVisionFallbackSetting;
+    private final BooleanSetting shaderNightVisionCarrierSetting;
 
-    private float currentFactor = 0.0f;
+    private double savedVanillaGamma = 0.5;
     private boolean appliedNightVision = false;
 
     public FullbrightModule() {
         super(
                 "fullbright",
-                "Fullbright",
-                "Enhances world ambient brightness in dark caves and night environments.",
+                "Full Bright",
+                "Illuminates dark caves and low-light environments with full brightness.",
                 ModuleCategory.VISUAL,
                 GLFW.GLFW_KEY_G,
                 false
@@ -35,31 +33,38 @@ public final class FullbrightModule extends Module {
                 "strength", "Brightness Strength", "Intensity of ambient light enhancement",
                 100.0, 20.0, 100.0, 5.0, "%"
         ));
-        this.smoothTransitionSetting = addSetting(new BooleanSetting(
-                "smooth_fade", "Smooth Fade Transition", "Smoothly interpolate brightness when toggling ON/OFF", true
+        this.shaderNightVisionCarrierSetting = addSetting(new BooleanSetting(
+                "nv_carrier", "Full Cave Illumination", "Ensure 100% visibility in pitch-black caves and deep dark", true
         ));
-        this.nightVisionFallbackSetting = addSetting(new BooleanSetting(
-                "nv_carrier", "Shader-Compatible Light", "Apply client-side ambient night vision carrier for third-party shader packs", true
-        ));
-        addAliases("gamma", "brightness", "light", "nightvision");
+        addAliases("fullbright", "gamma", "brightness", "light", "nightvision");
+    }
+
+    @Override
+    protected void onEnable() {
+        if (client != null && client.options != null) {
+            savedVanillaGamma = client.options.getGamma().getValue();
+            client.options.getGamma().setValue(1.0);
+        }
     }
 
     @Override
     protected void onDisable() {
-        currentFactor = 0.0f;
+        if (client != null && client.options != null) {
+            client.options.getGamma().setValue(Math.max(0.0, Math.min(1.0, savedVanillaGamma)));
+        }
         removeClientNightVision();
     }
 
     @Override
     public void onTick() {
-        float target = (brightnessFactorSetting.getFloatValue() / 100.0f);
-        if (smoothTransitionSetting.isEnabled()) {
-            currentFactor = MathUtils.lerp(currentFactor, target, 0.25f);
-        } else {
-            currentFactor = target;
+        if (client != null && client.options != null) {
+            double targetGamma = brightnessFactorSetting.getValue() / 100.0;
+            if (Math.abs(client.options.getGamma().getValue() - targetGamma) > 0.01) {
+                client.options.getGamma().setValue(targetGamma);
+            }
         }
 
-        if (client.player != null && nightVisionFallbackSetting.isEnabled()) {
+        if (client != null && client.player != null && shaderNightVisionCarrierSetting.isEnabled()) {
             if (!client.player.hasStatusEffect(StatusEffects.NIGHT_VISION)) {
                 appliedNightVision = true;
                 client.player.addStatusEffect(new StatusEffectInstance(
@@ -79,13 +84,9 @@ public final class FullbrightModule extends Module {
     }
 
     private void removeClientNightVision() {
-        if (appliedNightVision && client.player != null) {
+        if (appliedNightVision && client != null && client.player != null) {
             client.player.removeStatusEffect(StatusEffects.NIGHT_VISION);
         }
         appliedNightVision = false;
-    }
-
-    public float getEffectiveBrightnessBoost() {
-        return isEnabled() ? currentFactor : 0.0f;
     }
 }

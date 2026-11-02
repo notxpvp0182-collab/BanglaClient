@@ -1,6 +1,21 @@
 package com.ahmed.banglaclient.module;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.module.chat.ChatHeadsModule;
+import com.ahmed.banglaclient.module.combat.AnchorOptimizerModule;
+import com.ahmed.banglaclient.module.combat.CrystalOptimizerModule;
+import com.ahmed.banglaclient.module.combat.PearlOptimizerModule;
+import com.ahmed.banglaclient.module.combat.ShieldOptimizerModule;
+import com.ahmed.banglaclient.module.hud.TabListHeadsModule;
+import com.ahmed.banglaclient.module.utility.BreakDelayModule;
+import com.ahmed.banglaclient.module.utility.FastBlockPlacementModule;
+import com.ahmed.banglaclient.module.utility.LeftClickDelayModule;
+import com.ahmed.banglaclient.module.utility.MiddleClickPearlModule;
+import com.ahmed.banglaclient.module.utility.PlaceDelayModule;
+import com.ahmed.banglaclient.module.utility.RightClickDelayModule;
+import com.ahmed.banglaclient.module.visual.ItemPhysicsModule;
+import com.ahmed.banglaclient.module.visual.NametagsModule;
+import com.ahmed.banglaclient.module.visual.SmallHeldItemModule;
 import com.ahmed.banglaclient.module.audio.AmbientSoundControlModule;
 import com.ahmed.banglaclient.module.audio.MusicDisplayModule;
 import com.ahmed.banglaclient.module.audio.MusicNotificationsModule;
@@ -308,6 +323,23 @@ public final class ModuleManager {
         register(new ConfigManagerModule());
         register(new KeybindManagerModule());
         register(new ModuleSearchModule());
+
+        // New Upgrade Modules (HUD, Combat, Visual, Chat, Utility)
+        register(new TabListHeadsModule());
+        register(new CrystalOptimizerModule());
+        register(new AnchorOptimizerModule());
+        register(new ShieldOptimizerModule());
+        register(new PearlOptimizerModule());
+        register(new NametagsModule());
+        register(new ItemPhysicsModule());
+        register(new SmallHeldItemModule());
+        register(new ChatHeadsModule());
+        register(new MiddleClickPearlModule());
+        register(new FastBlockPlacementModule());
+        register(new PlaceDelayModule());
+        register(new BreakDelayModule());
+        register(new RightClickDelayModule());
+        register(new LeftClickDelayModule());
     }
 
     /**

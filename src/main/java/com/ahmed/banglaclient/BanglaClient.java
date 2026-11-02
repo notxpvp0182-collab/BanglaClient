@@ -9,6 +9,9 @@ import com.ahmed.banglaclient.input.KeybindManager;
 import com.ahmed.banglaclient.module.ModuleManager;
 import com.ahmed.banglaclient.notification.NotificationManager;
 import com.ahmed.banglaclient.rendering.BlurRenderer;
+import com.ahmed.banglaclient.account.AccountManager;
+import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
+import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.theme.ThemeManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
@@ -58,6 +61,7 @@ public final class BanglaClient implements ClientModInitializer {
         ensureConfigDirectories();
 
         this.sessionTracker = new SessionTracker();
+        BcIdentityManager.initialize();
         this.themeManager = new ThemeManager();
         this.notificationManager = new NotificationManager();
         this.moduleManager = new ModuleManager();

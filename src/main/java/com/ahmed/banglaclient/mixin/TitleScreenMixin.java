@@ -3,7 +3,15 @@ package com.ahmed.banglaclient.mixin;
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.gui.AboutScreen;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
+import com.ahmed.banglaclient.account.AccountManager;
+import com.ahmed.banglaclient.cosmetics.PlayerPreviewRenderer;
+import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
+import com.ahmed.banglaclient.cosmetics.SkinEntry;
+import com.ahmed.banglaclient.gui.AccountSwitcherScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
+import com.ahmed.banglaclient.gui.SkinCustomizationScreen;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
+import com.ahmed.banglaclient.util.MathUtils;
 import com.ahmed.banglaclient.util.ColorUtils;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gl.RenderPipelines;
@@ -49,6 +57,29 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private final List<ClickableWidget> capturedModWidgets = new ArrayList<>();
 
+    @Unique
+    private static SkinCapeManager sharedSkinManager;
+    @Unique
+    private static AccountManager sharedAccountManager;
+    @Unique
+    private float previewYaw = -22.0f;
+    @Unique
+    private float previewPitch = 6.0f;
+    @Unique
+    private boolean draggingCharacter = false;
+
+    @Unique
+    private static synchronized SkinCapeManager getSkinManager() {
+        if (sharedSkinManager == null) sharedSkinManager = new SkinCapeManager();
+        return sharedSkinManager;
+    }
+
+    @Unique
+    private static synchronized AccountManager getAccountManager() {
+        if (sharedAccountManager == null) sharedAccountManager = new AccountManager();
+        return sharedAccountManager;
+    }
+
     protected TitleScreenMixin(Text title) {
         super(title);
     }
@@ -93,7 +124,7 @@ public abstract class TitleScreenMixin extends Screen {
         int leftY = Math.max(64, (h - 96) / 2);
 
         if (FabricLoader.getInstance().isModLoaded("ias")) {
-            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_IAS__:Account"), b -> triggerExternalMod("ias", "account"))
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__LEFT_IAS__:Account"), b -> { if (this.client != null) this.client.setScreen(new AccountSwitcherScreen(this, getAccountManager(), getSkinManager())); })
                     .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("In-Game Account Switcher"))).build());
             leftY += 24;
         }
@@ -163,7 +194,7 @@ public abstract class TitleScreenMixin extends Screen {
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
         int userW = Math.max(56, this.textRenderer.getWidth("• " + username) + 16);
         curRight -= (userW + trGap);
-        registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> triggerExternalMod("ias", "account"))
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> { if (this.client != null) this.client.setScreen(new AccountSwitcherScreen(this, getAccountManager(), getSkinManager())); })
                 .dimensions(curRight, topY, userW, trSq).tooltip(Tooltip.of(Text.literal("Account: " + username))).build());
 
         // 3. Center Main Menu Buttons:
@@ -206,6 +237,15 @@ public abstract class TitleScreenMixin extends Screen {
         registerBanglaButton(ButtonWidget.builder(Text.literal("Quit Game"), b -> {
             if (this.client != null) this.client.scheduleStop();
         }).dimensions(btnX, btnY, btnW, btnH).build());
+
+        // 3B. Right-Side Bedrock-Style "CUSTOMIZE" Button Below 3D Character Preview
+        int charCenterX = w - 66;
+        int charBottomY = Math.min(h - 42, (h / 2) + 46);
+        registerBanglaButton(ButtonWidget.builder(Text.literal("CUSTOMIZE"), b -> {
+            if (this.client != null) {
+                this.client.setScreen(new SkinCustomizationScreen(this, getSkinManager()));
+            }
+        }).dimensions(charCenterX - 42, charBottomY, 84, 18).tooltip(Tooltip.of(Text.literal("Customize 3D Skin & Cape"))).build());
 
         // 4. Bottom-Right BANGLA SMP Server Card
         registerBanglaButton(ButtonWidget.builder(Text.literal("__BANGLA_SMP__"), b -> {
@@ -285,9 +325,34 @@ public abstract class TitleScreenMixin extends Screen {
         context.drawTextWithShadow(this.textRenderer, txtClient, cx, 0, 0xFFFFFFFF);
         matrices.popMatrix();
 
+        // Render Bedrock-Style 3D Player Skin & Cape Preview on the Right Side of the Main Menu
+        SkinCapeManager scm = getSkinManager();
+        SkinEntry activeSkin = scm.getSelectedSkin();
+        SkinEntry activeCape = scm.getSelectedCape();
+        String liveUser = getAccountManager().getActiveUsername();
+
+        int charCenterX = w - 66;
+        int charCenterY = (h / 2) - 4;
+        int nameW = this.textRenderer.getWidth(liveUser);
+        GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, charCenterY - 54, nameW + 12, 14, accent, false);
+        context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, charCenterY - 51, 0xFFFFFFFF);
+
+        float charScale = Math.max(2.1f, Math.min(2.8f, h / 96.0f));
+        PlayerPreviewRenderer.renderPlayerModel3D(
+                context, charCenterX, charCenterY, charScale,
+                previewYaw, previewPitch, activeSkin, activeCape, scm.isSelectedSlimModel()
+        );
+
         for (ClickableWidget cw : banglaMenuWidgets) {
             if (cw.visible) {
+                String msg = cw.getMessage() != null ? cw.getMessage().getString() : "";
+                if (msg.startsWith("__USER__:")) {
+                    cw.setMessage(Text.literal("__USER__:  " + liveUser));
+                }
                 cw.render(context, mouseX, mouseY, delta);
+                if (msg.startsWith("__USER__:")) {
+                    PlayerPreviewRenderer.drawPlayerHead(context, activeSkin, cw.getX() + 5, cw.getY() + 4, 12);
+                }
             }
         }
 
@@ -358,5 +423,31 @@ public abstract class TitleScreenMixin extends Screen {
         context.fill(cx - rx + 6, cy + 4, cx + rx - 6, cy + 6, ColorUtils.withAlpha(accent, 0.35f));
         context.fill(cx - rx - 4, cy - 1, cx - rx + 4, cy + 2, 0xFFEF4444);
         context.fill(cx + rx - 4, cy - 1, cx + rx + 4, cy + 2, 0xFFEF4444);
+    }
+    @Override
+    public boolean mouseClicked(Click click, boolean doubled) {
+        int charCenterX = this.width - 66;
+        int charCenterY = (this.height / 2) - 4;
+        if (click.button() == 0 && MathUtils.isHovered(click.x(), click.y(), charCenterX - 40, charCenterY - 42, 80, 82)) {
+            this.draggingCharacter = true;
+            return true;
+        }
+        return super.mouseClicked(click, doubled);
+    }
+
+    @Override
+    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+        if (this.draggingCharacter) {
+            this.previewYaw += (float) deltaX * 1.6f;
+            this.previewPitch = MathUtils.clamp(this.previewPitch + (float) deltaY * 0.8f, -35.0f, 35.0f);
+            return true;
+        }
+        return super.mouseDragged(click, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(Click click) {
+        this.draggingCharacter = false;
+        return super.mouseReleased(click);
     }
 }

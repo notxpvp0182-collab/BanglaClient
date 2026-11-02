@@ -81,7 +81,7 @@ public final class HudEditorScreen extends Screen {
         GlassRenderer.drawGlassPanel(context, barX, barY, barW, barH, true, false, false);
 
         context.drawTextWithShadow(textRenderer, "HUD Editor", barX + 12, barY + 7, accent);
-        context.drawTextWithShadow(textRenderer, "Drag to Move • Scroll to Scale • Right-Click to Configure",
+        context.drawTextWithShadow(textRenderer, "Drag Scoreboard & Widgets • Scroll to Scale • Right-Click for Options",
                 barX + 12, barY + 18, theme.getTextSecondary());
 
         // Reset All button inside toolbar

@@ -2,7 +2,9 @@ package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
+import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
+import com.ahmed.banglaclient.gui.SkinCustomizationScreen;
 import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.util.ColorUtils;
 import net.fabricmc.loader.api.FabricLoader;
@@ -42,7 +44,12 @@ public abstract class GameMenuScreenMixin extends Screen {
         int leftX = centerX - totalW / 2;
         int rightX = leftX + halfW + 8;
 
-        // Add Cosmetics (opens Click GUI) and HUD Editor (opens HUD Editor) buttons into the Pause Menu
+        // Add Top-Right Skin Customizer shortcut + Cosmetics (Click GUI) and HUD Editor buttons into Pause Menu
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Skin Customizer"), b -> {
+            if (this.client != null) {
+                this.client.setScreen(new SkinCustomizationScreen(this, new SkinCapeManager()));
+            }
+        }).dimensions(this.width - 104, 12, 94, 20).build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("__PAUSE_GUI:Cosmetics"), b -> {
             if (this.client != null) {
                 this.client.setScreen(new ClickGuiScreen(false));
