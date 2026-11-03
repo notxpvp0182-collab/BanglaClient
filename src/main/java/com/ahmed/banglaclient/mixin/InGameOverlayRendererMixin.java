@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(InGameOverlayRenderer.class)
 public abstract class InGameOverlayRendererMixin {
 
-    @Inject(method = "renderFireOverlay", at = @At("HEAD"), require = 0)
+    @Inject(method = "renderFireOverlay", at = @At("HEAD"), cancellable = true, require = 0)
     private static void banglaclient$pushFireOverlayOffset(
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
@@ -27,7 +27,13 @@ public abstract class InGameOverlayRendererMixin {
         }
         var fireOpt = bangla.getModuleManager().getModule(CustomFireOverlayModule.class);
         if (fireOpt.isPresent() && fireOpt.get().isEnabled()) {
+            if (fireOpt.get().shouldHideOverlayCompletely()) {
+                ci.cancel();
+                return;
+            }
             matrices.translate(0.0f, fireOpt.get().getVerticalOffset(), 0.0f);
+            float scale = fireOpt.get().getOpacityScale();
+            matrices.scale(1.0f, scale, 1.0f);
         }
     }
 }

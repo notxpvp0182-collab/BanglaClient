@@ -4,6 +4,7 @@ import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.cosmetics.SkinEntry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.entity.player.PlayerSkinType;
 import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.util.AssetInfo;
@@ -43,10 +44,36 @@ public abstract class AbstractClientPlayerEntityMixin {
                     cir.setReturnValue(new SkinTextures(
                             body,
                             capeAsset,
-                            orig != null ? orig.elytra() : null,
+                            capeAsset != null ? capeAsset : (orig != null ? orig.elytra() : null),
                             model,
                             true
                     ));
+                }
+            }
+        }
+    }
+
+    @Inject(method = "getModel", at = @At("RETURN"), cancellable = true, require = 0)
+    private void banglaclient$overrideInGameArmModelType(CallbackInfoReturnable<String> cir) {
+        AbstractClientPlayerEntity player = (AbstractClientPlayerEntity) (Object) this;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.player != null && player.getUuid().equals(mc.player.getUuid())) {
+            SkinCapeManager scm = SkinCapeManager.getInstance();
+            if (scm.isCustomSkinOverride()) {
+                cir.setReturnValue(scm.isSelectedSlimModel() ? "slim" : "default");
+            }
+        }
+    }
+
+    @Inject(method = "isPartVisible", at = @At("HEAD"), cancellable = true, require = 0)
+    private void banglaclient$forceCapeVisibleWhenOverrideActive(PlayerModelPart modelPart, CallbackInfoReturnable<Boolean> cir) {
+        if (modelPart == PlayerModelPart.CAPE) {
+            AbstractClientPlayerEntity player = (AbstractClientPlayerEntity) (Object) this;
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc != null && mc.player != null && player.getUuid().equals(mc.player.getUuid())) {
+                SkinCapeManager scm = SkinCapeManager.getInstance();
+                if (scm.isCustomCapeOverride()) {
+                    cir.setReturnValue(true);
                 }
             }
         }

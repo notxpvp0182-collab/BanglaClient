@@ -1,10 +1,12 @@
 package com.ahmed.banglaclient.identity;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.network.PacketByteBuf;
@@ -22,14 +24,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages official BANGLA CLIENT identity detection and rendering using the exact
- * uploaded texture (bangla_client_identity.png) across Nametags, Tab List, and Chat.
+ * Manages official BANGLA CLIENT identity detection, icon texture loading,
+ * and container watermarks.
  */
 public final class BcIdentityManager {
     public static final int PROTOCOL_VERSION = 1;
     public static final Identifier CHANNEL_ID = Identifier.of(BanglaClient.MOD_ID, "identity_v1");
 
-    // Official Image 1 Identity Icon Asset Path
+    // Exact Image 1 BANGLA CLIENT Identity Icon Asset Path
     public static final Identifier IDENTITY_ICON = Identifier.of(BanglaClient.MOD_ID, "textures/gui/bangla_client_identity.png");
 
     public record BcIdentityPayload(int version, UUID playerUuid) implements CustomPayload {
@@ -126,13 +128,37 @@ public final class BcIdentityManager {
         try {
             context.drawTexture(RenderPipelines.GUI_TEXTURED, IDENTITY_ICON, x, y, 0.0f, 0.0f, width, height, width, height);
         } catch (Throwable t) {
-            drawFallbackVectorBadge(context, x, y, Math.min(width, height));
+            context.fill(x + 1, y + height - 3, x + width, y + height, 0xFFEF4444);
+            context.fill(x + 2, y + 1, x + width - 2, y + 4, 0xFFFBBF24);
         }
     }
 
-    private static void drawFallbackVectorBadge(DrawContext context, int x, int y, int size) {
-        context.fill(x + 1, y + size - 3, x + size, y + size, 0xFFEF4444);
-        context.fill(x + 2, y + 1, x + size - 2, y + 4, 0xFFFBBF24);
+    /**
+     * Renders the subtle BANGLA CLIENT watermark at the bottom-right of Inventory & Container screens.
+     * Appearance: [Exact identity icon] BANGLA CLIENT
+     */
+    public static void drawWatermark(DrawContext context, int screenWidth, int screenHeight, TextRenderer textRenderer) {
+        if (context == null || textRenderer == null || screenWidth <= 0 || screenHeight <= 0) return;
+
+        String title = BanglaClient.CLIENT_NAME;
+        int textW = textRenderer.getWidth(title);
+        int iconSize = 9;
+        int totalW = iconSize + 4 + textW + 8;
+        int totalH = 14;
+        int x = screenWidth - totalW - 6;
+        int y = screenHeight - totalH - 5;
+
+        // Subtle dark translucent pill background with faint white specular outline
+        context.fill(x + 1, y, x + totalW - 1, y + totalH, 0x33000000);
+        context.fill(x, y + 1, x + 1, y + totalH - 1, 0x33000000);
+        context.fill(x + totalW - 1, y + 1, x + totalW, y + totalH - 1, 0x33000000);
+        GlassRenderer.drawOutlineBorder(context, x, y, totalW, totalH, 0x1EFFFFFF);
+
+        // Draw identity icon
+        drawIdentityIcon(context, x + 4, y + 2, iconSize, iconSize);
+
+        // Draw text
+        context.drawTextWithShadow(textRenderer, title, x + 4 + iconSize + 3, y + 3, 0xDDF4F7FA);
     }
 
     public static MutableText createBcPrefixBadge() {

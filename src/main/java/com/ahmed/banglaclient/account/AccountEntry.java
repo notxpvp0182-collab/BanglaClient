@@ -2,10 +2,6 @@ package com.ahmed.banglaclient.account;
 
 import java.util.UUID;
 
-/**
- * Represents a stored account metadata entry in the BANGLA CLIENT Account Switcher.
- * Never stores Microsoft passwords or raw credentials.
- */
 public final class AccountEntry {
     public enum AccountType {
         MICROSOFT("Microsoft Account"),
@@ -19,15 +15,27 @@ public final class AccountEntry {
     private String username;
     private final UUID uuid;
     private final AccountType type;
+    private long lastUsed;
+    private int useCount;
 
-    public AccountEntry(String username, UUID uuid, AccountType type) {
+    public AccountEntry(String username, UUID uuid, AccountType type, long lastUsed, int useCount) {
         this.username = username;
         this.uuid = uuid;
         this.type = type;
+        this.lastUsed = lastUsed;
+        this.useCount = Math.max(1, useCount);
+    }
+
+    public AccountEntry(String username, UUID uuid, AccountType type) {
+        this(username, uuid, type, System.currentTimeMillis(), 1);
     }
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public UUID getUuid() { return uuid; }
     public AccountType getType() { return type; }
+    public long getLastUsed() { return lastUsed; }
+    public void setLastUsed(long lastUsed) { this.lastUsed = lastUsed; }
+    public int getUseCount() { return useCount; }
+    public void incrementUseCount() { this.useCount++; }
 }

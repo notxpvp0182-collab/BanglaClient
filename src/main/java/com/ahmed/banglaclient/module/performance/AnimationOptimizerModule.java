@@ -15,6 +15,7 @@ public final class AnimationOptimizerModule extends Module {
     private final BooleanSetting reduceUiAnimationsSetting;
     private final BooleanSetting disableViewBobbingSetting;
     private final BooleanSetting optimizeCloudsSetting;
+    private final BooleanSetting reduceWeatherParticlesSetting;
 
     public AnimationOptimizerModule() {
         super(
@@ -31,6 +32,9 @@ public final class AnimationOptimizerModule extends Module {
         ));
         this.optimizeCloudsSetting = addSetting(new BooleanSetting(
                 "fast_clouds", "Use Fast Clouds", "Switch cloud rendering from Fancy to Fast", false
+        ));
+        this.reduceWeatherParticlesSetting = addSetting(new BooleanSetting(
+                "optimize_weather", "Optimize Weather Particles", "Reduce dense rain and snow particles during storms", true
         ));
         addAliases("animations", "fastanimations", "lowend", "optimizer");
     }

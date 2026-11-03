@@ -9,6 +9,7 @@ import com.ahmed.banglaclient.module.combat.ShieldOptimizerModule;
 import com.ahmed.banglaclient.module.hud.TabListHeadsModule;
 import com.ahmed.banglaclient.module.utility.BreakDelayModule;
 import com.ahmed.banglaclient.module.utility.FastBlockPlacementModule;
+import com.ahmed.banglaclient.module.utility.LatencyOptimizerModule;
 import com.ahmed.banglaclient.module.utility.LeftClickDelayModule;
 import com.ahmed.banglaclient.module.utility.MiddleClickPearlModule;
 import com.ahmed.banglaclient.module.utility.PlaceDelayModule;
@@ -340,6 +341,7 @@ public final class ModuleManager {
         register(new BreakDelayModule());
         register(new RightClickDelayModule());
         register(new LeftClickDelayModule());
+        register(new LatencyOptimizerModule());
     }
 
     /**

@@ -54,7 +54,7 @@ public abstract class PlayerListHudMixin {
                 || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name());
 
         if (isBc) {
-            // Indent 10px so [ICON] renders before [HEAD] and [NAME] with clean slot spacing
+            // Indent text so the slot width expands to accommodate the 8x8 identity icon
             MutableText spacing = Text.literal("   ");
             cir.setReturnValue(spacing.append(original));
         }
@@ -68,11 +68,13 @@ public abstract class PlayerListHudMixin {
     private void banglaclient$drawTabEntryWithIconAndHead(DrawContext context, TextRenderer textRenderer, Text text, int x, int y, int color) {
         PlayerListEntry entry = this.currentRenderingEntry;
         if (entry == null || entry.getProfile() == null) {
-            context.drawTextWithShadow(textRenderer, text, x, y, color); return;
+            context.drawTextWithShadow(textRenderer, text, x, y, color);
+            return;
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        boolean isLocal = mc.player != null && entry.getProfile().id().equals(mc.player.getUuid());
+        boolean isLocal = (mc.player != null && entry.getProfile().id().equals(mc.player.getUuid()))
+                || (mc.getSession() != null && entry.getProfile().name().equalsIgnoreCase(mc.getSession().getUsername()));
 
         boolean isBc = BcIdentityManager.isVerifiedBcUser(entry.getProfile().id())
                 || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name());
@@ -86,20 +88,22 @@ public abstract class PlayerListHudMixin {
             }
         }
 
-        // Order: [BANGLA CLIENT ICON] [SKIN HEAD] [PLAYER NAME]
-        if (isBc) {
-            int iconX = headsModuleEnabled ? (x - 19) : (x - 10);
-            BcIdentityManager.drawIdentityIcon(context, iconX, y, 8, 8);
-        }
-
-        if (headsModuleEnabled) {
-            int headX = isBc ? (x - 10) : (x - 9);
-            SkinTextures textures = isLocal && SkinCapeManager.getInstance().isCustomSkinOverride()
+        // Layout Order: [BANGLA CLIENT ICON] [SKIN HEAD] [PLAYER NAME]
+        if (isBc && headsModuleEnabled) {
+            BcIdentityManager.drawIdentityIcon(context, x - 18, y, 8, 8);
+            SkinTextures textures = (isLocal && SkinCapeManager.getInstance().isCustomSkinOverride())
                     ? SkinCapeManager.getInstance().getActiveSkinTextures()
                     : entry.getSkinTextures();
-            PlayerPreviewRenderer.drawPlayerHead(context, textures, headX, y, 8);
+            PlayerPreviewRenderer.drawPlayerHead(context, textures, x - 9, y, 8);
+        } else if (isBc && !headsModuleEnabled) {
+            BcIdentityManager.drawIdentityIcon(context, x - 9, y, 8, 8);
+        } else if (!isBc && headsModuleEnabled) {
+            SkinTextures textures = (isLocal && SkinCapeManager.getInstance().isCustomSkinOverride())
+                    ? SkinCapeManager.getInstance().getActiveSkinTextures()
+                    : entry.getSkinTextures();
+            PlayerPreviewRenderer.drawPlayerHead(context, textures, x - 9, y, 8);
         }
 
-        context.drawTextWithShadow(textRenderer, text, x, y, color); return;
+        context.drawTextWithShadow(textRenderer, text, x, y, color);
     }
 }

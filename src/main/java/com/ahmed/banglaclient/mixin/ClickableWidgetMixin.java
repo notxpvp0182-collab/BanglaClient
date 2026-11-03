@@ -57,7 +57,7 @@ public abstract class ClickableWidgetMixin {
             return;
         }
 
-        // 2. Fixed Top-Right Account Pill: [PLAYER HEAD] [PLAYER NAME] strictly non-overlapping
+        // 2. Fixed Top-Right Account Display Pill: [HEAD (12x12)] [NAME (offset x+20)] -> Zero Overlap!
         if (label.startsWith("__USER__:")) {
             String uname = label.substring(9);
             drawGlassCapsule(context, x, y, w, h, 0x48141824, 0x600A0D14, hov ? 0xFFFFFFFF : 0x88FFFFFF, 0x22FFFFFF);
@@ -66,7 +66,8 @@ public abstract class ClickableWidgetMixin {
             int pad = 4;
             int headX = x + pad;
             int headY = y + (h - headSize) / 2;
-            PlayerPreviewRenderer.drawPlayerHead(context, SkinCapeManager.getInstance().getActiveSkinTextures(), headX, headY, headSize);
+            SkinCapeManager scm = SkinCapeManager.getInstance();
+            PlayerPreviewRenderer.drawPlayerHead(context, scm.getActiveSkinTextures(), headX, headY, headSize);
 
             int textX = headX + headSize + pad;
             int maxTextW = Math.max(12, w - (textX - x) - pad);

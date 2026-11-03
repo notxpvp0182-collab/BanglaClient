@@ -3,6 +3,7 @@ package com.ahmed.banglaclient.account;
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.config.ConfigManager;
 import com.ahmed.banglaclient.config.ConfigValidator;
+import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.mixin.MinecraftClientSessionAccessor;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -13,16 +14,8 @@ import net.minecraft.client.session.Session;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
-/**
- * Manages Microsoft and Offline accounts safely for BANGLA CLIENT.
- * Preserves the original authenticated launcher session and supports offline profile switching.
- */
 public final class AccountManager {
     private final Path accountsFile;
     private final List<AccountEntry> accounts = new ArrayList<>();
@@ -41,7 +34,9 @@ public final class AccountManager {
             UUID id = initialLaunchSession.getUuidOrNull() != null
                     ? initialLaunchSession.getUuidOrNull()
                     : offlineUuid(initialLaunchSession.getUsername());
-            AccountEntry.AccountType type = (initialLaunchSession.getAccessToken() != null && !initialLaunchSession.getAccessToken().equals("0") && !initialLaunchSession.getAccessToken().isBlank())
+            AccountEntry.AccountType type = (initialLaunchSession.getAccessToken() != null
+                    && !initialLaunchSession.getAccessToken().equals("0")
+                    && !initialLaunchSession.getAccessToken().isBlank())
                     ? AccountEntry.AccountType.MICROSOFT
                     : AccountEntry.AccountType.OFFLINE;
             accounts.add(new AccountEntry(initialLaunchSession.getUsername(), id, type));
@@ -60,20 +55,20 @@ public final class AccountManager {
 
     public synchronized String addOfflineAccount(String rawName) {
         if (!isValidMinecraftUsername(rawName)) {
-            return "Invalid username! Use 3-16 letters, numbers, or underscores.";
+            return "Invalid username! Use 3-16 alphanumeric or underscore characters.";
         }
         String clean = rawName.trim();
         for (AccountEntry existing : accounts) {
             if (existing.getUsername().equalsIgnoreCase(clean)) {
                 switchToAccount(existing);
-                return "Switched to existing account: " + existing.getUsername();
+                return "Switched to existing profile: " + existing.getUsername();
             }
         }
         AccountEntry entry = new AccountEntry(clean, offlineUuid(clean), AccountEntry.AccountType.OFFLINE);
         accounts.add(entry);
         saveAccounts();
         switchToAccount(entry);
-        return "Added & activated Offline Account: " + clean;
+        return "Added & activated Offline Profile: " + clean;
     }
 
     public synchronized boolean editOfflineAccount(AccountEntry entry, String newName) {
@@ -92,7 +87,7 @@ public final class AccountManager {
         if (entry == null || accounts.size() <= 1) return;
         if (initialLaunchSession != null && entry.getUsername().equalsIgnoreCase(initialLaunchSession.getUsername())
                 && entry.getType() == AccountEntry.AccountType.MICROSOFT) {
-            return; // Keep original authenticated launcher session available
+            return;
         }
         accounts.remove(entry);
         saveAccounts();
@@ -105,6 +100,9 @@ public final class AccountManager {
         if (entry == null) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null) return;
+
+        entry.setLastUsed(System.currentTimeMillis());
+        entry.incrementUseCount();
 
         if (initialLaunchSession != null
                 && entry.getType() == AccountEntry.AccountType.MICROSOFT
@@ -120,8 +118,15 @@ public final class AccountManager {
             );
             ((MinecraftClientSessionAccessor) mc).banglaclient$setSession(offlineSession);
         }
-        com.ahmed.banglaclient.cosmetics.SkinCapeManager.getInstance().onAccountSwitched(entry.getUsername());
+
+        // Notify SkinCapeManager to immediately load this specific account's saved skin & cape selection
+        SkinCapeManager.getInstance().onAccountSwitched(entry.getUsername());
         saveAccounts();
+    }
+
+    public void reloadSkins() {
+        SkinCapeManager.getInstance().refreshLibraries();
+        SkinCapeManager.getInstance().loadSelection();
     }
 
     public boolean isAccountActive(AccountEntry entry) {
@@ -151,7 +156,9 @@ public final class AccountManager {
                 if (!isValidMinecraftUsername(name)) continue;
                 boolean duplicate = accounts.stream().anyMatch(a -> a.getUsername().equalsIgnoreCase(name));
                 if (!duplicate) {
-                    accounts.add(new AccountEntry(name, offlineUuid(name), AccountEntry.AccountType.OFFLINE));
+                    long lastUsed = obj.has("lastUsed") ? obj.get("lastUsed").getAsLong() : System.currentTimeMillis();
+                    int count = obj.has("useCount") ? obj.get("useCount").getAsInt() : 1;
+                    accounts.add(new AccountEntry(name, offlineUuid(name), AccountEntry.AccountType.OFFLINE, lastUsed, count));
                 }
             }
         }
@@ -174,6 +181,8 @@ public final class AccountManager {
                 JsonObject obj = new JsonObject();
                 obj.addProperty("username", a.getUsername());
                 obj.addProperty("uuid", a.getUuid().toString());
+                obj.addProperty("lastUsed", a.getLastUsed());
+                obj.addProperty("useCount", a.getUseCount());
                 arr.add(obj);
             }
         }

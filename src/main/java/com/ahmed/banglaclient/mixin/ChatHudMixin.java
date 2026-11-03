@@ -124,7 +124,7 @@ public abstract class ChatHudMixin {
             int lineY = -((i + 1) * 9);
             int startX = 0;
 
-            // Render Order: [BANGLA CLIENT ICON] [SENDER SKIN HEAD] [NAME]: Message
+            // Order: [BANGLA CLIENT ICON] [SENDER SKIN HEAD] [NAME]: Message
             if (isBc) {
                 BcIdentityManager.drawIdentityIcon(context, startX, lineY, 8, 8);
                 startX += 9;

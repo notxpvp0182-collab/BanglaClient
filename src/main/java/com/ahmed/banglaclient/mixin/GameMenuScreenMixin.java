@@ -16,6 +16,7 @@ import net.minecraft.client.gui.screen.GameMenuScreen;
 import net.minecraft.client.gui.screen.OpenToLanScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.StatsScreen;
+import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
@@ -31,7 +32,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Mixin(GameMenuScreen.class)
@@ -67,11 +70,10 @@ public abstract class GameMenuScreenMixin extends Screen {
                 && (this.client.getServer() == null || !this.client.getServer().isRemote());
 
         boolean wideScreen = (w >= 340);
-        int btnW = Math.min(126, w - 40);
+        int btnW = Math.min(128, w - 40);
         int btnH = 18;
         int btnStep = 20;
 
-        // In singleplayer, 9 buttons; in multiplayer, 8 buttons (Open to LAN omitted)
         int totalRows = isSingle ? 9 : 8;
         int totalMenuH = totalRows * btnStep;
 
@@ -147,28 +149,30 @@ public abstract class GameMenuScreenMixin extends Screen {
             btnY += 1;
         }
 
-        // 9. Save and Quit to Title / Disconnect (Red Capsule Button)
+        // 9. Save and Quit to Title / Disconnect (Red Capsule Button with clean lifecycle)
         String exitLabel = isSingle ? "Save and Quit to Title" : "Disconnect";
         registerPauseBtn(ButtonWidget.builder(Text.literal(exitLabel), b -> {
-            if (this.client != null) {
-                this.client.disconnectWithProgressScreen();
-            }
+            performCleanWorldExit();
         }).dimensions(btnX, btnY, btnW, btnH).build());
 
-        // Right-Side 3D Player Profile Panel (Only rendered if screen is wide enough)
+        // Right-Side 3D Player Profile Panel (Responsive: only rendered if screen is wide enough)
         if (wideScreen) {
             int charCenterX = w - 62;
             int charW = 68;
             int charH = Math.min(115, h - 90);
             int charTopY = Math.max(34, (h - charH) / 2 - 10);
 
-            this.pauseSkinWidget = PlayerPreviewRenderer.createSkinWidget(
-                    charW,
-                    charH,
-                    () -> SkinCapeManager.getInstance().getActiveSkinTextures()
-            );
-            this.pauseSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
-            this.addDrawableChild(this.pauseSkinWidget);
+            try {
+                this.pauseSkinWidget = PlayerPreviewRenderer.createSkinWidget(
+                        charW,
+                        charH,
+                        () -> SkinCapeManager.getInstance().getActiveSkinTextures()
+                );
+                this.pauseSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
+                this.addDrawableChild(this.pauseSkinWidget);
+            } catch (Throwable t) {
+                this.pauseSkinWidget = null;
+            }
 
             registerPauseBtn(ButtonWidget.builder(Text.literal("CUSTOMIZE"), b -> {
                 if (this.client != null) {
@@ -180,7 +184,8 @@ public abstract class GameMenuScreenMixin extends Screen {
 
     @Unique
     private void sanitizePauseWidgets() {
-        for (Element child : this.children()) {
+        List<Element> snapshot = new ArrayList<>(this.children());
+        for (Element child : snapshot) {
             if (child instanceof ClickableWidget cw && !pauseButtons.contains(cw) && cw != pauseSkinWidget) {
                 cw.visible = false;
                 cw.active = false;
@@ -249,7 +254,9 @@ public abstract class GameMenuScreenMixin extends Screen {
             context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, badgeY + 3, 0xFFFFFFFF);
 
             if (this.pauseSkinWidget != null) {
-                this.pauseSkinWidget.render(context, mouseX, mouseY, delta);
+                try {
+                    this.pauseSkinWidget.render(context, mouseX, mouseY, delta);
+                } catch (Throwable ignored) {}
             }
         }
 
@@ -280,6 +287,20 @@ public abstract class GameMenuScreenMixin extends Screen {
         }
         if (this.client != null) {
             this.client.setScreen(new ClickGuiScreen(false));
+        }
+    }
+
+    @Unique
+    private void performCleanWorldExit() {
+        if (this.client == null) return;
+        try {
+            if (this.client.world != null) {
+                this.client.world.disconnect();
+            }
+            this.client.disconnect(new TitleScreen(), false);
+        } catch (Throwable t) {
+            BanglaClient.LOGGER.error("Error during clean world exit", t);
+            this.client.setScreen(new TitleScreen());
         }
     }
 

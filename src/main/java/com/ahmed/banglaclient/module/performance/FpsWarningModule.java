@@ -67,8 +67,8 @@ public final class FpsWarningModule extends HudModule {
                     lastAlertTimeMillis = now;
                     BanglaClient bangla = BanglaClient.getInstance();
                     if (bangla != null) {
-                        if (autoSwitchToLowPresetSetting.isEnabled() && bangla.getPerformancePreset() != PerformancePreset.LOW) {
-                            bangla.setPerformancePreset(PerformancePreset.LOW);
+                        if (autoSwitchToLowPresetSetting.isEnabled() && bangla.getPerformancePreset() != PerformancePreset.FPS_BOOST) {
+                            bangla.setPerformancePreset(PerformancePreset.FPS_BOOST);
                             if (bangla.getNotificationManager() != null) {
                                 bangla.getNotificationManager().pushWarning(
                                         "Low FPS Detected (" + fps + " FPS)",

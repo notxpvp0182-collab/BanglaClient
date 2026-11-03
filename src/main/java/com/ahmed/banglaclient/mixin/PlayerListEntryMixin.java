@@ -19,7 +19,13 @@ public abstract class PlayerListEntryMixin {
     @Inject(method = "getSkinTextures", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$useLocalCustomSkinInTab(CallbackInfoReturnable<SkinTextures> cir) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.player != null && getProfile() != null && getProfile().id().equals(mc.player.getUuid())) {
+        if (mc == null || getProfile() == null) return;
+
+        // Strictly verify that this entry belongs to the local client player
+        boolean isLocal = (mc.player != null && getProfile().id().equals(mc.player.getUuid()))
+                || (mc.getSession() != null && getProfile().name().equalsIgnoreCase(mc.getSession().getUsername()));
+
+        if (isLocal) {
             SkinCapeManager scm = SkinCapeManager.getInstance();
             if (scm.isCustomSkinOverride() || scm.isCustomCapeOverride()) {
                 cir.setReturnValue(scm.getActiveSkinTextures());

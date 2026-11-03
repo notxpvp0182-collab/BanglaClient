@@ -53,10 +53,10 @@ public final class ConfigValidatorAndThemeTest {
 
     @Test
     public void testPerformancePresetCycling() {
-        PerformancePreset low = PerformancePreset.LOW;
+        PerformancePreset low = PerformancePreset.FPS_BOOST;
         Assertions.assertFalse(low.isBlurEnabled());
         Assertions.assertEquals(PerformancePreset.BALANCED, low.next());
-        Assertions.assertEquals(PerformancePreset.HIGH, low.next().next());
-        Assertions.assertEquals(PerformancePreset.LOW, low.next().next().next());
+        Assertions.assertEquals(PerformancePreset.VISUAL_QUALITY, low.next().next());
+        Assertions.assertEquals(PerformancePreset.FPS_BOOST, low.next().next().next());
     }
 }

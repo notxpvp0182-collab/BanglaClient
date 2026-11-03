@@ -4,6 +4,7 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.module.visual.NametagsModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
@@ -42,14 +43,13 @@ public abstract class EntityRendererMixin<T extends Entity> {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) return;
 
-        // Render official Image 1 icon beside the 3D nametag billboard
         matrices.push();
         int textW = mc.textRenderer.getWidth(text);
         float iconX = -textW / 2.0f - 11.0f;
         float iconY = -1.0f;
 
         Matrix4f pos = matrices.peek().getPositionMatrix();
-        VertexConsumer vc = vertexConsumers.getBuffer(net.minecraft.client.render.RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
+        VertexConsumer vc = vertexConsumers.getBuffer(RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
 
         vc.vertex(pos, iconX, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
         vc.vertex(pos, iconX + 9, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);

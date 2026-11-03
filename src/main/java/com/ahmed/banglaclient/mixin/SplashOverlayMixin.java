@@ -36,7 +36,7 @@ public abstract class SplashOverlayMixin {
         int cy = sh / 2;
 
         float target = MathUtils.clamp(this.progress, 0.02f, 1.0f);
-        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.18f);
+        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.22f);
 
         // Full-screen dark obsidian-crimson gradient backdrop
         context.fillGradient(0, 0, sw, sh, 0xFF07090E, 0xFF140C12);

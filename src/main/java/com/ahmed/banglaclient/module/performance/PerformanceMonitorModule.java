@@ -1,25 +1,31 @@
 package com.ahmed.banglaclient.module.performance;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.core.PerformancePreset;
 import com.ahmed.banglaclient.module.HudModule;
 import com.ahmed.banglaclient.module.ModuleCategory;
+import com.ahmed.banglaclient.module.setting.BooleanSetting;
+import com.ahmed.banglaclient.module.setting.EnumSetting;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
 import com.ahmed.banglaclient.theme.ThemeTokens;
 import net.minecraft.client.gui.DrawContext;
 
+import java.util.concurrent.CompletableFuture;
+
 /**
- * Module 108: Performance Monitor
- * Displays a unified client performance telemetry card: FPS, Frame Time (ms), JVM Heap Usage,
- * Loaded Chunks, and the active BANGLA CLIENT Graphics Preset (`LOW / BALANCED / HIGH`).
+ * Module 108: Performance Monitor.
+ * Displays unified real-time client performance telemetry and provides safe memory optimization.
  */
 public final class PerformanceMonitorModule extends HudModule {
+    private final EnumSetting<PerformancePreset> presetSetting;
+    private final BooleanSetting optimizeMemoryActionSetting;
 
     public PerformanceMonitorModule() {
         super(
                 "performance_monitor",
                 "Performance Monitor",
-                "Displays a unified telemetry card of FPS, frame time, heap memory, chunks, and graphics preset.",
+                "Displays real-time FPS, frame time, memory metrics, and preset controls.",
                 ModuleCategory.PERFORMANCE,
                 440.0f,
                 338.0f,
@@ -27,7 +33,30 @@ public final class PerformanceMonitorModule extends HudModule {
                 56.0f,
                 false
         );
-        addAliases("telemetry", "perfmonitor", "systeminfo", "profiler");
+        this.presetSetting = addSetting(new EnumSetting<>(
+                "active_preset", "Performance Preset", "Active client performance optimization preset", PerformancePreset.BALANCED
+        ));
+        this.presetSetting.onChange(p -> {
+            if (p != null && BanglaClient.getInstance() != null) {
+                BanglaClient.getInstance().setPerformancePreset(p);
+            }
+        });
+
+        this.optimizeMemoryActionSetting = addSetting(new BooleanSetting(
+                "optimize_memory", "Action: Optimize Memory", "Safely requests asynchronous garbage collection to free unused heap", false
+        ));
+        this.optimizeMemoryActionSetting.onChange(val -> {
+            if (Boolean.TRUE.equals(val)) {
+                CompletableFuture.runAsync(() -> {
+                    System.gc();
+                    if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
+                        BanglaClient.getInstance().getNotificationManager().pushSuccess("Memory Optimized", "Garbage collection completed.");
+                    }
+                });
+                optimizeMemoryActionSetting.setValue(false);
+            }
+        });
+        addAliases("telemetry", "perfmonitor", "systeminfo", "profiler", "fpsboost");
     }
 
     @Override
@@ -51,7 +80,7 @@ public final class PerformanceMonitorModule extends HudModule {
                 String.format("FPS: %d (%.1f ms)", fps, frameMs),
                 String.format("Heap: %d / %d MB (%d%%)", usedMb, maxMb, memPct),
                 "Loaded Chunks: " + chunks,
-                "Glass Preset: " + preset
+                "Preset: " + preset
         };
 
         int pad = paddingSetting.getIntValue();
@@ -70,10 +99,7 @@ public final class PerformanceMonitorModule extends HudModule {
         Theme theme = GlassRenderer.getTheme();
 
         if (showBackgroundSetting.isEnabled()) {
-            GlassRenderer.drawCustomGlassPanel(
-                    context, x, y, boxW, boxH,
-                    backgroundColorSetting.getArgb(), false, false, showBorderSetting.isEnabled()
-            );
+            GlassRenderer.drawCustomGlassPanel(context, x, y, boxW, boxH, backgroundColorSetting.getArgb(), false, false, showBorderSetting.isEnabled());
         }
 
         int drawY = y + pad + 1;

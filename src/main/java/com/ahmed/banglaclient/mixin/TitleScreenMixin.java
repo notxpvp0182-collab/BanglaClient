@@ -120,7 +120,7 @@ public abstract class TitleScreenMixin extends Screen {
                     .dimensions(leftX, leftY, leftW, leftH).tooltip(Tooltip.of(Text.literal("Open Mod Menu"))).build());
         }
 
-        // 2. Top-Right Toolbar: [• Username] [Color] [HUD Editor] [Packs] [Info] [BC]
+        // 2. Top-Right Toolbar (y = 14): [• Username] [Color] [HUD Editor] [Packs] [Info] [BC]
         int topY = 14;
         int trSq = 20, trGap = 4;
         int curRight = w - 10;
@@ -161,16 +161,17 @@ public abstract class TitleScreenMixin extends Screen {
             bangla.getThemeManager().cycleNextTheme();
         }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("Switch Red / Custom Theme"))).build());
 
+        // Username Pill with strictly non-overlapping width
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
         int headSize = 12, pad = 4;
-        int userW = Math.max(62, pad + headSize + pad + this.textRenderer.getWidth(username) + pad + 2);
+        int userW = Math.max(62, pad + headSize + pad + this.textRenderer.getWidth(username) + pad + 4);
         curRight -= (userW + trGap);
         registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> openAccountSwitcher())
                 .dimensions(curRight, topY, userW, trSq).tooltip(Tooltip.of(Text.literal("Account: " + username))).build());
 
-        // 3. Center Main Menu Button Stack
+        // 3. Center Main Menu Button Stack (Narrower: 128px, Thicker: 21px, Step: 23px)
         int logoCenterY = Math.max(24, (h - 210) / 2);
-        int btnW = Math.min(122, w - 60);
+        int btnW = Math.min(128, w - 60);
         int btnH = 21;
         int btnStep = 23;
         int btnX = centerX - btnW / 2;
@@ -206,19 +207,23 @@ public abstract class TitleScreenMixin extends Screen {
             if (this.client != null) this.client.scheduleStop();
         }).dimensions(btnX, btnY, btnW, btnH).build());
 
-        // 4. Right Side: Native GPU-Accelerated 3D PlayerSkinWidget & CUSTOMIZE button
+        // 4. Right Side: 3D PlayerSkinWidget & CUSTOMIZE button
         int charCenterX = w - 68;
         int charW = 76;
         int charH = Math.min(120, h - 90);
         int charTopY = Math.max(38, (h - charH) / 2 - 12);
 
-        this.mainSkinWidget = PlayerPreviewRenderer.createSkinWidget(
-                charW,
-                charH,
-                () -> SkinCapeManager.getInstance().getActiveSkinTextures()
-        );
-        this.mainSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
-        this.addDrawableChild(this.mainSkinWidget);
+        try {
+            this.mainSkinWidget = PlayerPreviewRenderer.createSkinWidget(
+                    charW,
+                    charH,
+                    () -> SkinCapeManager.getInstance().getActiveSkinTextures()
+            );
+            this.mainSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
+            this.addDrawableChild(this.mainSkinWidget);
+        } catch (Throwable t) {
+            this.mainSkinWidget = null;
+        }
 
         registerBanglaButton(ButtonWidget.builder(Text.literal("CUSTOMIZE"), b -> {
             if (this.client != null) {
@@ -237,8 +242,12 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private void sanitizePostInitWidgets() {
-        for (Element child : this.children()) {
+        List<Element> snapshot = new ArrayList<>(this.children());
+        for (Element child : snapshot) {
             if (child instanceof ClickableWidget cw && !banglaMenuWidgets.contains(cw) && cw != mainSkinWidget) {
+                if (!capturedModWidgets.contains(cw)) {
+                    capturedModWidgets.add(cw);
+                }
                 cw.visible = false;
                 cw.active = false;
                 cw.setX(-2000);
@@ -261,7 +270,7 @@ public abstract class TitleScreenMixin extends Screen {
         int centerX = w / 2;
         int accent = bangla.getThemeManager().getEffectiveAccentPrimary();
 
-        // 1. Fullscreen Custom Cherry Blossom Sunset PNG
+        // 1. Fullscreen Custom Cherry Blossom Sunset PNG with Cover Scaling
         int texW = 1280, texH = 720;
         float scale = Math.max((float) w / (float) texW, (float) h / (float) texH);
         int drawW = Math.round(texW * scale);
@@ -311,12 +320,14 @@ public abstract class TitleScreenMixin extends Screen {
         GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, badgeY, nameW + 12, 14, accent, false);
         context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, badgeY + 3, 0xFFFFFFFF);
 
-        // 4. Render native 3D PlayerSkinWidget (GPU-accelerated, solid 60 FPS)
+        // 4. Render native 3D PlayerSkinWidget
         if (this.mainSkinWidget != null) {
-            this.mainSkinWidget.render(context, mouseX, mouseY, delta);
+            try {
+                this.mainSkinWidget.render(context, mouseX, mouseY, delta);
+            } catch (Throwable ignored) {}
         }
 
-        // 5. Render ButtonWidgets
+        // 5. Render ButtonWidgets (Zero duplicate bottom text!)
         for (ClickableWidget cw : banglaMenuWidgets) {
             if (cw.visible) {
                 cw.render(context, mouseX, mouseY, delta);
@@ -355,6 +366,18 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private void openModMenuScreen() {
+        for (ClickableWidget cw : capturedModWidgets) {
+            String msg = cw.getMessage() != null ? cw.getMessage().getString().toLowerCase(Locale.ROOT) : "";
+            String cls = cw.getClass().getName().toLowerCase(Locale.ROOT);
+            if (msg.contains("mod") || cls.contains("modmenu")) {
+                cw.active = true;
+                cw.visible = true;
+                cw.onClick(new Click(cw.getX() + 2, cw.getY() + 2, new MouseInput(0, 0)), false);
+                cw.visible = false;
+                cw.active = false;
+                return;
+            }
+        }
         if (FabricLoader.getInstance().isModLoaded("modmenu")) {
             try {
                 Class<?> cls = Class.forName("com.terraformersmc.modmenu.gui.ModsScreen");
