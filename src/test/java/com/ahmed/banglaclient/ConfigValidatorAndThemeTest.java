@@ -14,10 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Automated JUnit 5 verification tests for corrupted JSON recovery, `.corrupt.bak` backup creation,
- * schema version migration, `ThemeManager`, and `PerformancePreset` cycling.
- */
 public final class ConfigValidatorAndThemeTest {
 
     @TempDir
@@ -53,10 +49,11 @@ public final class ConfigValidatorAndThemeTest {
 
     @Test
     public void testPerformancePresetCycling() {
-        PerformancePreset low = PerformancePreset.FPS_BOOST;
-        Assertions.assertFalse(low.isBlurEnabled());
-        Assertions.assertEquals(PerformancePreset.BALANCED, low.next());
-        Assertions.assertEquals(PerformancePreset.VISUAL_QUALITY, low.next().next());
-        Assertions.assertEquals(PerformancePreset.FPS_BOOST, low.next().next().next());
+        PerformancePreset preset = PerformancePreset.FPS_BOOST;
+        Assertions.assertFalse(preset.isBlurEnabled());
+        Assertions.assertEquals(PerformancePreset.BALANCED, preset.next());
+        Assertions.assertEquals(PerformancePreset.VISUAL_QUALITY, preset.next().next());
+        Assertions.assertEquals(PerformancePreset.CUSTOM, preset.next().next().next());
+        Assertions.assertEquals(PerformancePreset.FPS_BOOST, preset.next().next().next().next());
     }
 }
