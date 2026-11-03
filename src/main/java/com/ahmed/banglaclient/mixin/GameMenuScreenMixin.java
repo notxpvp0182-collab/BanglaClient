@@ -295,7 +295,7 @@ public abstract class GameMenuScreenMixin extends Screen {
         if (this.client == null) return;
         try {
             if (this.client.world != null) {
-                this.client.world.disconnect();
+                this.client.world.disconnect(net.minecraft.text.Text.translatable("menu.savingLevel"));
             }
             this.client.disconnect(new TitleScreen(), false);
         } catch (Throwable t) {
