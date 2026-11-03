@@ -91,7 +91,7 @@ public final class AccountSwitcherScreen extends Screen {
 
     private SkinTextures resolveSkinTexturesForSelected() {
         if (selectedAccount == null) {
-            return DefaultSkinHelper.getSkinTextures(DefaultSkinHelper.ZERO_UUID);
+            return DefaultSkinHelper.getSkinTextures(new java.util.UUID(0L, 0L));
         }
         if (accountManager.isAccountActive(selectedAccount)) {
             return skinManager.getActiveSkinTextures();
