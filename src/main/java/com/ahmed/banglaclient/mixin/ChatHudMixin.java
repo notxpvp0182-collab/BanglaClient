@@ -94,7 +94,12 @@ public abstract class ChatHudMixin {
             ChatHudLine.Visible line = visibleMessages.get(lineIdx);
             if (line == null) continue;
 
-            String raw = line.content().getString().trim();
+            StringBuilder sb = new StringBuilder();
+            line.content().accept((charIdx, style, cp) -> {
+                sb.appendCodePoint(cp);
+                return true;
+            });
+            String raw = sb.toString().trim();
             String sender = findSenderForLine(raw);
             if (sender == null) continue;
 

@@ -49,7 +49,7 @@ public abstract class EntityRendererMixin<T extends Entity> {
         float iconY = -1.0f;
 
         Matrix4f pos = matrices.peek().getPositionMatrix();
-        VertexConsumer vc = vertexConsumers.getBuffer(net.minecraft.client.render.RenderLayer.getEntityCutout(BcIdentityManager.IDENTITY_ICON));
+        VertexConsumer vc = vertexConsumers.getBuffer(net.minecraft.client.render.RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
 
         vc.vertex(pos, iconX, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
         vc.vertex(pos, iconX + 9, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);

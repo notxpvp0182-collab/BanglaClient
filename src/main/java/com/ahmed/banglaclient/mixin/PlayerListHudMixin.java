@@ -62,13 +62,13 @@ public abstract class PlayerListHudMixin {
 
     @Redirect(
             method = "render",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawTextWithShadow(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;III)I"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawTextWithShadow(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;III)V"),
             require = 0
     )
-    private int banglaclient$drawTabEntryWithIconAndHead(DrawContext context, TextRenderer textRenderer, Text text, int x, int y, int color) {
+    private void banglaclient$drawTabEntryWithIconAndHead(DrawContext context, TextRenderer textRenderer, Text text, int x, int y, int color) {
         PlayerListEntry entry = this.currentRenderingEntry;
         if (entry == null || entry.getProfile() == null) {
-            return context.drawTextWithShadow(textRenderer, text, x, y, color);
+            context.drawTextWithShadow(textRenderer, text, x, y, color); return;
         }
 
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -100,6 +100,6 @@ public abstract class PlayerListHudMixin {
             PlayerPreviewRenderer.drawPlayerHead(context, textures, headX, y, 8);
         }
 
-        return context.drawTextWithShadow(textRenderer, text, x, y, color);
+        context.drawTextWithShadow(textRenderer, text, x, y, color); return;
     }
 }
