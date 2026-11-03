@@ -9,6 +9,7 @@ import com.ahmed.banglaclient.module.chat.ChatCustomizerModule;
 import com.ahmed.banglaclient.module.chat.ChatHeadsModule;
 import com.ahmed.banglaclient.module.chat.ChatTimestampsModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.client.gui.hud.ChatHudLine;
@@ -33,7 +34,6 @@ public abstract class ChatHudMixin {
 
     @Shadow @Final private List<ChatHudLine.Visible> visibleMessages;
     @Shadow private int scrolledLines;
-    @Shadow public abstract double getChatScale();
 
     @Unique
     private final Map<String, String> lineSenderCache = new HashMap<>();
@@ -73,10 +73,24 @@ public abstract class ChatHudMixin {
         return modified;
     }
 
-    @Inject(method = "render", at = @At("TAIL"), require = 0)
-    private void banglaclient$drawChatHeadsAndIdentityIcon(DrawContext context, int currentTick, int mouseX, int mouseY, boolean focused, CallbackInfo ci) {
+    @Inject(
+            method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/font/TextRenderer;IIIZZ)V",
+            at = @At("TAIL"),
+            require = 0
+    )
+    private void banglaclient$drawChatHeadsAndIdentityIcon(
+            DrawContext context,
+            TextRenderer textRenderer,
+            int currentTick,
+            int mouseX,
+            int mouseY,
+            boolean focused,
+            boolean canShowChat,
+            CallbackInfo ci
+    ) {
+        if (!canShowChat) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.textRenderer == null || visibleMessages.isEmpty()) return;
+        if (mc == null || textRenderer == null || visibleMessages.isEmpty()) return;
 
         BanglaClient bangla = BanglaClient.getInstance();
         var headsOpt = bangla != null && bangla.getModuleManager() != null
@@ -100,6 +114,7 @@ public abstract class ChatHudMixin {
                 return true;
             });
             String raw = sb.toString().trim();
+
             String sender = findSenderForLine(raw);
             if (sender == null) continue;
 
