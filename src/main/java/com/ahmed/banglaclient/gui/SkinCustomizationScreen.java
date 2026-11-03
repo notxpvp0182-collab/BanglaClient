@@ -53,7 +53,7 @@ public final class SkinCustomizationScreen extends Screen {
     @Override
     protected void init() {
         this.winW = Math.min(560, Math.max(280, this.width - 20));
-        this.winH = Math.min(320, Math.max(190, this.height - 20));
+        this.winH = Math.min(330, Math.max(190, this.height - 20));
         this.winX = (this.width - this.winW) / 2;
         this.winY = (this.height - this.winH) / 2;
 
@@ -61,13 +61,12 @@ public final class SkinCustomizationScreen extends Screen {
         int bodyY = winY + 34;
         int bodyH = winH - 64;
 
-        // Native 1.21.11 GPU-accelerated PlayerSkinWidget with mouse drag rotation & authentic cape
         this.playerSkinWidget = PlayerPreviewRenderer.createSkinWidget(
                 leftW - 12,
-                bodyH - 30,
+                bodyH - 46,
                 () -> manager.getActiveSkinTextures()
         );
-        this.playerSkinWidget.setPosition(winX + 14, bodyY + 6);
+        this.playerSkinWidget.setPosition(winX + 14, bodyY + 4);
         this.addDrawableChild(this.playerSkinWidget);
     }
 
@@ -120,20 +119,34 @@ public final class SkinCustomizationScreen extends Screen {
             this.playerSkinWidget.render(context, mouseX, mouseY, delta);
         }
 
-        // Arm Model Type Button: [Model: Classic / Slim]
+        // Row 1: [Model: Classic / Slim]
         boolean slim = manager.isSelectedSlimModel();
-        int armBtnY = bodyY + bodyH - 22;
+        int armBtnY = bodyY + bodyH - 36;
         String armLabel = slim ? "Model: Slim (3px)" : "Model: Classic (4px)";
-        boolean armHov = MathUtils.isHovered(mouseX, mouseY, winX + 14, armBtnY, leftW - 12, 16);
-        GlassRenderer.drawPillBadge(context, winX + 14, armBtnY, leftW - 12, 16, accent, armHov);
-        context.drawTextWithShadow(textRenderer, armLabel, winX + 20, armBtnY + 4, 0xFFFFFFFF);
+        boolean armHov = MathUtils.isHovered(mouseX, mouseY, winX + 12, armBtnY, leftW - 8, 15);
+        GlassRenderer.drawPillBadge(context, winX + 12, armBtnY, leftW - 8, 15, accent, armHov);
+        context.drawTextWithShadow(textRenderer, armLabel, winX + 18, armBtnY + 4, 0xFFFFFFFF);
+
+        // Row 2: Independent Override Toggles: [Skin Override: ON/OFF] | [Cape Override: ON/OFF]
+        int overBtnY = bodyY + bodyH - 18;
+        int halfW = (leftW - 12) / 2;
+        boolean skinOver = manager.isCustomSkinOverride();
+        boolean capeOver = manager.isCustomCapeOverride();
+
+        boolean soHov = MathUtils.isHovered(mouseX, mouseY, winX + 12, overBtnY, halfW - 2, 14);
+        GlassRenderer.drawPillBadge(context, winX + 12, overBtnY, halfW - 2, 14, skinOver ? ThemeTokens.STATUS_SUCCESS : 0x44FFFFFF, skinOver || soHov);
+        context.drawTextWithShadow(textRenderer, skinOver ? "Skin: ON" : "Skin: OFF", winX + 16, overBtnY + 3, 0xFFFFFFFF);
+
+        boolean coHov = MathUtils.isHovered(mouseX, mouseY, winX + 12 + halfW, overBtnY, halfW - 2, 14);
+        GlassRenderer.drawPillBadge(context, winX + 12 + halfW, overBtnY, halfW - 2, 14, capeOver ? ThemeTokens.STATUS_SUCCESS : 0x44FFFFFF, capeOver || coHov);
+        context.drawTextWithShadow(textRenderer, capeOver ? "Cape: ON" : "Cape: OFF", winX + 16 + halfW, overBtnY + 3, 0xFFFFFFFF);
 
         // Right Panel: Library Grid
         int rightX = winX + leftW + 14;
         int rightW = winW - leftW - 22;
         GlassRenderer.drawGlassPanel(context, rightX, bodyY, rightW, bodyH, true, false, false);
 
-        // Action Toolbar: [+ Import PNG] [Open Folder] [Export] [No Cape / Delete]
+        // Action Toolbar: [+ Import PNG] [Folder] [Export] [Delete]
         int actY = bodyY + 6;
         int bW = (rightW - 28) / 4;
         GlassRenderer.drawPillBadge(context, rightX + 6, actY, bW, 16, accent, MathUtils.isHovered(mouseX, mouseY, rightX + 6, actY, bW, 16));
@@ -146,7 +159,7 @@ public final class SkinCustomizationScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "Export", rightX + 14 + bW * 2, actY + 4, 0xFFFFFFFF);
 
         GlassRenderer.drawPillBadge(context, rightX + 6 + (bW + 4) * 3, actY, bW, 16, ThemeTokens.STATUS_ERROR, MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 3, actY, bW, 16));
-        context.drawTextWithShadow(textRenderer, viewingCapesTab ? "No Cape" : "Delete", rightX + 10 + bW * 3, actY + 4, 0xFFFFFFFF);
+        context.drawTextWithShadow(textRenderer, "Delete", rightX + 14 + bW * 3, actY + 4, 0xFFFFFFFF);
 
         int listStartY = bodyY + 26;
         if (typingImportPath) {
@@ -171,7 +184,7 @@ public final class SkinCustomizationScreen extends Screen {
         ClipRenderer.renderClipped(context, rightX + 4, finalListY, rightW - 8, listH, () -> {
             int startY = Math.round(finalListY - libraryScroll.getScrollOffset());
 
-            // First entry: Default Authenticated Account entry
+            // Default account card
             boolean isDefaultActive = viewingCapesTab ? !manager.hasCustomCapeSelected() : !manager.hasCustomSkinSelected();
             int defCx = rightX + 6;
             int defCy = startY;
@@ -180,7 +193,7 @@ public final class SkinCustomizationScreen extends Screen {
 
             PlayerPreviewRenderer.drawPlayerHead(context, SkinCapeManager.getAuthenticatedAccountDefaultSkin(client), defCx + 6, defCy + 6, 24);
             context.drawTextWithShadow(textRenderer, viewingCapesTab ? "Default Account Cape" : "Default Account Skin", defCx + 34, defCy + 7, 0xFFFFFFFF);
-            context.drawTextWithShadow(textRenderer, isDefaultActive ? "ACTIVE (UUID)" : "Selectable", defCx + 34, defCy + 19, isDefaultActive ? accent : theme.getTextSecondary());
+            context.drawTextWithShadow(textRenderer, isDefaultActive ? "ACTIVE (OFFICIAL)" : "Selectable", defCx + 34, defCy + 19, isDefaultActive ? accent : theme.getTextSecondary());
 
             for (int i = 0; i < items.size(); i++) {
                 SkinEntry entry = items.get(i);
@@ -250,7 +263,6 @@ public final class SkinCustomizationScreen extends Screen {
     public boolean handleMouseClick(double mouseX, double mouseY, int button) {
         if (button != 0) return false;
 
-        // Modal Dialog interactions
         if (confirmingDelete && deleteTarget != null) {
             int mWidth = 260, mHeight = 90;
             int mx = (this.width - mWidth) / 2;
@@ -297,8 +309,23 @@ public final class SkinCustomizationScreen extends Screen {
         int bodyY = winY + 34;
         int bodyH = winH - 64;
 
-        if (MathUtils.isHovered(mouseX, mouseY, winX + 14, bodyY + bodyH - 22, leftW - 12, 16)) {
+        // Model Type toggle
+        if (MathUtils.isHovered(mouseX, mouseY, winX + 12, bodyY + bodyH - 36, leftW - 8, 15)) {
             manager.setSelectedSlimModel(!manager.isSelectedSlimModel());
+            return true;
+        }
+
+        // Independent Override Toggles
+        int overBtnY = bodyY + bodyH - 18;
+        int halfW = (leftW - 12) / 2;
+        if (MathUtils.isHovered(mouseX, mouseY, winX + 12, overBtnY, halfW - 2, 14)) {
+            manager.setCustomSkinOverride(!manager.isCustomSkinOverride());
+            statusBanner = manager.isCustomSkinOverride() ? "Skin Override: ENABLED" : "Skin Override: DISABLED (Using Account Skin)";
+            return true;
+        }
+        if (MathUtils.isHovered(mouseX, mouseY, winX + 12 + halfW, overBtnY, halfW - 2, 14)) {
+            manager.setCustomCapeOverride(!manager.isCustomCapeOverride());
+            statusBanner = manager.isCustomCapeOverride() ? "Cape Override: ENABLED" : "Cape Override: DISABLED (Using Vanilla Cape)";
             return true;
         }
 
@@ -324,22 +351,17 @@ public final class SkinCustomizationScreen extends Screen {
                 client.keyboard.setClipboard(sel.getFilePath().toAbsolutePath().toString());
                 statusBanner = "Exported path: " + sel.getDisplayName();
             } else {
-                statusBanner = "No imported file selected to export.";
+                statusBanner = "No custom file selected to export.";
             }
             return true;
         }
         if (MathUtils.isHovered(mouseX, mouseY, rightX + 6 + (bW + 4) * 3, actY, bW, 16)) {
-            if (viewingCapesTab) {
-                manager.setSelectedCapeId("");
-                statusBanner = "Unequipped Cape.";
+            SkinEntry sel = viewingCapesTab ? manager.getSelectedCape() : manager.getSelectedSkin();
+            if (sel != null) {
+                confirmingDelete = true;
+                deleteTarget = sel;
             } else {
-                SkinEntry sel = manager.getSelectedSkin();
-                if (sel != null) {
-                    confirmingDelete = true;
-                    deleteTarget = sel;
-                } else {
-                    statusBanner = "Default account skin cannot be deleted.";
-                }
+                statusBanner = "Official default account skin cannot be deleted.";
             }
             return true;
         }

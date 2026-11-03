@@ -21,10 +21,13 @@ public abstract class AbstractClientPlayerEntityMixin {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc != null && mc.player != null && player.getUuid().equals(mc.player.getUuid())) {
             SkinCapeManager scm = SkinCapeManager.getInstance();
-            if (scm.hasCustomSkinSelected() || scm.hasCustomCapeSelected()) {
+            boolean overrideSkin = scm.isCustomSkinOverride();
+            boolean overrideCape = scm.isCustomCapeOverride();
+
+            if (overrideSkin || overrideCape) {
                 SkinTextures orig = cir.getReturnValue();
-                SkinEntry skin = scm.getSelectedSkin();
-                SkinEntry cape = scm.getSelectedCape();
+                SkinEntry skin = overrideSkin ? scm.getSelectedSkin() : null;
+                SkinEntry cape = overrideCape ? scm.getSelectedCape() : null;
 
                 AssetInfo.TextureAsset body = (skin != null)
                         ? new AssetInfo.TextureAssetInfo(skin.getTextureId(), skin.getTextureId())

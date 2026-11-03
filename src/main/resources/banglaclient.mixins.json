@@ -19,6 +19,7 @@
     "MinecraftClientInteractionMixin",
     "MinecraftClientSessionAccessor",
     "MouseMixin",
+    "PlayerListEntryMixin",
     "PlayerListHudMixin",
     "ServerListMixin",
     "SplashOverlayMixin",

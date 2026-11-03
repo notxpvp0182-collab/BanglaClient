@@ -119,11 +119,19 @@ public final class AccountSwitcherScreen extends Screen {
                 boolean hov = MathUtils.isHovered(mouseX, mouseY, winX + 8, rowY, winW - 20, 34);
                 GlassRenderer.drawGlassPanel(context, winX + 8, rowY, winW - 20, 34, true, hov, active);
 
-                PlayerPreviewRenderer.drawPlayerHead(context, activeTextures, winX + 14, rowY + 5, 24);
-                context.drawTextWithShadow(textRenderer, acc.getUsername(), winX + 44, rowY + 6, 0xFFFFFFFF);
+                int cardHeadSize = 22;
+                int cardHeadX = winX + 14;
+                int cardHeadY = rowY + (34 - cardHeadSize) / 2;
+                PlayerPreviewRenderer.drawPlayerHead(context, activeTextures, cardHeadX, cardHeadY, cardHeadSize);
+
+                int textStartX = cardHeadX + cardHeadSize + 8;
+                int maxUnameW = Math.max(20, winW - 130 - (textStartX - winX));
+                String trimmedUname = textRenderer.trimToWidth(acc.getUsername(), maxUnameW);
+                context.drawTextWithShadow(textRenderer, trimmedUname, textStartX, rowY + 7, 0xFFFFFFFF);
 
                 String typeStr = acc.getType().getLabel() + (active ? " • ACTIVE" : "");
-                context.drawTextWithShadow(textRenderer, typeStr, winX + 44, rowY + 18,
+                String trimmedType = textRenderer.trimToWidth(typeStr, maxUnameW);
+                context.drawTextWithShadow(textRenderer, trimmedType, textStartX, rowY + 19,
                         active ? ThemeTokens.STATUS_SUCCESS : theme.getTextSecondary());
 
                 int rightBtnX = winX + winW - 64;

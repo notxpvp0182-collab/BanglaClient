@@ -1,8 +1,13 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.cosmetics.PlayerPreviewRenderer;
+import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
+import com.ahmed.banglaclient.gui.HudEditorScreen;
+import com.ahmed.banglaclient.gui.SkinCustomizationScreen;
 import com.ahmed.banglaclient.rendering.BlurRenderer;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.util.ColorUtils;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.DrawContext;
@@ -13,8 +18,10 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.StatsScreen;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.gui.widget.PlayerSkinWidget;
 import net.minecraft.text.Text;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,6 +40,9 @@ public abstract class GameMenuScreenMixin extends Screen {
     @Unique
     private final Set<ClickableWidget> pauseButtons = new HashSet<>();
 
+    @Unique
+    private PlayerSkinWidget pauseSkinWidget;
+
     protected GameMenuScreenMixin(Text title) {
         super(title);
     }
@@ -44,95 +54,134 @@ public abstract class GameMenuScreenMixin extends Screen {
     }
 
     @Inject(method = "initWidgets", at = @At("TAIL"))
-    private void banglaclient$setupCleanImage4PauseMenu(CallbackInfo ci) {
+    private void banglaclient$setupSerialVerticalPauseMenu(CallbackInfo ci) {
         pauseButtons.clear();
-        // Remove vanilla's GridWidget and "Game Menu" text so zero ghost widgets or overlapping titles exist
         this.clearChildren();
 
         int w = this.width;
         int h = this.height;
-        int centerX = w / 2;
 
         boolean isSingle = this.client != null && this.client.isInSingleplayer();
         boolean canOpenLan = this.client != null
                 && this.client.isIntegratedServerRunning()
                 && (this.client.getServer() == null || !this.client.getServer().isRemote());
 
-        int totalW = Math.min(208, w - 36);
-        int colGap = 6;
-        int halfW = (totalW - colGap) / 2;
-        int btnH = 20;
-        int rowStep = 23;
+        boolean wideScreen = (w >= 340);
+        int btnW = Math.min(126, w - 40);
+        int btnH = 18;
+        int btnStep = 20;
 
-        int logoCenterY = Math.max(26, (h - 200) / 2);
-        int leftX = centerX - totalW / 2;
-        int rightX = leftX + halfW + colGap;
-        int rowY = logoCenterY + 48;
+        // In singleplayer, 9 buttons; in multiplayer, 8 buttons (Open to LAN omitted)
+        int totalRows = isSingle ? 9 : 8;
+        int totalMenuH = totalRows * btnStep;
 
-        // Row 1 (Full Width): [▶] Back to Game
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_PLAY:Back to Game"), b -> {
+        int logoCenterY = Math.max(16, (h - (totalMenuH + 48)) / 2);
+        int btnX = wideScreen ? (w / 2 - 36) : (w / 2 - btnW / 2);
+        int btnY = logoCenterY + 44;
+
+        // 1. Back to Game
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Back to Game"), b -> {
             if (this.client != null) {
                 this.client.setScreen(null);
                 this.client.mouse.lockCursor();
             }
-        }).dimensions(leftX, rowY, totalW, btnH).build());
-        rowY += rowStep;
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+        btnY += btnStep;
 
-        // Row 2 (2 Columns): [🏆] Advancements | [📊] Statistics
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_TROPHY:Advancements"), b -> {
+        // 2. Advancements
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Advancements"), b -> {
             if (this.client != null && this.client.player != null) {
                 this.client.setScreen(new AdvancementsScreen(this.client.player.networkHandler.getAdvancementHandler(), this));
             }
-        }).dimensions(leftX, rowY, halfW, btnH).build());
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+        btnY += btnStep;
 
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_STATS:Statistics"), b -> {
+        // 3. Statistics
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Statistics"), b -> {
             if (this.client != null && this.client.player != null) {
                 this.client.setScreen(new StatsScreen(this, this.client.player.getStatHandler()));
             }
-        }).dimensions(rightX, rowY, halfW, btnH).build());
-        rowY += rowStep;
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+        btnY += btnStep;
 
-        // Row 3 (2 Columns): [🧩] Mods | [↖] Click GUI
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_MODS:Mods"), b -> openModMenuScreen())
-                .dimensions(leftX, rowY, halfW, btnH).build());
+        // 4. Mods (Opens Mod Menu)
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Mods"), b -> openModMenuScreen())
+                .dimensions(btnX, btnY, btnW, btnH).tooltip(Tooltip.of(Text.literal("Open Mod Menu"))).build());
+        btnY += btnStep;
 
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_GUI:Click GUI"), b -> {
+        // 5. Cosmetics (Opens Click GUI)
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Cosmetics"), b -> {
             if (this.client != null) {
                 this.client.setScreen(new ClickGuiScreen(false));
             }
-        }).dimensions(rightX, rowY, halfW, btnH).build());
-        rowY += rowStep;
+        }).dimensions(btnX, btnY, btnW, btnH).tooltip(Tooltip.of(Text.literal("Open BANGLA CLIENT Click GUI"))).build());
+        btnY += btnStep;
 
-        // Row 4 (2 Columns): [⚙] Options... | [👥] Open to LAN
-        registerPauseBtn(ButtonWidget.builder(Text.literal("__PAUSE_OPT:Options..."), b -> {
+        // 6. HUD Editor (Opens HUD Editor)
+        registerPauseBtn(ButtonWidget.builder(Text.literal("HUD Editor"), b -> {
+            if (this.client != null) {
+                this.client.setScreen(new HudEditorScreen(this));
+            }
+        }).dimensions(btnX, btnY, btnW, btnH).tooltip(Tooltip.of(Text.literal("Open Interactive HUD Editor"))).build());
+        btnY += btnStep;
+
+        // 7. Options...
+        registerPauseBtn(ButtonWidget.builder(Text.literal("Options..."), b -> {
             if (this.client != null) {
                 this.client.setScreen(new OptionsScreen(this, this.client.options));
             }
-        }).dimensions(leftX, rowY, halfW, btnH).build());
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+        btnY += btnStep;
 
-        ButtonWidget lanBtn = ButtonWidget.builder(Text.literal("__PAUSE_LAN:Open to LAN"), b -> {
-            if (this.client != null && canOpenLan) {
-                this.client.setScreen(new OpenToLanScreen(this));
-            }
-        }).dimensions(rightX, rowY, halfW, btnH).build();
-        lanBtn.active = canOpenLan;
-        registerPauseBtn(lanBtn);
-        rowY += rowStep + 2;
+        // 8. Open to LAN (Singleplayer only)
+        if (isSingle) {
+            ButtonWidget lanBtn = ButtonWidget.builder(Text.literal("Open to LAN"), b -> {
+                if (this.client != null && canOpenLan) {
+                    this.client.setScreen(new OpenToLanScreen(this));
+                }
+            }).dimensions(btnX, btnY, btnW, btnH).build();
+            lanBtn.active = canOpenLan;
+            registerPauseBtn(lanBtn);
+            btnY += btnStep + 1;
+        } else {
+            btnY += 1;
+        }
 
-        // Row 5 (Full Width): [↪] Save and Quit to Title (or Disconnect)
-        String exitLabel = isSingle ? "__PAUSE_EXIT:Save and Quit to Title" : "__PAUSE_EXIT:Disconnect";
+        // 9. Save and Quit to Title / Disconnect (Red Capsule Button)
+        String exitLabel = isSingle ? "Save and Quit to Title" : "Disconnect";
         registerPauseBtn(ButtonWidget.builder(Text.literal(exitLabel), b -> {
             if (this.client != null) {
                 this.client.disconnectWithProgressScreen();
             }
-        }).dimensions(leftX, rowY, totalW, btnH).build());
+        }).dimensions(btnX, btnY, btnW, btnH).build());
+
+        // Right-Side 3D Player Profile Panel (Only rendered if screen is wide enough)
+        if (wideScreen) {
+            int charCenterX = w - 62;
+            int charW = 68;
+            int charH = Math.min(115, h - 90);
+            int charTopY = Math.max(34, (h - charH) / 2 - 10);
+
+            this.pauseSkinWidget = PlayerPreviewRenderer.createSkinWidget(
+                    charW,
+                    charH,
+                    () -> SkinCapeManager.getInstance().getActiveSkinTextures()
+            );
+            this.pauseSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
+            this.addDrawableChild(this.pauseSkinWidget);
+
+            registerPauseBtn(ButtonWidget.builder(Text.literal("CUSTOMIZE"), b -> {
+                if (this.client != null) {
+                    this.client.setScreen(new SkinCustomizationScreen(this, SkinCapeManager.getInstance()));
+                }
+            }).dimensions(charCenterX - 40, charTopY + charH + 4, 80, 18).tooltip(Tooltip.of(Text.literal("Customize 3D Skin & Cape"))).build());
+        }
     }
 
     @Unique
     private void sanitizePauseWidgets() {
-        // Suppress any non-button title TextWidget ("Game Menu") or external overlay widgets
         for (Element child : this.children()) {
-            if (child instanceof ClickableWidget cw && !pauseButtons.contains(cw)) {
+            if (child instanceof ClickableWidget cw && !pauseButtons.contains(cw) && cw != pauseSkinWidget) {
                 cw.visible = false;
                 cw.active = false;
                 cw.setX(-2000);
@@ -142,29 +191,35 @@ public abstract class GameMenuScreenMixin extends Screen {
     }
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void banglaclient$renderCleanImage4PauseMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void banglaclient$renderCleanPauseMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         sanitizePauseWidgets();
 
         BanglaClient bangla = BanglaClient.getInstance();
         int w = this.width;
         int h = this.height;
-        int centerX = w / 2;
+        boolean isSingle = this.client != null && this.client.isInSingleplayer();
+        boolean wideScreen = (w >= 340);
+        int centerX = wideScreen ? (w / 2 - 36) : (w / 2);
+
         int accent = bangla != null && bangla.getThemeManager() != null
                 ? bangla.getThemeManager().getEffectiveAccentPrimary()
                 : 0xFFEF4444;
 
-        // 1. Live Minecraft Gameplay World Behind (NO static background image!)
+        // 1. Live Minecraft Gameplay World Behind (NO static background image)
         BlurRenderer.renderScreenBackdrop(context, w, h, 0.58f);
 
         // 2. Centered 3D "Bangla Client" Logo (Zero "Game Menu" text overlap)
-        int logoCenterY = Math.max(26, (h - 200) / 2);
-        drawGoldenCrown(context, centerX + 4, logoCenterY - 18);
-        drawRedWings(context, centerX, logoCenterY + 12, accent);
+        int totalRows = isSingle ? 9 : 8;
+        int totalMenuH = totalRows * 20;
+        int logoCenterY = Math.max(16, (h - (totalMenuH + 48)) / 2);
+
+        drawGoldenCrown(context, centerX - 50, logoCenterY - 16);
+        drawRedEnergyRings(context, centerX, logoCenterY + 4, accent);
 
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
         matrices.translate(centerX, logoCenterY - 2);
-        matrices.scale(2.7f, 2.7f);
+        matrices.scale(2.6f, 2.6f);
         String txtBangla = "Bangla";
         int bx = -this.textRenderer.getWidth(txtBangla) / 2;
         context.drawText(this.textRenderer, txtBangla, bx + 2, 2, 0xFF280404, false);
@@ -173,8 +228,8 @@ public abstract class GameMenuScreenMixin extends Screen {
         matrices.popMatrix();
 
         matrices.pushMatrix();
-        matrices.translate(centerX, logoCenterY + 20);
-        matrices.scale(2.3f, 2.3f);
+        matrices.translate(centerX, logoCenterY + 19);
+        matrices.scale(2.2f, 2.2f);
         String txtClient = "Client";
         int cx = -this.textRenderer.getWidth(txtClient) / 2;
         context.drawText(this.textRenderer, txtClient, cx + 2, 2, 0xFF0F172A, false);
@@ -182,7 +237,23 @@ public abstract class GameMenuScreenMixin extends Screen {
         context.drawTextWithShadow(this.textRenderer, txtClient, cx, 0, 0xFFFFFFFF);
         matrices.popMatrix();
 
-        // 3. Render ONLY our 5 clean pause button rows
+        // 3. Right-Side 3D Character & Username Badge
+        if (wideScreen) {
+            String liveUser = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
+            int charCenterX = w - 62;
+            int nameW = this.textRenderer.getWidth(liveUser);
+            int charH = Math.min(115, h - 90);
+            int badgeY = Math.max(20, (h - charH) / 2 - 24);
+
+            GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, badgeY, nameW + 12, 14, accent, false);
+            context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, badgeY + 3, 0xFFFFFFFF);
+
+            if (this.pauseSkinWidget != null) {
+                this.pauseSkinWidget.render(context, mouseX, mouseY, delta);
+            }
+        }
+
+        // 4. Render All Serial Pause ButtonWidgets
         for (ClickableWidget cw : pauseButtons) {
             if (cw.visible) {
                 cw.render(context, mouseX, mouseY, delta);
@@ -225,11 +296,11 @@ public abstract class GameMenuScreenMixin extends Screen {
     }
 
     @Unique
-    private void drawRedWings(DrawContext context, int cx, int cy, int accent) {
-        int span = 76;
-        context.fill(cx - span, cy, cx - 42, cy + 3, 0xFFEF4444);
-        context.fill(cx - span + 8, cy + 4, cx - 42, cy + 6, ColorUtils.withAlpha(accent, 0.65f));
-        context.fill(cx + 42, cy, cx + span, cy + 3, 0xFFEF4444);
-        context.fill(cx + 42, cy + 4, cx + span - 8, cy + 6, ColorUtils.withAlpha(accent, 0.65f));
+    private void drawRedEnergyRings(DrawContext context, int cx, int cy, int accent) {
+        int rx = 72;
+        context.fill(cx - rx, cy - 2, cx + rx, cy, ColorUtils.withAlpha(accent, 0.50f));
+        context.fill(cx - rx + 5, cy + 3, cx + rx - 5, cy + 5, ColorUtils.withAlpha(accent, 0.30f));
+        context.fill(cx - rx - 3, cy - 1, cx - rx + 3, cy + 2, 0xFFEF4444);
+        context.fill(cx + rx - 3, cy - 1, cx + rx + 3, cy + 2, 0xFFEF4444);
     }
 }

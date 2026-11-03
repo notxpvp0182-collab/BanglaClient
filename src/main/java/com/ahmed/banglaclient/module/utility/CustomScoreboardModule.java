@@ -19,6 +19,10 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Module 113: Custom Scoreboard.
+ * Customizes the actual multiplayer server scoreboard locally without modifying server data or inventing fake content.
+ */
 public final class CustomScoreboardModule extends HudModule {
 
     public enum ScoreboardTheme {
@@ -46,15 +50,19 @@ public final class CustomScoreboardModule extends HudModule {
     private final NumberSetting borderThicknessSetting;
     private final NumberSetting lineSpacingSetting;
     private final NumberSetting minWidthSetting;
+    private final NumberSetting fineOffsetXSetting;
+    private final NumberSetting fineOffsetYSetting;
+    private final BooleanSetting resetPositionActionSetting;
+    private final BooleanSetting resetAppearanceActionSetting;
 
     public CustomScoreboardModule() {
         super(
                 "custom_scoreboard",
                 "Custom Scoreboard",
-                "Customizes the real server scoreboard appearance, position, and styling.",
+                "Customizes the actual server scoreboard appearance, position, and styling.",
                 ModuleCategory.UTILITY,
-                510.0f,
-                96.0f,
+                480.0f,
+                80.0f,
                 118.0f,
                 110.0f,
                 true
@@ -87,7 +95,44 @@ public final class CustomScoreboardModule extends HudModule {
                 "min_width", "Minimum Width", "Minimum width of the scoreboard panel in pixels",
                 104.0, 70.0, 240.0, 4.0, "px"
         ));
+        this.fineOffsetXSetting = addSetting(new NumberSetting(
+                "offset_x", "Fine Move Left/Right", "Fine horizontal position adjustment",
+                0.0, -100.0, 100.0, 1.0, "px"
+        ));
+        this.fineOffsetYSetting = addSetting(new NumberSetting(
+                "offset_y", "Fine Move Up/Down", "Fine vertical position adjustment",
+                0.0, -100.0, 100.0, 1.0, "px"
+        ));
+        this.resetPositionActionSetting = addSetting(new BooleanSetting(
+                "reset_pos_action", "Action: Reset Position", "Toggle ON to reset scoreboard position to right edge", false
+        ));
+        this.resetPositionActionSetting.onChange(val -> {
+            if (Boolean.TRUE.equals(val)) {
+                resetToDefaultPosition();
+                fineOffsetXSetting.resetToDefault();
+                fineOffsetYSetting.resetToDefault();
+                resetPositionActionSetting.setValue(false);
+            }
+        });
+        this.resetAppearanceActionSetting = addSetting(new BooleanSetting(
+                "reset_style_action", "Action: Reset Appearance", "Toggle ON to restore default scoreboard styling", false
+        ));
+        this.resetAppearanceActionSetting.onChange(val -> {
+            if (Boolean.TRUE.equals(val)) {
+                resetSettingsToDefault();
+                resetAppearanceActionSetting.setValue(false);
+            }
+        });
         addAliases("scoreboard", "sidebar", "serverboard", "customscoreboard");
+    }
+
+    private void resetToDefaultPosition() {
+        if (client != null && client.getWindow() != null) {
+            setPosX(client.getWindow().getScaledWidth() - getScaledWidth() - 4.0f);
+            setPosY(Math.max(20.0f, (client.getWindow().getScaledHeight() - getScaledHeight()) / 2.0f));
+        } else {
+            resetPosition();
+        }
     }
 
     public boolean shouldHideEntirely() {
@@ -96,8 +141,8 @@ public final class CustomScoreboardModule extends HudModule {
 
     @Override
     public void renderHud(DrawContext context, float tickDelta, boolean preview) {
-        // In live gameplay, InGameHudMixin renders the active server objective directly.
-        // renderHud only executes inside the interactive HUD Editor (preview mode).
+        // Outside the HUD Editor, InGameHudMixin renders the active server objective directly.
+        // renderHud executes strictly inside the interactive HUD Editor (preview == true).
         if (!preview) return;
 
         Scoreboard scoreboard = client != null && client.world != null ? client.world.getScoreboard() : null;
@@ -106,19 +151,19 @@ public final class CustomScoreboardModule extends HudModule {
         if (objective != null) {
             renderLiveScoreboard(context, objective);
         } else {
-            // Render a clean HUD Editor positioning frame when no server scoreboard is active
+            // Display honest HUD Editor position outline with ZERO fake/dummy entries
             int pad = paddingSetting.getIntValue();
-            int boxW = 124;
-            int boxH = 64;
+            int boxW = minWidthSetting.getIntValue();
+            int boxH = 58;
             setWidth(boxW);
             setHeight(boxH);
-            int x = Math.round(getPosX());
-            int y = Math.round(getPosY());
+            int x = Math.round(getPosX() + fineOffsetXSetting.getFloatValue());
+            int y = Math.round(getPosY() + fineOffsetYSetting.getFloatValue());
 
             GlassRenderer.drawCustomGlassPanel(context, x, y, boxW, boxH, 0x44080A10, false, true, true);
             context.drawTextWithShadow(client.textRenderer, "Server Scoreboard", x + pad, y + pad, ThemeTokens.DEFAULT_ACCENT_PRIMARY);
             context.drawTextWithShadow(client.textRenderer, "(No active sidebar)", x + pad, y + pad + 14, 0xFFA5AFBC);
-            context.drawTextWithShadow(client.textRenderer, "Right-click for options", x + pad, y + pad + 28, 0xFF64748B);
+            context.drawTextWithShadow(client.textRenderer, "Right-click to configure", x + pad, y + pad + 28, 0xFF64748B);
         }
     }
 
@@ -168,8 +213,14 @@ public final class CustomScoreboardModule extends HudModule {
         setWidth(boxW);
         setHeight(boxH);
 
-        int x = Math.round(getPosX());
-        int y = Math.round(getPosY());
+        // Pinned default initialization if coordinates unset
+        if (getPosX() <= 0.0f && client.getWindow() != null) {
+            setPosX(client.getWindow().getScaledWidth() - boxW - 4.0f);
+            setPosY(Math.max(20.0f, (client.getWindow().getScaledHeight() - boxH) / 2.0f));
+        }
+
+        int x = Math.round(getPosX() + fineOffsetXSetting.getFloatValue());
+        int y = Math.round(getPosY() + fineOffsetYSetting.getFloatValue());
         float scale = getScale();
 
         Matrix3x2fStack matrices = context.getMatrices();

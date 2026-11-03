@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
@@ -21,12 +22,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages BANGLA CLIENT identity detection and rendering using a custom graphical symbol
- * across Nametags, Tab List, and Chat.
+ * Manages official BANGLA CLIENT identity detection and rendering using the exact
+ * uploaded texture (bangla_client_identity.png) across Nametags, Tab List, and Chat.
  */
 public final class BcIdentityManager {
     public static final int PROTOCOL_VERSION = 1;
     public static final Identifier CHANNEL_ID = Identifier.of(BanglaClient.MOD_ID, "identity_v1");
+
+    // Official Image 1 Identity Icon Asset Path
+    public static final Identifier IDENTITY_ICON = Identifier.of(BanglaClient.MOD_ID, "textures/gui/bangla_client_identity.png");
 
     public record BcIdentityPayload(int version, UUID playerUuid) implements CustomPayload {
         public static final CustomPayload.Id<BcIdentityPayload> ID = new CustomPayload.Id<>(CHANNEL_ID);
@@ -115,9 +119,22 @@ public final class BcIdentityManager {
     }
 
     /**
-     * Creates a distinctive graphical symbol (✦ in glowing red with gold shadow)
-     * instead of plain text "[BC]".
+     * Renders the exact Image 1 BANGLA CLIENT Identity Icon with transparency and proper aspect ratio.
      */
+    public static void drawIdentityIcon(DrawContext context, int x, int y, int width, int height) {
+        if (context == null || width <= 0 || height <= 0) return;
+        try {
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, IDENTITY_ICON, x, y, 0.0f, 0.0f, width, height, width, height);
+        } catch (Throwable t) {
+            drawFallbackVectorBadge(context, x, y, Math.min(width, height));
+        }
+    }
+
+    private static void drawFallbackVectorBadge(DrawContext context, int x, int y, int size) {
+        context.fill(x + 1, y + size - 3, x + size, y + size, 0xFFEF4444);
+        context.fill(x + 2, y + 1, x + size - 2, y + 4, 0xFFFBBF24);
+    }
+
     public static MutableText createBcPrefixBadge() {
         return Text.literal("✦ ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xEF4444)).withBold(true));
     }

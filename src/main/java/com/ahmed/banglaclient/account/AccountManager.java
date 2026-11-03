@@ -120,6 +120,7 @@ public final class AccountManager {
             );
             ((MinecraftClientSessionAccessor) mc).banglaclient$setSession(offlineSession);
         }
+        com.ahmed.banglaclient.cosmetics.SkinCapeManager.getInstance().onAccountSwitched(entry.getUsername());
         saveAccounts();
     }
 

@@ -162,7 +162,8 @@ public abstract class TitleScreenMixin extends Screen {
         }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("Switch Red / Custom Theme"))).build());
 
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int userW = Math.max(56, this.textRenderer.getWidth("• " + username) + 16);
+        int headSize = 12, pad = 4;
+        int userW = Math.max(62, pad + headSize + pad + this.textRenderer.getWidth(username) + pad + 2);
         curRight -= (userW + trGap);
         registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> openAccountSwitcher())
                 .dimensions(curRight, topY, userW, trSq).tooltip(Tooltip.of(Text.literal("Account: " + username))).build());
@@ -319,10 +320,6 @@ public abstract class TitleScreenMixin extends Screen {
         for (ClickableWidget cw : banglaMenuWidgets) {
             if (cw.visible) {
                 cw.render(context, mouseX, mouseY, delta);
-                String msg = cw.getMessage() != null ? cw.getMessage().getString() : "";
-                if (msg.startsWith("__USER__:")) {
-                    PlayerPreviewRenderer.drawPlayerHead(context, SkinCapeManager.getInstance().getActiveSkinTextures(), cw.getX() + 4, cw.getY() + 4, 12);
-                }
             }
         }
 
