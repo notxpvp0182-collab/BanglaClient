@@ -30,6 +30,11 @@ public abstract class Module {
     private boolean favorite;
     private int keyCode;
     private boolean holdKeybind;
+    private boolean triggerKeybindWhileEnabledOnly = false;
+    public final boolean isTriggerKeybindWhileEnabledOnly() { return triggerKeybindWhileEnabledOnly; }
+    protected final void setTriggerKeybindWhileEnabledOnly(boolean v) { this.triggerKeybindWhileEnabledOnly = v; }
+    public void onKeybindPressed() {}
+    public void onKeybindHoldState(boolean keyDown) {}
     private long lastUsedTimestamp;
 
     protected Module(

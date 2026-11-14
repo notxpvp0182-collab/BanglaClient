@@ -5,41 +5,47 @@ import com.ahmed.banglaclient.module.Module;
 import com.ahmed.banglaclient.module.ModuleCategory;
 import com.ahmed.banglaclient.module.setting.BooleanSetting;
 
-/**
- * Module 116: Coordinate Clipboard
- * Copies the player's current X, Y, Z coordinates (and optional dimension name) directly to the OS clipboard
- * when toggled or triggered via keybind, then returns cleanly to standby.
- */
 public final class CoordinateClipboardModule extends Module {
     private final BooleanSetting includeDimensionSetting;
     private final BooleanSetting formatAsTeleportCommandSetting;
+    private final BooleanSetting copyNowActionSetting;
 
     public CoordinateClipboardModule() {
         super(
                 "coordinate_clipboard",
                 "Coordinate Clipboard",
-                "Copies your current X, Y, Z coordinates directly to the system clipboard.",
+                "Copies your current X, Y, Z coordinates to the clipboard when pressing its keybind.",
                 ModuleCategory.UTILITY
         );
+        setTriggerKeybindWhileEnabledOnly(true);
+
         this.includeDimensionSetting = addSetting(new BooleanSetting(
-                "include_dim", "Include Dimension Name", "Append (Overworld / The Nether / The End) to copied coordinates", true
+                "include_dim", "Include Dimension Name", "Append dimension name to copied coordinates", true
         ));
         this.formatAsTeleportCommandSetting = addSetting(new BooleanSetting(
-                "tp_command", "Format as /tp Command", "Copy as '/tp X Y Z' for creative/admin convenience", false
+                "tp_command", "Format as /tp Command", "Copy as '/tp X Y Z'", false
         ));
+        this.copyNowActionSetting = addSetting(new BooleanSetting(
+                "copy_now", "Action: Copy Coordinates Now", "Click to immediately copy coordinates to clipboard", false
+        ));
+        this.copyNowActionSetting.onChange(val -> {
+            if (Boolean.TRUE.equals(val)) {
+                copyCoordinatesNow();
+                copyNowActionSetting.setValue(false);
+            }
+        });
         addAliases("copycoords", "clipboardcoords", "sharecoords");
     }
 
     @Override
-    protected void onEnable() {
-        copyCoordinatesNow();
-        setEnabled(false);
+    public void onKeybindPressed() {
+        if (isEnabled()) {
+            copyCoordinatesNow();
+        }
     }
 
     public void copyCoordinatesNow() {
-        if (client == null || client.player == null || client.keyboard == null) {
-            return;
-        }
+        if (client == null || client.player == null || client.keyboard == null) return;
         int x = client.player.getBlockX();
         int y = client.player.getBlockY();
         int z = client.player.getBlockZ();

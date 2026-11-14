@@ -51,9 +51,15 @@ public final class KeybindManager {
             return;
         }
         if (client.currentScreen != null) {
+            for (Module m : moduleManager.getAllModules()) {
+                if (m.isTriggerKeybindWhileEnabledOnly()) {
+                    m.onKeybindHoldState(false);
+                }
+            }
             previousKeyState.clear();
             return;
         }
+
         Window window = client.getWindow();
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getConfigManager() == null) return;
@@ -68,12 +74,29 @@ public final class KeybindManager {
             client.setScreen(new HudEditorScreen(null));
             return;
         }
+
         for (Module module : moduleManager.getAllModules()) {
             int key = module.getKeyCode();
-            if (key == GLFW.GLFW_KEY_UNKNOWN || key <= 0) continue;
+            if (key == GLFW.GLFW_KEY_UNKNOWN || key <= 0) {
+                if (module.isTriggerKeybindWhileEnabledOnly()) {
+                    module.onKeybindHoldState(false);
+                }
+                continue;
+            }
             boolean down = isKeyDown(window, key);
             boolean was = Boolean.TRUE.equals(previousKeyState.get(key));
-            if (module.isHoldKeybind()) {
+
+            if (module.isTriggerKeybindWhileEnabledOnly()) {
+                // Only responds to keybind when the module is ENABLED in ClickGUI!
+                if (module.isEnabled()) {
+                    module.onKeybindHoldState(down);
+                    if (down && !was) {
+                        module.onKeybindPressed();
+                    }
+                } else {
+                    module.onKeybindHoldState(false);
+                }
+            } else if (module.isHoldKeybind()) {
                 if (down != module.isEnabled()) module.setEnabled(down);
             } else if (down && !was) {
                 module.toggle();
@@ -82,6 +105,7 @@ public final class KeybindManager {
                 }
             }
         }
+
         if (clickGuiKey > 0) previousKeyState.put(clickGuiKey, isKeyDown(window, clickGuiKey));
         if (hudEditorKey > 0) previousKeyState.put(hudEditorKey, isKeyDown(window, hudEditorKey));
         for (Module m : moduleManager.getAllModules()) {

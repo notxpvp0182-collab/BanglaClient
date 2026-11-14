@@ -3,6 +3,7 @@ package com.ahmed.banglaclient.mixin;
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.module.combat.ShieldOptimizerModule;
 import com.ahmed.banglaclient.module.visual.SmallHeldItemModule;
+import com.ahmed.banglaclient.module.visual.ZoomModule;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.item.HeldItemRenderer;
@@ -15,14 +16,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Applies SmallHeldItemModule scaling/offsets and ShieldOptimizerModule lower-shield offset
- * to first-person held items.
- */
 @Mixin(HeldItemRenderer.class)
 public abstract class HeldItemRendererMixin {
 
-    @Inject(method = "renderFirstPersonItem(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/util/Hand;FLnet/minecraft/item/ItemStack;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "renderFirstPersonItem(Lnet/minecraft/client/network/AbstractClientPlayerEntity;FFLnet/minecraft/util/Hand;FLnet/minecraft/item/ItemStack;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void banglaclient$scaleAndPositionHeldItem(
             AbstractClientPlayerEntity player,
             float tickDelta,
@@ -36,9 +33,16 @@ public abstract class HeldItemRendererMixin {
             int light,
             CallbackInfo ci
     ) {
-        if (item == null || item.isEmpty()) return;
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getModuleManager() == null) return;
+
+        var zoomOpt = bangla.getModuleManager().getModule(ZoomModule.class);
+        if (zoomOpt.isPresent() && zoomOpt.get().shouldHideHandWhileZooming()) {
+            ci.cancel();
+            return;
+        }
+
+        if (item == null || item.isEmpty()) return;
 
         if (item.isOf(Items.SHIELD)) {
             var shieldOpt = bangla.getModuleManager().getModule(ShieldOptimizerModule.class);

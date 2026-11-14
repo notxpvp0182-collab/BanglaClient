@@ -41,9 +41,11 @@ public final class MiddleClickPearlModule extends Module {
         this.notifyWhenMissingSetting = addSetting(new BooleanSetting(
                 "notify_missing", "Notify When No Pearl", "Show a warning toast if no Ender Pearl is found on the hotbar", true
         ));
+        setTriggerKeybindWhileEnabledOnly(true);
         addAliases("mcp", "middleclickpearl", "quickpearl", "enderpearl");
     }
 
+    public void onKeybindPressed() { if (isEnabled()) triggerPearlSequence(); }
     public void onMiddleMouseClick() {
         if (!isEnabled() || !enableMiddleMouseSetting.isEnabled()) return;
         triggerPearlSequence();

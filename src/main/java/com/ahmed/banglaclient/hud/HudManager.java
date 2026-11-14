@@ -4,12 +4,11 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.module.HudModule;
 import com.ahmed.banglaclient.module.ModuleManager;
+import com.ahmed.banglaclient.module.visual.ZoomModule;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 
-/**
- * Coordinates in-game rendering of all enabled HudModule widgets and toast notifications.
- */
 public final class HudManager {
     private final ModuleManager moduleManager;
     private boolean hudVisible = true;
@@ -18,33 +17,34 @@ public final class HudManager {
         this.moduleManager = moduleManager;
     }
 
-    /**
-     * Invoked every frame via Fabric's HudRenderCallback.
-     */
     public void renderInGameHud(DrawContext context, float tickDelta) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.options.hudHidden) {
-            return;
-        }
-        // If HudEditorScreen is open, it renders the widgets interactively with selection guides
-        if (client.currentScreen instanceof HudEditorScreen) {
-            return;
-        }
+        if (client == null || client.options.hudHidden) return;
+        if (client.currentScreen instanceof HudEditorScreen) return;
 
         int screenWidth = client.getWindow().getScaledWidth();
         int screenHeight = client.getWindow().getScaledHeight();
 
         if (hudVisible) {
             for (HudModule hudModule : moduleManager.getHudModules()) {
-                if (!hudModule.isEnabled()) {
-                    continue;
-                }
+                if (!hudModule.isEnabled()) continue;
                 clampWidgetToScreen(hudModule, screenWidth, screenHeight);
                 renderScaledWidget(context, hudModule, tickDelta, false);
             }
+
+            // Render Live Zoom Magnification Pill when actively zooming
+            var zoomOpt = moduleManager.getModule(ZoomModule.class);
+            if (zoomOpt.isPresent() && zoomOpt.get().shouldShowZoomHud()) {
+                float div = zoomOpt.get().getFovDivisor();
+                String zoomText = String.format("Zoom: %.1fx", div);
+                int tw = client.textRenderer.getWidth(zoomText) + 12;
+                int zx = (screenWidth - tw) / 2;
+                int zy = screenHeight - 58;
+                GlassRenderer.drawPillBadge(context, zx, zy, tw, 15, 0xFFFFFFFF, true);
+                context.drawTextWithShadow(client.textRenderer, zoomText, zx + 6, zy + 4, 0xFFFFFFFF);
+            }
         }
 
-        // Always render active toast notifications in the bottom-right corner
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
             BanglaClient.getInstance().getNotificationManager().render(context, screenWidth, screenHeight);
         }
@@ -88,11 +88,6 @@ public final class HudManager {
         }
     }
 
-    public boolean isHudVisible() {
-        return hudVisible;
-    }
-
-    public void setHudVisible(boolean hudVisible) {
-        this.hudVisible = hudVisible;
-    }
+    public boolean isHudVisible() { return hudVisible; }
+    public void setHudVisible(boolean hudVisible) { this.hudVisible = hudVisible; }
 }
