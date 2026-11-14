@@ -7,8 +7,8 @@ import com.ahmed.banglaclient.util.ColorUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.sound.PositionedSoundInstance;
-import net.minecraft.sound.SoundEvents;
+
+
 import org.joml.Matrix3x2fStack;
 
 import java.util.Locale;
@@ -47,7 +47,7 @@ public final class GlassRenderer {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc != null && mc.getSoundManager() != null) {
             try {
-                mc.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.UI_BUTTON_CLICK, 1.05f));
+                net.minecraft.client.gui.widget.ButtonWidget.builder(net.minecraft.text.Text.empty(), b -> {}).build().playDownSound(mc.getSoundManager());
             } catch (Throwable ignored) {}
         }
     }
