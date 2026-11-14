@@ -17,21 +17,20 @@ import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.text.TextColor;
 import net.minecraft.util.Identifier;
+import org.joml.Matrix3x2fStack;
 
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Manages official BANGLA CLIENT identity detection, icon texture loading,
- * and container watermarks.
+ * Manages BANGLA CLIENT identity detection, transparent large GUI watermark, Tab List icon, and Nametag icon.
  */
 public final class BcIdentityManager {
     public static final int PROTOCOL_VERSION = 1;
     public static final Identifier CHANNEL_ID = Identifier.of(BanglaClient.MOD_ID, "identity_v1");
-
-    // Exact Image 1 BANGLA CLIENT Identity Icon Asset Path
     public static final Identifier IDENTITY_ICON = Identifier.of(BanglaClient.MOD_ID, "textures/gui/bangla_client_identity.png");
 
     public record BcIdentityPayload(int version, UUID playerUuid) implements CustomPayload {
@@ -71,27 +70,18 @@ public final class BcIdentityManager {
                     if (mc != null && mc.getNetworkHandler() != null) {
                         var entry = mc.getNetworkHandler().getPlayerListEntry(payload.playerUuid());
                         if (entry != null && entry.getProfile() != null && entry.getProfile().name() != null) {
-                            verifiedBcNames.add(entry.getProfile().name().toLowerCase());
+                            verifiedBcNames.add(entry.getProfile().name().toLowerCase(Locale.ROOT));
                         }
                     }
                 }
             });
-        } catch (Throwable t) {
-            BanglaClient.LOGGER.debug("Identity payload registration note: {}", t.getMessage());
-        }
+        } catch (Throwable ignored) {}
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            verifiedBcUuids.clear();
-            verifiedBcNames.clear();
             markLocalPlayerVerified(client);
             if (client.player != null && ClientPlayNetworking.canSend(BcIdentityPayload.ID)) {
                 ClientPlayNetworking.send(new BcIdentityPayload(PROTOCOL_VERSION, client.player.getUuid()));
             }
-        });
-
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            verifiedBcUuids.clear();
-            verifiedBcNames.clear();
         });
     }
 
@@ -99,9 +89,12 @@ public final class BcIdentityManager {
         if (client == null) return;
         if (client.player != null) {
             verifiedBcUuids.add(client.player.getUuid());
+            if (client.player.getName() != null) {
+                verifiedBcNames.add(client.player.getName().getString().toLowerCase(Locale.ROOT));
+            }
         }
         if (client.getSession() != null && client.getSession().getUsername() != null) {
-            verifiedBcNames.add(client.getSession().getUsername().toLowerCase());
+            verifiedBcNames.add(client.getSession().getUsername().toLowerCase(Locale.ROOT));
             if (client.getSession().getUuidOrNull() != null) {
                 verifiedBcUuids.add(client.getSession().getUuidOrNull());
             }
@@ -110,19 +103,27 @@ public final class BcIdentityManager {
 
     public static boolean isVerifiedBcUser(UUID uuid) {
         if (uuid == null) return false;
-        markLocalPlayerVerified(MinecraftClient.getInstance());
+        MinecraftClient mc = MinecraftClient.getInstance();
+        markLocalPlayerVerified(mc);
+        if (mc != null && mc.player != null && uuid.equals(mc.player.getUuid())) return true;
         return verifiedBcUuids.contains(uuid);
     }
 
-    public static boolean isVerifiedBcUserByName(String username) {
-        if (username == null || username.isBlank()) return false;
-        markLocalPlayerVerified(MinecraftClient.getInstance());
-        return verifiedBcNames.contains(username.trim().toLowerCase());
+    public static boolean isVerifiedBcUserByName(String rawText) {
+        if (rawText == null || rawText.isBlank()) return false;
+        MinecraftClient mc = MinecraftClient.getInstance();
+        markLocalPlayerVerified(mc);
+        String lower = rawText.trim().toLowerCase(Locale.ROOT);
+        if (mc != null && mc.getSession() != null && mc.getSession().getUsername() != null) {
+            String self = mc.getSession().getUsername().toLowerCase(Locale.ROOT);
+            if (!self.isEmpty() && lower.contains(self)) return true;
+        }
+        for (String name : verifiedBcNames) {
+            if (!name.isEmpty() && lower.contains(name)) return true;
+        }
+        return false;
     }
 
-    /**
-     * Renders the exact Image 1 BANGLA CLIENT Identity Icon with transparency and proper aspect ratio.
-     */
     public static void drawIdentityIcon(DrawContext context, int x, int y, int width, int height) {
         if (context == null || width <= 0 || height <= 0) return;
         try {
@@ -134,35 +135,33 @@ public final class BcIdentityManager {
     }
 
     /**
-     * Renders the subtle BANGLA CLIENT watermark at the bottom-right of Inventory & Container screens.
-     * Appearance: [Exact identity icon] BANGLA CLIENT
+     * Renders the Large Transparent Watermark ([BC Icon] ʙᴀɴɢʟᴀ ᴄʟɪᴇɴᴛ) at the bottom-right of all GUI screens.
+     * Zero background box — only the large icon and crisp text!
      */
     public static void drawWatermark(DrawContext context, int screenWidth, int screenHeight, TextRenderer textRenderer) {
         if (context == null || textRenderer == null || screenWidth <= 0 || screenHeight <= 0) return;
 
-        String title = BanglaClient.CLIENT_NAME;
-        int textW = textRenderer.getWidth(title);
-        int iconSize = 9;
-        int totalW = iconSize + 4 + textW + 8;
-        int totalH = 14;
-        int x = screenWidth - totalW - 6;
-        int y = screenHeight - totalH - 5;
+        String title = GlassRenderer.toSmallCaps("BANGLA CLIENT");
+        float scale = 1.25f;
+        int iconSize = 14;
+        int scaledTextW = Math.round(textRenderer.getWidth(title) * scale);
+        int totalW = iconSize + 5 + scaledTextW;
 
-        // Subtle dark translucent pill background with faint white specular outline
-        context.fill(x + 1, y, x + totalW - 1, y + totalH, 0x33000000);
-        context.fill(x, y + 1, x + 1, y + totalH - 1, 0x33000000);
-        context.fill(x + totalW - 1, y + 1, x + totalW, y + totalH - 1, 0x33000000);
-        GlassRenderer.drawOutlineBorder(context, x, y, totalW, totalH, 0x1EFFFFFF);
+        int x = screenWidth - totalW - 10;
+        int y = screenHeight - 20;
 
-        // Draw identity icon
-        drawIdentityIcon(context, x + 4, y + 2, iconSize, iconSize);
+        drawIdentityIcon(context, x, y - 2, iconSize, iconSize);
 
-        // Draw text
-        context.drawTextWithShadow(textRenderer, title, x + 4 + iconSize + 3, y + 3, 0xDDF4F7FA);
+        Matrix3x2fStack matrices = context.getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(x + iconSize + 5, y);
+        matrices.scale(scale, scale);
+        context.drawTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
+        matrices.popMatrix();
     }
 
     public static MutableText createBcPrefixBadge() {
-        return Text.literal("✦ ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xEF4444)).withBold(true));
+        return Text.literal("✦ ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFFFFF)).withBold(true));
     }
 
     public static Set<UUID> getVerifiedBcUuids() {

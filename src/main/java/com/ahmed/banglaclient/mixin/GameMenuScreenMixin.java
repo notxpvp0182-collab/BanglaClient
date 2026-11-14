@@ -7,6 +7,7 @@ import com.ahmed.banglaclient.gui.ClickGuiScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.gui.SkinCustomizationScreen;
 import com.ahmed.banglaclient.rendering.BlurRenderer;
+import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.DrawContext;
@@ -231,6 +232,7 @@ public abstract class GameMenuScreenMixin extends Screen {
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
             BanglaClient.getInstance().getNotificationManager().render(context, w, h);
         }
+        BcIdentityManager.drawWatermark(context, w, h, this.textRenderer);
         ci.cancel();
     }
 

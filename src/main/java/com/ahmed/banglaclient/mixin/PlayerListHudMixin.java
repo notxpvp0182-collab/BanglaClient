@@ -1,16 +1,12 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
-import com.ahmed.banglaclient.cosmetics.PlayerPreviewRenderer;
-import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.module.hud.TabListHeadsModule;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.PlayerListHud;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
@@ -45,16 +41,16 @@ public abstract class PlayerListHudMixin {
     }
 
     @Inject(method = "getPlayerName(Lnet/minecraft/client/network/PlayerListEntry;)Lnet/minecraft/text/Text;", at = @At("RETURN"), cancellable = true, require = 0)
-    private void banglaclient$indentTabNameForIconAndHead(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
+    private void banglaclient$indentTabNameForLargeIcon(PlayerListEntry entry, CallbackInfoReturnable<Text> cir) {
         if (entry == null || entry.getProfile() == null) return;
         Text original = cir.getReturnValue();
         if (original == null) return;
 
         boolean isBc = BcIdentityManager.isVerifiedBcUser(entry.getProfile().id())
-                || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name());
+                || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name())
+                || BcIdentityManager.isVerifiedBcUserByName(original.getString());
 
         if (isBc) {
-            // Indent text so the slot width expands to accommodate the 8x8 identity icon
             MutableText spacing = Text.literal("   ");
             cir.setReturnValue(spacing.append(original));
         }
@@ -65,45 +61,18 @@ public abstract class PlayerListHudMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawTextWithShadow(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;III)V"),
             require = 0
     )
-    private void banglaclient$drawTabEntryWithIconAndHead(DrawContext context, TextRenderer textRenderer, Text text, int x, int y, int color) {
+    private void banglaclient$drawTabEntryWithLargeBcIcon(DrawContext context, TextRenderer textRenderer, Text text, int x, int y, int color) {
         PlayerListEntry entry = this.currentRenderingEntry;
-        if (entry == null || entry.getProfile() == null) {
-            context.drawTextWithShadow(textRenderer, text, x, y, color);
-            return;
-        }
+        if (entry != null && entry.getProfile() != null) {
+            boolean isBc = BcIdentityManager.isVerifiedBcUser(entry.getProfile().id())
+                    || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name())
+                    || (text != null && BcIdentityManager.isVerifiedBcUserByName(text.getString()));
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        boolean isLocal = (mc.player != null && entry.getProfile().id().equals(mc.player.getUuid()))
-                || (mc.getSession() != null && entry.getProfile().name().equalsIgnoreCase(mc.getSession().getUsername()));
-
-        boolean isBc = BcIdentityManager.isVerifiedBcUser(entry.getProfile().id())
-                || BcIdentityManager.isVerifiedBcUserByName(entry.getProfile().name());
-
-        BanglaClient bangla = BanglaClient.getInstance();
-        boolean headsModuleEnabled = true;
-        if (bangla != null && bangla.getModuleManager() != null) {
-            var tabOpt = bangla.getModuleManager().getModule(TabListHeadsModule.class);
-            if (tabOpt.isPresent()) {
-                headsModuleEnabled = tabOpt.get().isEnabled();
+            if (isBc) {
+                // Draw large 10x10 BC Identity Icon right in the reserved space at x (same height as player name!)
+                BcIdentityManager.drawIdentityIcon(context, x, y - 1, 10, 10);
             }
         }
-
-        // Layout Order: [BANGLA CLIENT ICON] [SKIN HEAD] [PLAYER NAME]
-        if (isBc && headsModuleEnabled) {
-            BcIdentityManager.drawIdentityIcon(context, x - 18, y, 8, 8);
-            SkinTextures textures = (isLocal && SkinCapeManager.getInstance().isCustomSkinOverride())
-                    ? SkinCapeManager.getInstance().getActiveSkinTextures()
-                    : entry.getSkinTextures();
-            PlayerPreviewRenderer.drawPlayerHead(context, textures, x - 9, y, 8);
-        } else if (isBc && !headsModuleEnabled) {
-            BcIdentityManager.drawIdentityIcon(context, x - 9, y, 8, 8);
-        } else if (!isBc && headsModuleEnabled) {
-            SkinTextures textures = (isLocal && SkinCapeManager.getInstance().isCustomSkinOverride())
-                    ? SkinCapeManager.getInstance().getActiveSkinTextures()
-                    : entry.getSkinTextures();
-            PlayerPreviewRenderer.drawPlayerHead(context, textures, x - 9, y, 8);
-        }
-
         context.drawTextWithShadow(textRenderer, text, x, y, color);
     }
 }

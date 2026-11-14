@@ -4,15 +4,16 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.module.visual.NametagsModule;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
+import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,39 +23,41 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EntityRenderer.class)
-public abstract class EntityRendererMixin<T extends Entity> {
+public abstract class EntityRendererMixin<T extends Entity, S extends EntityRenderState> {
 
     @Inject(
-            method = "renderLabelIfPresent(Lnet/minecraft/entity/Entity;Lnet/minecraft/text/Text;Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
+            method = "renderLabelIfPresent",
             at = @At("TAIL"),
             require = 0
     )
-    private void banglaclient$renderBcIdentityIconBesideNametag(
-            T entity,
+    private void banglaclient$renderLargeBcIconBeforeNametag(
+            S state,
             Text text,
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
             int light,
             CallbackInfo ci
     ) {
-        if (!(entity instanceof PlayerEntity player)) return;
-        if (!BcIdentityManager.isVerifiedBcUser(player.getUuid())) return;
+        if (text == null) return;
+        String labelStr = text.getString();
+        if (!BcIdentityManager.isVerifiedBcUserByName(labelStr)) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) return;
 
         matrices.push();
         int textW = mc.textRenderer.getWidth(text);
-        float iconX = -textW / 2.0f - 11.0f;
+        float iconSize = 10.0f;
+        float iconX = -(textW / 2.0f) - iconSize - 3.0f;
         float iconY = -1.0f;
 
         Matrix4f pos = matrices.peek().getPositionMatrix();
         VertexConsumer vc = vertexConsumers.getBuffer(RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
 
-        vc.vertex(pos, iconX, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX + 9, iconY + 9, 0.0f).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX + 9, iconY, 0.0f).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX, iconY, 0.0f).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(net.minecraft.client.render.OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, iconX, iconY + iconSize, 0.0f).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, iconX + iconSize, iconY + iconSize, 0.0f).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, iconX + iconSize, iconY, 0.0f).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, iconX, iconY, 0.0f).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
         matrices.pop();
     }
 

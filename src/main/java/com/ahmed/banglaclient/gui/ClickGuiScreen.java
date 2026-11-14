@@ -165,7 +165,7 @@ public final class ClickGuiScreen extends Screen {
         int rows = (int) Math.ceil((double) filteredModules.size() / columns);
         int totalContentHeight = rows * (cardH + gap) + 4;
 
-        mainScroll.tickAndInterpolate();
+        filteredModules.removeIf(m -> { ModuleCardWidget w = cardWidgets.get(m); if (w != null && w.isExitAnimationFinished()) { w.resetExitAnimation(); return true; } return false; }); mainScroll.tickAndInterpolate();
         mainScroll.updateDimensions(height, totalContentHeight);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
@@ -196,7 +196,7 @@ public final class ClickGuiScreen extends Screen {
         Theme theme = GlassRenderer.getTheme();
         var cfg = BanglaClient.getInstance().getConfigManager();
 
-        mainScroll.tickAndInterpolate();
+        filteredModules.removeIf(m -> { ModuleCardWidget w = cardWidgets.get(m); if (w != null && w.isExitAnimationFinished()) { w.resetExitAnimation(); return true; } return false; }); mainScroll.tickAndInterpolate();
         mainScroll.updateDimensions(height, 235);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
@@ -226,7 +226,7 @@ public final class ClickGuiScreen extends Screen {
 
     private void renderAboutView(DrawContext context, int x, int y, int width, int height, double mouseX, double mouseY) {
         Theme theme = GlassRenderer.getTheme();
-        mainScroll.tickAndInterpolate();
+        filteredModules.removeIf(m -> { ModuleCardWidget w = cardWidgets.get(m); if (w != null && w.isExitAnimationFinished()) { w.resetExitAnimation(); return true; } return false; }); mainScroll.tickAndInterpolate();
         mainScroll.updateDimensions(height, 145);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
@@ -370,7 +370,7 @@ public final class ClickGuiScreen extends Screen {
                         this.client.setScreen(new ModuleSettingsScreen(this, m));
                     }
                 })) {
-                    if (topBar.isFilterOnlyEnabled() || topBar.isFilterOnlyFavorites()) {
+                    if ((topBar.isFilterOnlyEnabled() && !module.isEnabled()) || (topBar.isFilterOnlyFavorites() && !module.isFavorite())) { widget.startExitAnimation(); } else if (false) {
                         rebuildFilteredModules();
                     }
                     return true;

@@ -18,20 +18,32 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Manages custom Main Menu backgrounds in banglaclient/backgrounds/ supporting PNG, JPG, JPEG, and animated GIFs.
+ * Manages custom Main Menu backgrounds in banglaclient/backgrounds/.
+ * Automatically downloads curated HD backgrounds ONLY on the very first launch if internet is available.
  */
 public final class BackgroundManager {
+    private static final String[][] CURATED_FIRST_LAUNCH_WALLPAPERS = {
+            {"Aurora_Night_Sky.jpg", "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1280&q=80"},
+            {"Dark_Cyber_Mountain.jpg", "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&q=80"},
+            {"Crimson_Sunset_Horizon.jpg", "https://i.postimg.cc/05X5w9Vm/0b436142caf939e1091ed9c1b48bd323.jpg"},
+            {"Midnight_Nebula_Stars.jpg", "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1280&q=80"},
+            {"Dark_Minimal_Peaks.jpg", "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1280&q=80"}
+    };
+
     public static final class BackgroundEntry {
-        private String id;
-        private String displayName;
-        private Path filePath;
+        private final String id;
+        private final String displayName;
+        private final Path filePath;
         private final int width;
         private final int height;
         private final boolean animatedGif;
@@ -70,7 +82,8 @@ public final class BackgroundManager {
     private final Path backgroundsDir;
     private final Path configFile;
     private final Map<String, BackgroundEntry> entries = new LinkedHashMap<>();
-    private String selectedId = ""; //Empty = Default Minecraft Panorama
+    private String selectedId = "";
+    private boolean firstLaunchSeeded = false;
 
     public static synchronized BackgroundManager getInstance() {
         if (instance == null) {
@@ -89,11 +102,48 @@ public final class BackgroundManager {
     private void initialize() {
         try {
             Files.createDirectories(backgroundsDir);
-            refreshLibrary();
             loadSelection();
+            refreshLibrary();
+            if (!firstLaunchSeeded) {
+                firstLaunchSeeded = true;
+                saveSelection();
+                downloadCuratedBackgroundsOnFirstLaunchAsync();
+            }
         } catch (IOException e) {
             BanglaClient.LOGGER.error("Failed to create backgrounds directory", e);
         }
+    }
+
+    private void downloadCuratedBackgroundsOnFirstLaunchAsync() {
+        CompletableFuture.runAsync(() -> {
+            boolean downloadedAny = false;
+            for (String[] pair : CURATED_FIRST_LAUNCH_WALLPAPERS) {
+                String fileName = pair[0];
+                String urlStr = pair[1];
+                Path target = backgroundsDir.resolve(fileName);
+                if (Files.exists(target)) continue;
+                try {
+                    HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    conn.setConnectTimeout(5000);
+                    conn.setReadTimeout(7000);
+                    if (conn.getResponseCode() == 200) {
+                        try (InputStream in = conn.getInputStream()) {
+                            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                            downloadedAny = true;
+                        }
+                    }
+                } catch (Throwable ignored) {
+                    // No internet/data available -> silently skip without error
+                }
+            }
+            if (downloadedAny) {
+                MinecraftClient mc = MinecraftClient.getInstance();
+                if (mc != null) {
+                    mc.execute(this::refreshLibrary);
+                }
+            }
+        });
     }
 
     public synchronized void refreshLibrary() {
@@ -125,7 +175,7 @@ public final class BackgroundManager {
         try {
             String fileName = file.getFileName().toString();
             int dot = fileName.lastIndexOf('.');
-            String title = dot > 0 ? fileName.substring(0, dot) : fileName;
+            String title = dot > 0 ? fileName.substring(0, dot).replace('_', ' ') : fileName;
             String lower = fileName.toLowerCase(Locale.ROOT);
             String safeBase = lower.replaceAll("[^a-z0-9_.-]", "_");
 
@@ -264,11 +314,15 @@ public final class BackgroundManager {
         if (root.has("selectedId")) {
             this.selectedId = root.get("selectedId").getAsString();
         }
+        if (root.has("firstLaunchSeeded")) {
+            this.firstLaunchSeeded = root.get("firstLaunchSeeded").getAsBoolean();
+        }
     }
 
     public void saveSelection() {
         JsonObject root = new JsonObject();
         root.addProperty("selectedId", selectedId != null ? selectedId : "");
+        root.addProperty("firstLaunchSeeded", firstLaunchSeeded);
         ConfigManager.writeAtomically(configFile, root);
     }
 

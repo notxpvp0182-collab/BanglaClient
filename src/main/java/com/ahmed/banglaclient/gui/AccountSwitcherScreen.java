@@ -154,7 +154,7 @@ public final class AccountSwitcherScreen extends Screen {
             GlassRenderer.drawGlassPanel(context, winX + 6, bodyY, leftW, bodyH, true, false, false);
 
             if (this.previewSkinWidget != null) {
-                this.previewSkinWidget.render(context, mouseX, mouseY, delta);
+                int sw = Math.max(16, Math.round((leftW - 12) * anim)); int sh = Math.max(16, Math.round((bodyH - 26) * anim)); this.previewSkinWidget.setWidth(sw); this.previewSkinWidget.setHeight(sh); this.previewSkinWidget.setPosition(winX + 6 + (leftW - sw) / 2, bodyY + 4 + (bodyH - 26 - sh) / 2); this.previewSkinWidget.render(context, mouseX, mouseY, delta);
             }
 
             int skinBtnY = bodyY + bodyH - 18;
@@ -281,7 +281,7 @@ public final class AccountSwitcherScreen extends Screen {
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         double mouseX = click.x(), mouseY = click.y();
-        if (click.button() != 0 || closing) return super.mouseClicked(click, doubled);
+        if (click.button() != 0 || closing) return super.mouseClicked(click, doubled); GlassRenderer.playClickSound();
 
         if (modalMode != 0) {
             int mW = 220, mH = 82;

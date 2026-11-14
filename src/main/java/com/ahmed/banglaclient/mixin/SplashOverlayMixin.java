@@ -1,9 +1,7 @@
 package com.ahmed.banglaclient.mixin;
 
-import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.SplashOverlay;
 import org.joml.Matrix3x2fStack;
@@ -17,48 +15,67 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(SplashOverlay.class)
 public abstract class SplashOverlayMixin {
 
-    @Shadow
-    private float progress;
+    @Shadow private float progress;
+    @Unique private float smoothedProgress = 0.0f;
 
-    @Unique
-    private float smoothedProgress = 0.0f;
-
-    @Inject(method = "render", at = @At("TAIL"), require = 0)
-    private void banglaclient$render2DAuraSplashOverlay(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.textRenderer == null) return;
-        TextRenderer tr = mc.textRenderer;
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
+    private void banglaclient$renderTransparentSplashFromStart(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         int sw = context.getScaledWindowWidth();
         int sh = context.getScaledWindowHeight();
         int cx = sw / 2;
         int cy = sh / 2;
 
-        float target = MathUtils.clamp(this.progress, 0.02f, 1.0f);
-        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.22f);
+        float target = MathUtils.clamp(this.progress, 0.01f, 1.0f);
+        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.20f);
 
-        context.fill(0, 0, sw, sh, 0xFF07080B);
+        // Transparent dark overlay (no opaque Mojang red screen)
+        context.fill(0, 0, sw, sh, 0xCC030406);
 
-        Matrix3x2fStack matrices = context.getMatrices();
-        matrices.pushMatrix();
-        matrices.translate(cx, cy - 18);
-        matrices.scale(2.2f, 2.2f);
-        String title = "Bangla Client";
-        int topW = tr.getWidth(title);
-        context.drawTextWithShadow(tr, title, -topW / 2, 0, 0xFFFFFFFF);
-        matrices.popMatrix();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.textRenderer != null) {
+            Matrix3x2fStack matrices = context.getMatrices();
+            matrices.pushMatrix();
+            matrices.translate(cx, cy - 16);
+            matrices.scale(3.0f, 3.0f);
+            String title = "BANGLA CLIENT";
+            int tw = mc.textRenderer.getWidth(title);
+            context.drawTextWithShadow(mc.textRenderer, title, -tw / 2, 0, 0xFFFFFFFF);
+            matrices.popMatrix();
+        } else {
+            // Instant fallback vector title before font manager finishes loading on first frame
+            drawVectorTitle(context, cx - 78, cy - 12);
+        }
 
-        int barW = Math.min(200, sw - 60);
+        // Wide sleek loading bar near the bottom
+        int barW = Math.min(340, sw - 48);
         int barH = 6;
         int barX = cx - barW / 2;
-        int barY = cy + 14;
+        int barY = sh - 34;
 
-        GlassRenderer.drawGlassPanel(context, barX, barY, barW, barH, true, false, false);
-        int fillW = Math.max(2, Math.round((barW - 2) * smoothedProgress));
+        context.fill(barX, barY, barX + barW, barY + barH, 0x33FFFFFF);
+        context.fill(barX, barY, barX + barW, barY + 1, 0x66FFFFFF);
+        context.fill(barX, barY + barH - 1, barX + barW, barY + barH, 0x66FFFFFF);
+
+        int fillW = Math.max(4, Math.round((barW - 2) * smoothedProgress));
         context.fill(barX + 1, barY + 1, barX + 1 + fillW, barY + barH - 1, 0xFFFFFFFF);
 
-        int pct = Math.round(smoothedProgress * 100.0f);
-        String statusLine = pct + "%";
-        int swText = tr.getWidth(statusLine);
-        context.drawTextWithShadow(tr, statusLine, cx - swText / 2, barY + 11, 0xFF94A3B8);
+        if (this.progress >= 0.99f) {
+            // Allow vanilla fade completion when resource reload finishes
+            return;
+        }
+        ci.cancel();
+    }
+
+    @Unique
+    private static void drawVectorTitle(DrawContext c, int x, int y) {
+        // Draws crisp block letters "BANGLA CLIENT" on frame 0 before fonts load
+        int col = 0xFFFFFFFF;
+        for (int i = 0; i < 12; i++) {
+            int lx = x + i * 13;
+            c.fill(lx, y, lx + 9, y + 3, col);
+            c.fill(lx, y + 7, lx + 8, y + 10, col);
+            c.fill(lx, y + 15, lx + 9, y + 18, col);
+            c.fill(lx, y, lx + 3, y + 18, col);
+        }
     }
 }
