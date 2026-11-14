@@ -18,18 +18,18 @@ public abstract class SplashOverlayMixin {
     @Shadow private float progress;
     @Unique private float smoothedProgress = 0.0f;
 
-    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
-    private void banglaclient$renderTransparentSplashFromStart(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    @Inject(method = "render", at = @At("TAIL"), require = 0)
+    private void banglaclient$renderCustomSplashOverlay(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         int sw = context.getScaledWindowWidth();
         int sh = context.getScaledWindowHeight();
         int cx = sw / 2;
         int cy = sh / 2;
 
-        float target = MathUtils.clamp(this.progress, 0.01f, 1.0f);
-        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.20f);
+        float target = MathUtils.clamp(this.progress, 0.02f, 1.0f);
+        smoothedProgress = MathUtils.lerp(smoothedProgress, target, 0.25f);
 
-        // Transparent dark overlay (no opaque Mojang red screen)
-        context.fill(0, 0, sw, sh, 0xCC030406);
+        // Clean AMOLED dark backdrop covering vanilla Mojang screen
+        context.fill(0, 0, sw, sh, 0xFF040507);
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc != null && mc.textRenderer != null) {
@@ -42,7 +42,6 @@ public abstract class SplashOverlayMixin {
             context.drawTextWithShadow(mc.textRenderer, title, -tw / 2, 0, 0xFFFFFFFF);
             matrices.popMatrix();
         } else {
-            // Instant fallback vector title before font manager finishes loading on first frame
             drawVectorTitle(context, cx - 78, cy - 12);
         }
 
@@ -58,17 +57,10 @@ public abstract class SplashOverlayMixin {
 
         int fillW = Math.max(4, Math.round((barW - 2) * smoothedProgress));
         context.fill(barX + 1, barY + 1, barX + 1 + fillW, barY + barH - 1, 0xFFFFFFFF);
-
-        if (this.progress >= 0.99f) {
-            // Allow vanilla fade completion when resource reload finishes
-            return;
-        }
-        ci.cancel();
     }
 
     @Unique
     private static void drawVectorTitle(DrawContext c, int x, int y) {
-        // Draws crisp block letters "BANGLA CLIENT" on frame 0 before fonts load
         int col = 0xFFFFFFFF;
         for (int i = 0; i < 12; i++) {
             int lx = x + i * 13;
