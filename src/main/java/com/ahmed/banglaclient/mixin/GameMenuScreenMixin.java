@@ -37,7 +37,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Pure 2D Aura Dark Pause Menu (No 3D logo, no crown, zero lag).
+ * Strictly Dead-Center Serial Vertical Pause Menu in 2D Aura Dark style.
  */
 @Mixin(GameMenuScreen.class)
 public abstract class GameMenuScreenMixin extends Screen {
@@ -59,7 +59,7 @@ public abstract class GameMenuScreenMixin extends Screen {
     }
 
     @Inject(method = "initWidgets", at = @At("TAIL"))
-    private void banglaclient$setup2DAuraPauseMenu(CallbackInfo ci) {
+    private void banglaclient$setupCenteredSerialPauseMenu(CallbackInfo ci) {
         pauseButtons.clear();
         this.clearChildren();
 
@@ -72,16 +72,18 @@ public abstract class GameMenuScreenMixin extends Screen {
                 && (this.client.getServer() == null || !this.client.getServer().isRemote());
 
         boolean wideScreen = (w >= 340);
-        int btnW = Math.min(136, w - 40);
-        int btnH = 18;
-        int btnStep = 20;
+        int btnW = Math.min(130, w - 40);
+        int btnH = 19;
+        int btnStep = 21;
 
         int totalRows = isSingle ? 9 : 8;
         int totalMenuH = totalRows * btnStep;
 
-        int logoCenterY = Math.max(16, (h - (totalMenuH + 32)) / 2);
-        int btnX = wideScreen ? (w / 2 - 36 - btnW / 2) : (w / 2 - btnW / 2);
-        int btnY = logoCenterY + 28;
+        // Strictly dead-center (w / 2) on all screen resolutions!
+        int centerX = w / 2;
+        int logoCenterY = Math.max(14, (h - (totalMenuH + 28)) / 2);
+        int btnX = centerX - (btnW / 2);
+        int btnY = logoCenterY + 24;
 
         registerPauseBtn(ButtonWidget.builder(Text.literal("Back to Game"), b -> {
             if (this.client != null) {
@@ -142,7 +144,7 @@ public abstract class GameMenuScreenMixin extends Screen {
         if (wideScreen) {
             int charCenterX = w - 62;
             int charW = 68;
-            int charH = Math.min(110, h - 90);
+            int charH = Math.min(108, h - 90);
             int charTopY = Math.max(34, (h - charH) / 2 - 10);
 
             try {
@@ -179,25 +181,24 @@ public abstract class GameMenuScreenMixin extends Screen {
     }
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void banglaclient$render2DAuraPauseMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void banglaclient$renderCentered2DAuraPauseMenu(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         sanitizePauseWidgets();
 
         int w = this.width;
         int h = this.height;
         boolean isSingle = this.client != null && this.client.isInSingleplayer();
         boolean wideScreen = (w >= 340);
-        int centerX = wideScreen ? (w / 2 - 36) : (w / 2);
+        int centerX = w / 2;
 
         BlurRenderer.renderScreenBackdrop(context, w, h, 1.0f);
 
         int totalRows = isSingle ? 9 : 8;
-        int totalMenuH = totalRows * 20;
-        int logoCenterY = Math.max(16, (h - (totalMenuH + 32)) / 2);
+        int totalMenuH = totalRows * 21;
+        int logoCenterY = Math.max(14, (h - (totalMenuH + 28)) / 2);
 
-        // Clean 2D "Bangla Client" Title (No 3D shadow, no crown)
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(centerX, logoCenterY + 6);
+        matrices.translate(centerX, logoCenterY + 4);
         matrices.scale(1.65f, 1.65f);
         String titleStr = "Bangla Client";
         int tw = this.textRenderer.getWidth(titleStr);
@@ -208,7 +209,7 @@ public abstract class GameMenuScreenMixin extends Screen {
             String liveUser = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
             int charCenterX = w - 62;
             int nameW = this.textRenderer.getWidth(liveUser);
-            int charH = Math.min(110, h - 90);
+            int charH = Math.min(108, h - 90);
             int badgeY = Math.max(20, (h - charH) / 2 - 24);
 
             GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, badgeY, nameW + 12, 14, 0xFFFFFFFF, false);

@@ -162,8 +162,8 @@ public final class CustomScoreboardModule extends HudModule {
 
             GlassRenderer.drawCustomGlassPanel(context, x, y, boxW, boxH, 0x44080A10, false, true, true);
             context.drawTextWithShadow(client.textRenderer, "Server Scoreboard", x + pad, y + pad, ThemeTokens.DEFAULT_ACCENT_PRIMARY);
-            context.drawTextWithShadow(client.textRenderer, "(No active sidebar)", x + pad, y + pad + 14, 0xFFA5AFBC);
-            context.drawTextWithShadow(client.textRenderer, "Right-click to configure", x + pad, y + pad + 28, 0xFF64748B);
+            context.drawTextWithShadow(client.textRenderer, "(Empty)", x + pad, y + pad + 14, 0xFFA5AFBC);
+            context.drawTextWithShadow(client.textRenderer, "Drag to move", x + pad, y + pad + 28, 0xFF64748B);
         }
     }
 

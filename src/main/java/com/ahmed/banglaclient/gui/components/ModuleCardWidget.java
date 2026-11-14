@@ -13,7 +13,7 @@ import net.minecraft.client.gui.DrawContext;
 import java.util.function.Consumer;
 
 /**
- * Compact 2D Aura Module Card (NO description text, ultra-clean icon + title + settings gear + Aura switch).
+ * Compact 2D Aura Module Card with Favorite Star (★/☆), Settings Gear (⚙), and High-Contrast Aura Switch.
  */
 public final class ModuleCardWidget {
     private final Module module;
@@ -46,42 +46,48 @@ public final class ModuleCardWidget {
         boolean hovered = MathUtils.isHovered(mouseX, mouseY, x, y, width, height);
         Theme theme = GlassRenderer.getTheme();
 
-        int surface = ColorUtils.lerpColor(theme.getGlassSurface(), theme.getGlassElevated(), en * 0.6f);
+        int surface = ColorUtils.lerpColor(theme.getGlassSurface(), theme.getGlassElevated(), en * 0.65f);
         GlassRenderer.drawCustomGlassPanel(context, x, y, width, height, surface, hovered, module.isEnabled(), true);
 
         // 1. Left 2D Monochrome Vector Icon
         int iconY = y + (height - 10) / 2;
-        int iconCol = module.isEnabled() ? 0xFFFFFFFF : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
-        GlassRenderer.drawVectorIcon(context, x + 7, iconY, 10, module.getCategory().name(), iconCol);
+        int iconCol = module.isEnabled() ? 0xFFFFFFFF : (hovered ? 0xFFFFFFFF : theme.getTextSecondary());
+        GlassRenderer.drawVectorIcon(context, x + 6, iconY, 10, module.getCategory().name(), iconCol);
 
-        // 2. Module Name (No description!)
-        int textX = x + 22;
-        int maxTextW = Math.max(24, width - 64);
+        // 2. Module Name
+        int textX = x + 20;
+        int maxTextW = Math.max(20, width - 74);
         String name = textRenderer.trimToWidth(module.getName(), maxTextW);
-        int nameCol = module.isEnabled() ? 0xFFFFFFFF : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
+        int nameCol = module.isEnabled() ? 0xFFFFFFFF : (hovered ? 0xFFFFFFFF : theme.getTextSecondary());
         context.drawTextWithShadow(textRenderer, name, textX, y + (height - 8) / 2, nameCol);
 
-        // 3. Settings Gear [⚙]
-        int gearX = x + width - 36;
-        int gearY = y + (height - 8) / 2;
-        boolean gearHov = MathUtils.isHovered(mouseX, mouseY, gearX - 2, y + 2, 12, height - 4);
-        context.drawTextWithShadow(textRenderer, "⚙", gearX, gearY, gearHov ? 0xFFFFFFFF : theme.getTextMuted());
+        // 3. Favorite Star [★ / ☆]
+        int starX = x + width - 48;
+        int iconTextY = y + (height - 8) / 2;
+        boolean starHov = MathUtils.isHovered(mouseX, mouseY, starX - 2, y + 2, 11, height - 4);
+        int starCol = module.isFavorite() ? 0xFFFFFFFF : (starHov ? 0xFFE2E8F0 : theme.getTextMuted());
+        context.drawTextWithShadow(textRenderer, module.isFavorite() ? "★" : "☆", starX, iconTextY, starCol);
 
-        // 4. Compact 2D Aura Pill Switch (20x10)
+        // 4. Settings Gear [⚙]
+        int gearX = x + width - 36;
+        boolean gearHov = MathUtils.isHovered(mouseX, mouseY, gearX - 2, y + 2, 11, height - 4);
+        context.drawTextWithShadow(textRenderer, "⚙", gearX, iconTextY, gearHov ? 0xFFFFFFFF : theme.getTextMuted());
+
+        // 5. High-Contrast 2D Aura Pill Switch (20x10)
         int swW = 20;
         int swH = 10;
-        int swX = x + width - swW - 6;
+        int swX = x + width - swW - 5;
         int swY = y + (height - swH) / 2;
 
-        int trackCol = ColorUtils.lerpColor(0xFF0A0B0E, 0x44FFFFFF, en);
-        int borderCol = ColorUtils.lerpColor(0x33FFFFFF, 0xCCFFFFFF, en);
+        int trackCol = ColorUtils.lerpColor(0xFF090B0E, 0x48FFFFFF, en);
+        int borderCol = ColorUtils.lerpColor(0x38FFFFFF, 0xEEFFFFFF, en);
         context.fill(swX + 1, swY, swX + swW - 1, swY + swH, trackCol);
         GlassRenderer.drawOutlineBorder(context, swX, swY, swW, swH, borderCol);
 
         int knobSize = 6;
         int knobX = swX + 2 + Math.round((swW - knobSize - 4) * en);
         int knobY = swY + 2;
-        int knobCol = ColorUtils.lerpColor(0xFF64748B, 0xFFFFFFFF, en);
+        int knobCol = ColorUtils.lerpColor(0xFF788296, 0xFFFFFFFF, en);
         context.fill(knobX, knobY, knobX + knobSize, knobY + knobSize, knobCol);
     }
 
@@ -104,8 +110,13 @@ public final class ModuleCardWidget {
             return true;
         }
         if (button == 0) {
+            int starX = x + width - 48;
+            if (MathUtils.isHovered(mouseX, mouseY, starX - 2, y, 12, height)) {
+                module.toggleFavorite();
+                return true;
+            }
             int gearX = x + width - 36;
-            if (MathUtils.isHovered(mouseX, mouseY, gearX - 3, y, 14, height)) {
+            if (MathUtils.isHovered(mouseX, mouseY, gearX - 2, y, 12, height)) {
                 if (openSettingsCallback != null) openSettingsCallback.accept(module);
                 return true;
             }

@@ -2,16 +2,20 @@ package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.account.AccountManager;
+import com.ahmed.banglaclient.cosmetics.BackgroundManager;
+import com.ahmed.banglaclient.cosmetics.BackgroundManager.BackgroundEntry;
 import com.ahmed.banglaclient.cosmetics.PlayerPreviewRenderer;
 import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.gui.AboutScreen;
 import com.ahmed.banglaclient.gui.AccountSwitcherScreen;
+import com.ahmed.banglaclient.gui.BackgroundSelectorScreen;
 import com.ahmed.banglaclient.gui.ClickGuiScreen;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.gui.SkinCustomizationScreen;
 import com.ahmed.banglaclient.integration.MainMenuButtonBridge;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Element;
@@ -28,6 +32,7 @@ import net.minecraft.client.gui.widget.PlayerSkinWidget;
 import net.minecraft.client.input.MouseInput;
 import net.minecraft.client.realms.gui.screen.RealmsMainScreen;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -43,10 +48,11 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Pure 2D Aura Dark Main Menu:
- * - No background wallpaper image (clean dark Aura canvas)
- * - Auto-detects any installed third-party mod buttons and builds custom 2D icon buttons on the left
- * - 2D Aura center buttons & top-right utility dock (without default-theme/color switcher)
+ * 2D Aura Dark Main Menu:
+ * - Default Minecraft Panorama background (or user-selected GIF/PNG/JPG/JPEG from BackgroundManager)
+ * - Left-side ICON-ONLY mod dock (Account Switcher, Mod Menu, Replay Mod, Flashback, IAS, etc.)
+ * - Narrower & taller center buttons (126x22)
+ * - Larger, clearer top-right icon buttons (22x22 at y=14) including Background Customizer
  */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
@@ -61,7 +67,7 @@ public abstract class TitleScreenMixin extends Screen {
     private final Set<ClickableWidget> bridgedExternalWidgets = new HashSet<>();
 
     @Unique
-    private int nextLeftSlotY = 36;
+    private int nextLeftSlotY = 14;
 
     @Unique
     private PlayerSkinWidget mainSkinWidget;
@@ -91,33 +97,36 @@ public abstract class TitleScreenMixin extends Screen {
         int h = this.height;
         int centerX = w / 2;
 
-        // 1. Left-Side Serial Mod Dock (Account Switcher + Mod Menu + Any Auto-Detected Mod Buttons)
-        int leftX = 8, leftW = 84, leftH = 18;
-        this.nextLeftSlotY = 36;
+        // 1. Left-Side ICON-ONLY Mod Dock (22x22 square buttons, NO text labels!)
+        int leftX = 12, leftSq = 22;
+        this.nextLeftSlotY = 14;
 
-        registerBanglaButton(ButtonWidget.builder(Text.literal("__MODBTN__:ACCOUNT:Accounts"), b -> openAccountSwitcher())
-                .dimensions(leftX, nextLeftSlotY, leftW, leftH)
+        // Icon 1: Account Switcher
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__MODICON__:ACCOUNT"), b -> openAccountSwitcher())
+                .dimensions(leftX, nextLeftSlotY, leftSq, leftSq)
                 .tooltip(Tooltip.of(Text.literal("In-Game Account Switcher"))).build());
-        nextLeftSlotY += 21;
+        nextLeftSlotY += 26;
 
+        // Icon 2: Mod Menu
         if (FabricLoader.getInstance().isModLoaded("modmenu")) {
-            registerBanglaButton(ButtonWidget.builder(Text.literal("__MODBTN__:DASHBOARD:Mods"), b -> openModMenuScreen())
-                    .dimensions(leftX, nextLeftSlotY, leftW, leftH)
-                    .tooltip(Tooltip.of(Text.literal("Open Mod Menu"))).build());
-            nextLeftSlotY += 21;
+            registerBanglaButton(ButtonWidget.builder(Text.literal("__MODICON__:DASHBOARD"), b -> openModMenuScreen())
+                    .dimensions(leftX, nextLeftSlotY, leftSq, leftSq)
+                    .tooltip(Tooltip.of(Text.literal("Mod Menu"))).build());
+            nextLeftSlotY += 26;
         }
 
+        // Auto-detect and add icons for Replay Mod, Flashback, IAS, or any other installed mod buttons
         bridgeCapturedModButtons();
 
-        // 2. Top-Right Utility Dock (No Switch-to-Default-Theme, No Theme Color Switcher)
-        int topY = 10;
-        int trSq = 18, trGap = 4;
-        int curRight = w - 8;
+        // 2. Top-Right Utility Dock (Larger 22x22 buttons at y = 14, with Background Customizer button)
+        int topY = 14;
+        int trSq = 22, trGap = 5;
+        int curRight = w - 12;
 
         curRight -= trSq;
         registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_INFO__"), b -> {
             if (this.client != null) this.client.setScreen(new AboutScreen(this));
-        }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("About BANGLA CLIENT"))).build());
+        }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("Client & Developer Info"))).build());
 
         curRight -= (trSq + trGap);
         registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_PACKS__"), b -> {
@@ -135,22 +144,27 @@ public abstract class TitleScreenMixin extends Screen {
         }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("Resource Packs"))).build());
 
         curRight -= (trSq + trGap);
+        registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_BG__"), b -> {
+            if (this.client != null) this.client.setScreen(new BackgroundSelectorScreen(this));
+        }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("Custom Menu Backgrounds (GIF / PNG / JPG)"))).build());
+
+        curRight -= (trSq + trGap);
         registerBanglaButton(ButtonWidget.builder(Text.literal("__ICON_HUD__"), b -> {
             if (this.client != null) this.client.setScreen(new HudEditorScreen(this));
         }).dimensions(curRight, topY, trSq, trSq).tooltip(Tooltip.of(Text.literal("HUD Editor"))).build());
 
         String username = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int userW = Math.max(58, 24 + this.textRenderer.getWidth(username));
+        int userW = Math.max(64, 26 + this.textRenderer.getWidth(username));
         curRight -= (userW + trGap);
         registerBanglaButton(ButtonWidget.builder(Text.literal("__USER__:" + username), b -> openAccountSwitcher())
-                .dimensions(curRight, topY, userW, trSq).tooltip(Tooltip.of(Text.literal("Account: " + username))).build());
+                .dimensions(curRight, topY, userW, trSq).tooltip(Tooltip.of(Text.literal("Switch Account"))).build());
 
-        // 3. Center 2D Aura Button Stack (Singleplayer, Multiplayer, Realms, Cosmetics, and [Options... | Quit Game])
-        int btnW = Math.min(148, w - 120);
-        int btnH = 19;
-        int btnStep = 22;
+        // 3. Center Premium 2D Aura Button Stack (Narrower width: 126px, Taller height: 22px)
+        int btnW = Math.min(126, w - 130);
+        int btnH = 22;
+        int btnStep = 25;
         int btnX = centerX - btnW / 2;
-        int btnY = Math.max(54, h / 2 - 42);
+        int btnY = Math.max(52, h / 2 - 48);
 
         registerBanglaButton(ButtonWidget.builder(Text.literal("Singleplayer"), b -> {
             if (this.client != null) this.client.setScreen(new SelectWorldScreen(this));
@@ -181,11 +195,11 @@ public abstract class TitleScreenMixin extends Screen {
             if (this.client != null) this.client.scheduleStop();
         }).dimensions(btnX + halfW + 4, btnY, btnW - halfW - 4, btnH).build());
 
-        // 4. Right Side: 3D PlayerSkinWidget & Wardrobe Button
+        // 4. Right Side: 3D PlayerSkinWidget & Bedrock-Style Wardrobe Button
         int charCenterX = w - 64;
         int charW = 72;
-        int charH = Math.min(110, h - 90);
-        int charTopY = Math.max(38, (h - charH) / 2 - 8);
+        int charH = Math.min(108, h - 94);
+        int charTopY = Math.max(44, (h - charH) / 2 - 6);
 
         try {
             this.mainSkinWidget = PlayerPreviewRenderer.createSkinWidget(
@@ -203,9 +217,9 @@ public abstract class TitleScreenMixin extends Screen {
             if (this.client != null) {
                 this.client.setScreen(new SkinCustomizationScreen(this, SkinCapeManager.getInstance()));
             }
-        }).dimensions(charCenterX - 38, charTopY + charH + 4, 76, 17).tooltip(Tooltip.of(Text.literal("Customize Skin & Cape"))).build());
+        }).dimensions(charCenterX - 38, charTopY + charH + 4, 76, 18).tooltip(Tooltip.of(Text.literal("Bedrock-Style Skin & Cape Wardrobe"))).build());
 
-        // 5. Bottom-Right BANGLA SMP Card
+        // 5. Bottom-Right BANGLA SMP Card (Well-spaced and neatly aligned)
         registerBanglaButton(ButtonWidget.builder(Text.literal("__BANGLA_SMP__"), b -> {
             if (this.client != null && this.client.keyboard != null) {
                 this.client.keyboard.setClipboard("play.banglasmp.net");
@@ -213,12 +227,12 @@ public abstract class TitleScreenMixin extends Screen {
                     BanglaClient.getInstance().getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
                 }
             }
-        }).dimensions(w - 114, h - 30, 106, 24).tooltip(Tooltip.of(Text.literal("Click to copy play.banglasmp.net"))).build());
+        }).dimensions(w - 130, h - 34, 118, 25).tooltip(Tooltip.of(Text.literal("Click to copy play.banglasmp.net"))).build());
     }
 
     @Unique
     private void bridgeCapturedModButtons() {
-        int leftX = 8, leftW = 84, leftH = 18;
+        int leftX = 12, leftSq = 22;
         for (ClickableWidget cw : capturedModWidgets) {
             if (bridgedExternalWidgets.contains(cw)) continue;
             bridgedExternalWidgets.add(cw);
@@ -227,8 +241,7 @@ public abstract class TitleScreenMixin extends Screen {
             String clsName = cw.getClass().getSimpleName();
             String lower = (rawLabel + " " + clsName).toLowerCase(Locale.ROOT);
 
-            // Skip ModMenu or IAS if already added as primary buttons
-            if (lower.contains("modmenu") || lower.equals("mods") || lower.contains("account")) {
+            if (lower.contains("modmenu") || lower.equals("mods")) {
                 cw.visible = false;
                 cw.active = false;
                 continue;
@@ -241,21 +254,22 @@ public abstract class TitleScreenMixin extends Screen {
             targetWidget.visible = false;
             targetWidget.active = false;
 
-            if (nextLeftSlotY + leftH < this.height - 28) {
-                registerBanglaButton(ButtonWidget.builder(Text.literal("__MODBTN__:" + iconKey + ":" + displayTitle), b -> {
+            if (nextLeftSlotY + leftSq < this.height - 28) {
+                registerBanglaButton(ButtonWidget.builder(Text.literal("__MODICON__:" + iconKey), b -> {
                     targetWidget.active = true;
                     targetWidget.visible = true;
                     targetWidget.onClick(new Click(targetWidget.getX() + 2, targetWidget.getY() + 2, new MouseInput(0, 0)), false);
                     targetWidget.visible = false;
                     targetWidget.active = false;
-                }).dimensions(leftX, nextLeftSlotY, leftW, leftH).tooltip(Tooltip.of(Text.literal(displayTitle))).build());
-                nextLeftSlotY += 21;
+                }).dimensions(leftX, nextLeftSlotY, leftSq, leftSq).tooltip(Tooltip.of(Text.literal(displayTitle))).build());
+                nextLeftSlotY += 26;
             }
         }
     }
 
     @Unique
     private static String resolveAutoIconForMod(String lowerText) {
+        if (lowerText.contains("account") || lowerText.contains("ias")) return "ACCOUNT";
         if (lowerText.contains("replay") || lowerText.contains("flashback") || lowerText.contains("camera")) return "REPLAY";
         if (lowerText.contains("shader") || lowerText.contains("iris") || lowerText.contains("sodium") || lowerText.contains("visual")) return "VISUAL";
         if (lowerText.contains("voice") || lowerText.contains("sound") || lowerText.contains("audio")) return "AUDIO";
@@ -266,7 +280,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private static String deriveModTitleFromClass(String fullClassName) {
-        if (fullClassName == null || fullClassName.isEmpty()) return "Mod";
+        if (fullClassName == null || fullClassName.isEmpty()) return "Mod Tool";
         String[] parts = fullClassName.split("\\.");
         for (String p : parts) {
             if (!p.equals("com") && !p.equals("net") && !p.equals("org") && !p.equals("me") && !p.equals("gui") && !p.equals("client") && p.length() > 2) {
@@ -305,13 +319,26 @@ public abstract class TitleScreenMixin extends Screen {
         int h = this.height;
         int centerX = w / 2;
 
-        // 1. Pure 2D Aura Dark Canvas (NO background image!)
-        context.fill(0, 0, w, h, 0xFF07080B);
-        context.fill(0, h - 38, w, h, 0xFF0A0C10);
-        context.fill(0, h - 39, w, h - 38, 0x16FFFFFF);
+        // 1. Render Selected Custom Background (GIF/PNG/JPG) OR Default Minecraft Panorama
+        BackgroundEntry customBg = BackgroundManager.getInstance().getActiveBackground();
+        boolean renderedCustom = false;
+        if (customBg != null) {
+            Identifier frameTex = customBg.getCurrentFrameTexture();
+            if (frameTex != null) {
+                try {
+                    context.drawTexture(RenderPipelines.GUI_TEXTURED, frameTex, 0, 0, 0.0f, 0.0f, w, h, w, h);
+                    context.fill(0, 0, w, h, 0x38060709);
+                    renderedCustom = true;
+                } catch (Throwable ignored) {}
+            }
+        }
+        if (!renderedCustom) {
+            this.renderPanoramaBackground(context, delta);
+            context.fill(0, 0, w, h, 0x44060709);
+        }
 
-        // 2. Clean 2D "Bangla Client" Title at Top-Center (Zero 3D extrusion, Zero crown)
-        int titleY = Math.max(22, h / 2 - 72);
+        // 2. Clean 2D "Bangla Client" Title at Top-Center
+        int titleY = Math.max(20, h / 2 - 76);
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
         matrices.translate(centerX, titleY);
@@ -325,8 +352,8 @@ public abstract class TitleScreenMixin extends Screen {
         String liveUser = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
         int charCenterX = w - 64;
         int nameW = this.textRenderer.getWidth(liveUser);
-        int charH = Math.min(110, h - 90);
-        int badgeY = Math.max(22, (h - charH) / 2 - 24);
+        int charH = Math.min(108, h - 94);
+        int badgeY = Math.max(26, (h - charH) / 2 - 22);
         GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, badgeY, nameW + 12, 14, 0xFFFFFFFF, false);
         context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, badgeY + 3, 0xFFFFFFFF);
 
@@ -343,8 +370,7 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
 
-        // Bottom-left subtle version text (like Aura Beta 3.2.3 Minecraft 1.21.11)
-        context.drawTextWithShadow(this.textRenderer, "Bangla Client v1.0.0  Minecraft 1.21.11", 8, h - 12, 0xFF64748B);
+        context.drawTextWithShadow(this.textRenderer, "Bangla Client v1.0.0", 12, h - 14, 0xFF94A3B8);
 
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
             BanglaClient.getInstance().getNotificationManager().render(context, w, h);

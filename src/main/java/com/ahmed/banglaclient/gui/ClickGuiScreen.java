@@ -9,6 +9,7 @@ import com.ahmed.banglaclient.gui.components.GlassSidebar;
 import com.ahmed.banglaclient.gui.components.GlassTopBar;
 import com.ahmed.banglaclient.gui.components.ModuleCardWidget;
 import com.ahmed.banglaclient.gui.components.SmoothScrollContainer;
+import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.module.Module;
 import com.ahmed.banglaclient.module.ModuleCategory;
 import com.ahmed.banglaclient.module.ModuleManager;
@@ -33,13 +34,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Compact 2D Aura Dark ClickGUI with smooth open/close animations and scrollbar/wheel-only scrolling.
+ * 2D Aura Dark ClickGUI with smooth page transitions, dedicated ENABLED & FAVORITES views,
+ * Tutorial access in Settings, and enhanced About page.
  */
 public final class ClickGuiScreen extends Screen {
     private final GlassSidebar sidebar = new GlassSidebar();
     private final GlassTopBar topBar = new GlassTopBar();
     private final SmoothScrollContainer mainScroll = new SmoothScrollContainer();
     private final Animation openAnimation = new Animation(0.0f, 160L, Easing.EASE_OUT_CUBIC);
+    private final Animation pageTransitionAnim = new Animation(1.0f, 150L, Easing.EASE_OUT_CUBIC);
 
     private final Map<Module, ModuleCardWidget> cardWidgets = new LinkedHashMap<>();
     private List<Module> filteredModules = new ArrayList<>();
@@ -59,7 +62,6 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     protected void init() {
-        // Compact Aura window dimensions (never eats the full screen)
         this.windowWidth = Math.min(410, Math.max(250, (int) (this.width * 0.70f)));
         this.windowHeight = Math.min(230, Math.max(155, (int) (this.height * 0.70f)));
         this.windowX = (this.width - this.windowWidth) / 2;
@@ -68,11 +70,18 @@ public final class ClickGuiScreen extends Screen {
         this.closing = false;
         this.openAnimation.snapTo(0.0f);
         this.openAnimation.animateTo(1.0f);
+        this.pageTransitionAnim.snapTo(0.0f);
+        this.pageTransitionAnim.animateTo(1.0f);
 
         if (autoFocusSearch) {
             this.topBar.setSearchFocused(true);
         }
         rebuildFilteredModules();
+    }
+
+    private void triggerPageTransition() {
+        this.pageTransitionAnim.snapTo(0.0f);
+        this.pageTransitionAnim.animateTo(1.0f);
     }
 
     private void rebuildFilteredModules() {
@@ -84,7 +93,7 @@ public final class ClickGuiScreen extends Screen {
         }
         GlassSidebar.SidebarTab tab = sidebar.getSelectedTab();
         ModuleCategory categoryFilter = tab.getModuleCategory();
-        if (!topBar.getSearchQuery().isBlank()) {
+        if (!topBar.getSearchQuery().isBlank() || topBar.isFilterOnlyEnabled() || topBar.isFilterOnlyFavorites()) {
             categoryFilter = null;
         }
         this.filteredModules = mm.searchModules(
@@ -130,13 +139,16 @@ public final class ClickGuiScreen extends Screen {
             sidebar.render(context, textRenderer, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, mouseX, mouseY);
             topBar.render(context, textRenderer, mainX, windowY + 3, mainW, topBarH, mouseX, mouseY);
 
+            float pageTrans = pageTransitionAnim.getValue();
+            int slideOffsetY = Math.round((1.0f - pageTrans) * 6.0f);
+
             GlassSidebar.SidebarTab activeTab = sidebar.getSelectedTab();
-            if (!topBar.getSearchQuery().isBlank() || activeTab.getModuleCategory() != null || activeTab == GlassSidebar.SidebarTab.HOME) {
-                renderModulesGridView(context, mainX, mainY, mainW, mainH, mouseX, mouseY);
+            if (topBar.isFilterOnlyEnabled() || topBar.isFilterOnlyFavorites() || !topBar.getSearchQuery().isBlank() || activeTab.getModuleCategory() != null || activeTab == GlassSidebar.SidebarTab.HOME) {
+                renderModulesGridView(context, mainX, mainY + slideOffsetY, mainW, mainH, mouseX, mouseY);
             } else if (activeTab == GlassSidebar.SidebarTab.SETTINGS) {
-                renderClientSettingsView(context, mainX, mainY, mainW, mainH, mouseX, mouseY);
+                renderClientSettingsView(context, mainX, mainY + slideOffsetY, mainW, mainH, mouseX, mouseY);
             } else if (activeTab == GlassSidebar.SidebarTab.ABOUT) {
-                renderAboutView(context, mainX, mainY, mainW, mainH, mouseX, mouseY);
+                renderAboutView(context, mainX, mainY + slideOffsetY, mainW, mainH, mouseX, mouseY);
             }
         } finally {
             if (scaling) {
@@ -157,6 +169,13 @@ public final class ClickGuiScreen extends Screen {
         mainScroll.updateDimensions(height, totalContentHeight);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
+            if (filteredModules.isEmpty()) {
+                String emptyMsg = topBar.isFilterOnlyFavorites()
+                        ? "No favorite modules yet. Click ☆ on any module!"
+                        : (topBar.isFilterOnlyEnabled() ? "No enabled modules." : "No matching modules found.");
+                context.drawTextWithShadow(textRenderer, emptyMsg, x + 8, y + 12, 0xFF94A3B8);
+                return;
+            }
             int startY = Math.round(y - mainScroll.getScrollOffset());
             for (int i = 0; i < filteredModules.size(); i++) {
                 Module module = filteredModules.get(i);
@@ -170,7 +189,6 @@ public final class ClickGuiScreen extends Screen {
             }
         });
 
-        // Right-side scrollbar line (supports left-click drag)
         mainScroll.renderScrollbar(context, x + width - 3, y, 2, height, mouseX, mouseY);
     }
 
@@ -179,25 +197,26 @@ public final class ClickGuiScreen extends Screen {
         var cfg = BanglaClient.getInstance().getConfigManager();
 
         mainScroll.tickAndInterpolate();
-        mainScroll.updateDimensions(height, 210);
+        mainScroll.updateDimensions(height, 235);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
             int rowY = Math.round(y - mainScroll.getScrollOffset()) + 2;
             String[] rows = {
-                    "Open Interactive HUD Editor →",
-                    "Open 3D Skin & Cape Wardrobe →",
-                    "Open Account Switcher →",
-                    "Open Keybind Manager →",
-                    "Open Tutorial Guide →",
+                    "Open Interactive Tutorial Guide (14 Steps) →",
+                    "Open Interactive HUD Editor (Corner Resize & Move) →",
+                    "Open Bedrock-Style Skin & Cape Wardrobe →",
+                    "Open In-Game Account Switcher →",
+                    "Open Menu Background Customizer (GIF / PNG / JPG) →",
+                    "Open Keybind Manager & Conflict Inspector →",
                     "Performance Mode: " + BanglaClient.getInstance().getPerformancePreset().getDisplayName(),
                     "Reduced Motion: " + (cfg.isReducedMotion() ? "ON" : "OFF"),
-                    "Reset All Settings to Default"
+                    "Reset All Client Settings to Default"
             };
 
             for (int i = 0; i < rows.length; i++) {
                 boolean hov = MathUtils.isHovered(mouseX, mouseY, x + 2, rowY, width - 10, 22);
-                GlassRenderer.drawGlassPanel(context, x + 2, rowY, width - 10, 22, true, hov, hov);
-                int col = (i == 7) ? ThemeTokens.STATUS_ERROR : (hov ? 0xFFFFFFFF : theme.getTextSecondary());
+                GlassRenderer.drawGlassPanel(context, x + 2, rowY, width - 10, 22, true, hov, i == 0 || hov);
+                int col = (i == 8) ? ThemeTokens.STATUS_ERROR : (hov || i == 0 ? 0xFFFFFFFF : theme.getTextSecondary());
                 context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(rows[i], width - 20), x + 8, rowY + 7, col);
                 rowY += 25;
             }
@@ -208,23 +227,27 @@ public final class ClickGuiScreen extends Screen {
     private void renderAboutView(DrawContext context, int x, int y, int width, int height, double mouseX, double mouseY) {
         Theme theme = GlassRenderer.getTheme();
         mainScroll.tickAndInterpolate();
-        mainScroll.updateDimensions(height, 130);
+        mainScroll.updateDimensions(height, 145);
 
         ClipRenderer.renderClipped(context, x, y, width - 6, height, () -> {
             int cy = Math.round(y - mainScroll.getScrollOffset()) + 4;
-            GlassRenderer.drawGlassPanel(context, x + 2, cy, width - 10, 120, true, false, true);
+            GlassRenderer.drawGlassPanel(context, x + 2, cy, width - 10, 134, true, false, true);
             int cx = x + 12;
             cy += 10;
-            context.drawTextWithShadow(textRenderer, BanglaClient.CLIENT_NAME + " v" + BanglaClient.CLIENT_VERSION, cx, cy, 0xFFFFFFFF);
-            context.drawTextWithShadow(textRenderer, "Developed by " + BanglaClient.DEVELOPER, cx, cy + 13, theme.getTextSecondary());
-            GlassRenderer.drawHorizontalDivider(context, cx, cy + 26, width - 30);
-            context.drawTextWithShadow(textRenderer, "Minecraft 1.21.11 • 2D Aura Dark Edition", cx, cy + 34, theme.getTextSecondary());
-            context.drawTextWithShadow(textRenderer, "Bangla SMP: play.banglasmp.net", cx, cy + 48, 0xFFFFFFFF);
 
-            int btnY = cy + 64;
-            boolean copyHov = MathUtils.isHovered(mouseX, mouseY, cx, btnY, 110, 18);
-            GlassRenderer.drawGlassPanel(context, cx, btnY, 110, 18, true, copyHov, true);
-            context.drawTextWithShadow(textRenderer, "Copy Server IP", cx + 16, btnY + 5, 0xFFFFFFFF);
+            BcIdentityManager.drawIdentityIcon(context, cx, cy, 14, 14);
+            context.drawTextWithShadow(textRenderer, BanglaClient.CLIENT_NAME + " v" + BanglaClient.CLIENT_VERSION, cx + 20, cy + 3, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, "Developer: Ahmed (Minecraft Player & Client Creator)", cx, cy + 19, 0xFFFFFFFF);
+            GlassRenderer.drawHorizontalDivider(context, cx, cy + 31, width - 30);
+
+            context.drawTextWithShadow(textRenderer, "• Support: Compatible with All Minecraft Versions", cx, cy + 38, theme.getTextSecondary());
+            context.drawTextWithShadow(textRenderer, "• Modules: 136 HD Utility, HUD & PvP Modules", cx, cy + 50, theme.getTextSecondary());
+            context.drawTextWithShadow(textRenderer, "• Official Server: play.banglasmp.net", cx, cy + 64, 0xFFFFFFFF);
+
+            int btnY = cy + 80;
+            boolean copyHov = MathUtils.isHovered(mouseX, mouseY, cx, btnY, 106, 18);
+            GlassRenderer.drawPillBadge(context, cx, btnY, 106, 18, 0xFFFFFFFF, copyHov || true);
+            context.drawTextWithShadow(textRenderer, "Copy Server IP", cx + 14, btnY + 5, 0xFFFFFFFF);
         });
         mainScroll.renderScrollbar(context, x + width - 3, y, 2, height, mouseX, mouseY);
     }
@@ -239,7 +262,9 @@ public final class ClickGuiScreen extends Screen {
         int mainH = windowHeight - topBarH - 10;
 
         if (sidebar.mouseClicked(mouseX, mouseY, button, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, () -> {
+            topBar.clearQuickFilters();
             mainScroll.resetScroll();
+            triggerPageTransition();
             rebuildFilteredModules();
         })) {
             return true;
@@ -247,21 +272,28 @@ public final class ClickGuiScreen extends Screen {
 
         if (topBar.mouseClicked(mouseX, mouseY, button, mainX, windowY + 3, mainW, topBarH, () -> {
             mainScroll.resetScroll();
+            triggerPageTransition();
             rebuildFilteredModules();
         })) {
             return true;
         }
 
-        // Right-side scrollbar line click/drag
         if (mainScroll.onMouseClicked(mouseX, mouseY, button, mainX + mainW - 4, mainY, 4, mainH)) {
             return true;
         }
 
         GlassSidebar.SidebarTab activeTab = sidebar.getSelectedTab();
+        boolean showingModules = topBar.isFilterOnlyEnabled() || topBar.isFilterOnlyFavorites()
+                || !topBar.getSearchQuery().isBlank() || activeTab.getModuleCategory() != null || activeTab == GlassSidebar.SidebarTab.HOME;
 
-        if (topBar.getSearchQuery().isBlank() && activeTab == GlassSidebar.SidebarTab.SETTINGS) {
+        if (!showingModules && activeTab == GlassSidebar.SidebarTab.SETTINGS) {
             var cfg = BanglaClient.getInstance().getConfigManager();
             int rowY = Math.round(mainY - mainScroll.getScrollOffset()) + 2;
+            if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 2, rowY, mainW - 10, 22)) {
+                if (this.client != null) this.client.setScreen(new TutorialCenterScreen(this));
+                return true;
+            }
+            rowY += 25;
             if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 2, rowY, mainW - 10, 22)) {
                 if (this.client != null) this.client.setScreen(new HudEditorScreen(this));
                 return true;
@@ -278,12 +310,12 @@ public final class ClickGuiScreen extends Screen {
             }
             rowY += 25;
             if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 2, rowY, mainW - 10, 22)) {
-                if (this.client != null) this.client.setScreen(new KeybindManagerScreen(this));
+                if (this.client != null) this.client.setScreen(new BackgroundSelectorScreen(this));
                 return true;
             }
             rowY += 25;
             if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 2, rowY, mainW - 10, 22)) {
-                if (this.client != null) this.client.setScreen(new TutorialCenterScreen(this));
+                if (this.client != null) this.client.setScreen(new KeybindManagerScreen(this));
                 return true;
             }
             rowY += 25;
@@ -306,10 +338,10 @@ public final class ClickGuiScreen extends Screen {
             return true;
         }
 
-        if (topBar.getSearchQuery().isBlank() && activeTab == GlassSidebar.SidebarTab.ABOUT) {
+        if (!showingModules && activeTab == GlassSidebar.SidebarTab.ABOUT) {
             int cy = Math.round(mainY - mainScroll.getScrollOffset()) + 14;
-            int btnY = cy + 64;
-            if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 12, btnY, 110, 18)) {
+            int btnY = cy + 80;
+            if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 12, btnY, 106, 18)) {
                 if (this.client != null && this.client.keyboard != null) {
                     this.client.keyboard.setClipboard("play.banglasmp.net");
                     BanglaClient.getInstance().getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
@@ -338,6 +370,9 @@ public final class ClickGuiScreen extends Screen {
                         this.client.setScreen(new ModuleSettingsScreen(this, m));
                     }
                 })) {
+                    if (topBar.isFilterOnlyEnabled() || topBar.isFilterOnlyFavorites()) {
+                        rebuildFilteredModules();
+                    }
                     return true;
                 }
             }
@@ -346,7 +381,6 @@ public final class ClickGuiScreen extends Screen {
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        // ONLY drag when holding the scrollbar thumb (NO drag-scrolling on content area)
         if (sidebar.mouseDragged(mouseX, mouseY, button, windowHeight - 6)) {
             return true;
         }
@@ -424,7 +458,5 @@ public final class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
-        return false;
-    }
+    public boolean shouldPause() { return false; }
 }

@@ -9,7 +9,7 @@ import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Compact 2D Aura Top Bar: [BANGLA CLIENT] | [ACTIVE] [★] | [Search...]
+ * 2D Aura Top Bar: [BANGLA CLIENT] | [ENABLED] [★ FAV] | [Search...]
  */
 public final class GlassTopBar {
     private String searchQuery = "";
@@ -17,7 +17,6 @@ public final class GlassTopBar {
     private boolean filterOnlyEnabled = false;
     private boolean filterOnlyFavorites = false;
     private boolean compactDensity = false;
-    private boolean settingsShortcutClicked = false;
 
     public void render(
             DrawContext context,
@@ -35,14 +34,13 @@ public final class GlassTopBar {
         int innerY = y + 4;
         int innerH = height - 8;
 
-        // Brand title on left
-        context.drawTextWithShadow(textRenderer, "BANGLA CLIENT", x + 8, y + (height - 8) / 2, theme.getTextPrimary());
+        context.drawTextWithShadow(textRenderer, "BANGLA CLIENT", x + 8, y + (height - 8) / 2, 0xFFFFFFFF);
 
         int pillX = x + 88;
-        pillX += renderFilterPill(context, textRenderer, "ACTIVE", pillX, innerY, innerH, filterOnlyEnabled, mouseX, mouseY) + 4;
-        pillX += renderFilterPill(context, textRenderer, "★", pillX, innerY, innerH, filterOnlyFavorites, mouseX, mouseY) + 4;
+        pillX += renderFilterPill(context, textRenderer, "ENABLED", pillX, innerY, innerH, filterOnlyEnabled, mouseX, mouseY) + 4;
+        pillX += renderFilterPill(context, textRenderer, "★ FAV", pillX, innerY, innerH, filterOnlyFavorites, mouseX, mouseY) + 4;
 
-        int searchW = Math.max(80, Math.min(145, (x + width - 6) - pillX));
+        int searchW = Math.max(76, Math.min(138, (x + width - 6) - pillX));
         int searchX = x + width - searchW - 6;
         boolean searchHov = MathUtils.isHovered(mouseX, mouseY, searchX, innerY, searchW, innerH);
         GlassRenderer.drawGlassPanel(context, searchX, innerY, searchW, innerH, true, searchHov, searchFocused);
@@ -55,7 +53,7 @@ public final class GlassTopBar {
         } else {
             String cursor = (searchFocused && (System.currentTimeMillis() / 500L) % 2L == 0L) ? "|" : "";
             displaySearch = textRenderer.trimToWidth(searchQuery, searchW - 20) + cursor;
-            searchTextColor = theme.getTextPrimary();
+            searchTextColor = 0xFFFFFFFF;
         }
         context.drawTextWithShadow(textRenderer, displaySearch, searchX + 6, innerY + (innerH - 8) / 2, searchTextColor);
 
@@ -67,11 +65,11 @@ public final class GlassTopBar {
 
     private int renderFilterPill(DrawContext context, TextRenderer tr, String text, int x, int y, int height, boolean active, double mouseX, double mouseY) {
         Theme theme = GlassRenderer.getTheme();
-        int width = tr.getWidth(text) + 10;
+        int width = tr.getWidth(text) + 12;
         boolean hovered = MathUtils.isHovered(mouseX, mouseY, x, y, width, height);
         GlassRenderer.drawPillBadge(context, x, y, width, height, 0xFFFFFFFF, active || hovered);
-        int textColor = active ? 0xFFFFFFFF : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
-        context.drawTextWithShadow(tr, text, x + 5, y + (height - 8) / 2, textColor);
+        int textColor = active ? 0xFFFFFFFF : (hovered ? 0xFFFFFFFF : theme.getTextSecondary());
+        context.drawTextWithShadow(tr, text, x + 6, y + (height - 8) / 2, textColor);
         return width;
     }
 
@@ -83,23 +81,25 @@ public final class GlassTopBar {
         MinecraftClient mc = MinecraftClient.getInstance();
         TextRenderer tr = mc != null ? mc.textRenderer : null;
         int pillX = x + 88;
-        int actW = (tr != null ? tr.getWidth("ACTIVE") : 36) + 10;
-        if (MathUtils.isHovered(mouseX, mouseY, pillX, innerY, actW, innerH)) {
+        int enW = (tr != null ? tr.getWidth("ENABLED") : 42) + 12;
+        if (MathUtils.isHovered(mouseX, mouseY, pillX, innerY, enW, innerH)) {
             filterOnlyEnabled = !filterOnlyEnabled;
+            if (filterOnlyEnabled) filterOnlyFavorites = false;
             if (onFilterChanged != null) onFilterChanged.run();
             return true;
         }
-        pillX += actW + 4;
+        pillX += enW + 4;
 
-        int favW = (tr != null ? tr.getWidth("★") : 8) + 10;
+        int favW = (tr != null ? tr.getWidth("★ FAV") : 30) + 12;
         if (MathUtils.isHovered(mouseX, mouseY, pillX, innerY, favW, innerH)) {
             filterOnlyFavorites = !filterOnlyFavorites;
+            if (filterOnlyFavorites) filterOnlyEnabled = false;
             if (onFilterChanged != null) onFilterChanged.run();
             return true;
         }
         pillX += favW + 4;
 
-        int searchW = Math.max(80, Math.min(145, (x + width - 6) - pillX));
+        int searchW = Math.max(76, Math.min(138, (x + width - 6) - pillX));
         int searchX = x + width - searchW - 6;
 
         if (!searchQuery.isEmpty() && MathUtils.isHovered(mouseX, mouseY, searchX + searchW - 14, innerY, 14, innerH)) {
@@ -117,12 +117,9 @@ public final class GlassTopBar {
         return false;
     }
 
-    public boolean consumeSettingsShortcutClick() {
-        if (settingsShortcutClicked) {
-            settingsShortcutClicked = false;
-            return true;
-        }
-        return false;
+    public void clearQuickFilters() {
+        this.filterOnlyEnabled = false;
+        this.filterOnlyFavorites = false;
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers, Runnable onQueryChanged) {
