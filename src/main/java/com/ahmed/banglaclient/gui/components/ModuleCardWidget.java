@@ -1,32 +1,42 @@
 package com.ahmed.banglaclient.gui.components;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.animation.Animation;
+import com.ahmed.banglaclient.animation.Easing;
+import com.ahmed.banglaclient.input.KeybindManager;
 import com.ahmed.banglaclient.module.Module;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
 import com.ahmed.banglaclient.theme.ThemeTokens;
+import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.InputUtil;
+import net.minecraft.text.OrderedText;
+import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Renders an individual Bento-style Liquid Glass module card inside the Click GUI.
- * Supports:
- * - Left-click on card or toggle switch -> Toggles module ON/OFF
- * - Right-click on card OR Left-click on dedicated [⚙] button -> Opens ModuleSettingsScreen
- * - Left-click on [★] button -> Toggles Favorite status
+ * PYES-structured, Aura-styled Module Card:
+ * - Subtle top-left corner bracket (`┌`)
+ * - Left monochrome vector icon in a frosted badge
+ * - Crisp white title + wrapped 2-line soft gray description
+ * - Top-right quick [★] Favorite and [⚙] Settings icons
+ * - Bottom full-width Aura-styled ENABLED / DISABLED action bar with smooth transition
  */
 public final class ModuleCardWidget {
     private final Module module;
-    private final GlassToggleSwitch toggleSwitch;
+    private final Animation hoverAnim = new Animation(0.0f, 140L, Easing.EASE_OUT_CUBIC);
+    private final Animation enabledAnim;
+    private boolean lastEnabledState;
 
     public ModuleCardWidget(Module module) {
         this.module = module;
-        this.toggleSwitch = new GlassToggleSwitch(module.isEnabled());
+        this.lastEnabledState = module.isEnabled();
+        this.enabledAnim = new Animation(lastEnabledState ? 1.0f : 0.0f, 180L, Easing.EASE_OUT_CUBIC);
     }
 
     public void render(
@@ -40,64 +50,108 @@ public final class ModuleCardWidget {
             double mouseY,
             boolean compact
     ) {
+        if (module.isEnabled() != lastEnabledState) {
+            lastEnabledState = module.isEnabled();
+            enabledAnim.animateTo(lastEnabledState ? 1.0f : 0.0f);
+        }
+
+        boolean cardHovered = MathUtils.isHovered(mouseX, mouseY, x, y, width, height);
+        hoverAnim.animateTo(cardHovered ? 1.0f : 0.0f);
+
+        float hov = hoverAnim.getValue();
+        float en = enabledAnim.getValue();
+
         Theme theme = GlassRenderer.getTheme();
         int accent = BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null
                 ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
                 : theme.getAccentPrimary();
 
-        boolean cardHovered = MathUtils.isHovered(mouseX, mouseY, x, y, width, height);
-        GlassRenderer.drawGlassPanel(context, x, y, width, height, true, cardHovered, module.isEnabled());
+        // Card Base Surface (Aura Dark Frosted Charcoal)
+        int surfaceColor = ColorUtils.lerpColor(theme.getGlassSurface(), theme.getGlassElevated(), hov * 0.65f + en * 0.35f);
+        GlassRenderer.drawCustomGlassPanel(context, x, y, width, height, surfaceColor, cardHovered, module.isEnabled(), true);
 
-        // 1. Module Name & Favorite Star [★]
-        int titleY = y + (compact ? 7 : 9);
-        context.drawTextWithShadow(textRenderer, module.getName(), x + 10, titleY, theme.getTextPrimary());
+        // Top-left PYES structural corner bracket in restrained Aura silver
+        int bracketCol = ColorUtils.lerpColor(theme.getBorderSubtle(), accent, Math.max(hov * 0.6f, en));
+        GlassRenderer.drawCornerBracket(context, x, y, 7, bracketCol);
 
-        int starX = x + width - GlassToggleSwitch.DEFAULT_WIDTH - 24;
-        boolean starHovered = MathUtils.isHovered(mouseX, mouseY, starX - 2, titleY - 2, 12, 12);
-        int starColor = module.isFavorite()
+        // Left Monochrome Vector Icon Box
+        int iconBoxSize = compact ? 18 : 22;
+        int iconBoxX = x + 8;
+        int iconBoxY = y + 8;
+        int iconBg = ColorUtils.withAlpha(accent, 0.06f + en * 0.08f);
+        GlassRenderer.drawCustomGlassPanel(context, iconBoxX, iconBoxY, iconBoxSize, iconBoxSize, iconBg, false, module.isEnabled(), true);
+        int iconColor = ColorUtils.lerpColor(theme.getTextSecondary(), theme.getTextPrimary(), en);
+        GlassRenderer.drawVectorIcon(
+                context,
+                iconBoxX + (iconBoxSize - 10) / 2,
+                iconBoxY + (iconBoxSize - 10) / 2,
+                10,
+                module.getCategory().name(),
+                iconColor
+        );
+
+        // Module Name & Top-Right Controls ([★] [⚙])
+        int textLeftX = iconBoxX + iconBoxSize + 7;
+        int maxTitleW = Math.max(24, width - (textLeftX - x) - 30);
+        String trimmedTitle = textRenderer.trimToWidth(module.getName(), maxTitleW);
+        context.drawTextWithShadow(textRenderer, trimmedTitle, textLeftX, y + 8, theme.getTextPrimary());
+
+        // Top-Right Settings [⚙] & Favorite [★]
+        int gearX = x + width - 15;
+        int gearY = y + 7;
+        boolean gearHov = MathUtils.isHovered(mouseX, mouseY, gearX - 2, gearY - 2, 12, 12);
+        context.drawTextWithShadow(textRenderer, "⚙", gearX, gearY,
+                gearHov ? theme.getTextPrimary() : theme.getTextMuted());
+
+        int starX = gearX - 11;
+        boolean starHov = MathUtils.isHovered(mouseX, mouseY, starX - 2, gearY - 2, 11, 12);
+        int starCol = module.isFavorite()
                 ? ThemeTokens.STATUS_WARNING
-                : (starHovered ? theme.getTextPrimary() : theme.getTextMuted());
-        context.drawTextWithShadow(textRenderer, module.isFavorite() ? "★" : "☆", starX, titleY, starColor);
+                : (starHov ? theme.getTextPrimary() : theme.getTextMuted());
+        context.drawTextWithShadow(textRenderer, module.isFavorite() ? "★" : "☆", starX, gearY, starCol);
 
-        // 2. ON/OFF Toggle Switch (Top-Right)
-        int switchX = x + width - GlassToggleSwitch.DEFAULT_WIDTH - 8;
-        int switchY = y + (compact ? 5 : 7);
-        boolean switchHovered = MathUtils.isHovered(mouseX, mouseY, switchX, switchY,
-                GlassToggleSwitch.DEFAULT_WIDTH, GlassToggleSwitch.DEFAULT_HEIGHT);
-        toggleSwitch.render(context, switchX, switchY, module.isEnabled(), switchHovered);
-
-        // 3. Description Text
+        // Description (Up to 2 lines in standard mode, 1 line in compact mode)
         if (!compact) {
-            String desc = textRenderer.trimToWidth(module.getDescription(), width - 20);
-            context.drawTextWithShadow(textRenderer, desc, x + 10, y + 23, theme.getTextSecondary());
+            int descMaxW = Math.max(30, width - (textLeftX - x) - 6);
+            List<OrderedText> lines = textRenderer.wrapLines(Text.literal(module.getDescription()), descMaxW);
+            int maxLines = Math.min(2, lines.size());
+            for (int i = 0; i < maxLines; i++) {
+                context.drawTextWithShadow(textRenderer, lines.get(i), textLeftX, y + 19 + (i * 9), theme.getTextSecondary());
+            }
         }
 
-        // 4. Bottom Row: Category Pill, Keybind Badge, and Accessible Settings [⚙ Config] Button
-        int footerY = y + height - 16;
+        // Bottom Full-Width PYES Action Button styled in Restrained Aura Frosted Glass
+        int btnH = compact ? 13 : 15;
+        int btnX = x + 7;
+        int btnY = y + height - btnH - 6;
+        int btnW = width - 14;
+        boolean btnHov = MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH);
 
-        // Category pill
-        String catText = module.getCategory().getSidebarLabel();
-        int catW = textRenderer.getWidth(catText) + 10;
-        GlassRenderer.drawPillBadge(context, x + 10, footerY, catW, 12, theme.getTextSecondary(), false);
-        context.drawTextWithShadow(textRenderer, catText, x + 15, footerY + 2, theme.getTextMuted());
-
-        // Keybind indicator badge (if bound)
-        int nextBadgeX = x + 10 + catW + 5;
-        if (module.getKeyCode() != GLFW.GLFW_KEY_UNKNOWN && module.getKeyCode() > 0) {
-            String keyName = com.ahmed.banglaclient.input.KeybindManager.formatKeyName(module.getKeyCode());
-            int keyW = textRenderer.getWidth(keyName) + 10;
-            GlassRenderer.drawPillBadge(context, nextBadgeX, footerY, keyW, 12, accent, true);
-            context.drawTextWithShadow(textRenderer, keyName, nextBadgeX + 5, footerY + 2, accent);
+        int disabledFill = ColorUtils.withAlpha(theme.getBackgroundSecondary(), 0.75f);
+        int enabledFill = ColorUtils.withAlpha(accent, 0.22f);
+        int buttonBg = ColorUtils.lerpColor(disabledFill, enabledFill, en);
+        if (btnHov) {
+            buttonBg = ColorUtils.scaleBrightness(buttonBg, 1.18f);
         }
 
-        // Dedicated Accessible Settings Button (Left-clickable in addition to Right-click anywhere)
-        String cfgLabel = "⚙ Options";
-        int cfgW = textRenderer.getWidth(cfgLabel) + 10;
-        int cfgX = x + width - cfgW - 8;
-        boolean cfgHovered = MathUtils.isHovered(mouseX, mouseY, cfgX, footerY, cfgW, 12);
-        GlassRenderer.drawPillBadge(context, cfgX, footerY, cfgW, 12, cfgHovered ? accent : theme.getTextSecondary(), cfgHovered);
-        context.drawTextWithShadow(textRenderer, cfgLabel, cfgX + 5, footerY + 2,
-                cfgHovered ? accent : theme.getTextSecondary());
+        int buttonBorder = ColorUtils.lerpColor(
+                theme.getBorderSubtle(),
+                ColorUtils.withAlpha(accent, 0.62f),
+                en
+        );
+
+        context.fill(btnX + 1, btnY, btnX + btnW - 1, btnY + btnH, buttonBg);
+        context.fill(btnX, btnY + 1, btnX + 1, btnY + btnH - 1, buttonBg);
+        context.fill(btnX + btnW - 1, btnY + 1, btnX + btnW, btnY + btnH - 1, buttonBg);
+        GlassRenderer.drawOutlineBorder(context, btnX, btnY, btnW, btnH, buttonBorder);
+
+        String stateLabel = module.isEnabled() ? "ENABLED" : "DISABLED";
+        if (module.getKeyCode() != GLFW.GLFW_KEY_UNKNOWN && module.getKeyCode() > 0 && width >= 135) {
+            stateLabel += " [" + KeybindManager.formatKeyName(module.getKeyCode()) + "]";
+        }
+        int lw = textRenderer.getWidth(stateLabel);
+        int labelCol = ColorUtils.lerpColor(theme.getTextMuted(), theme.getTextPrimary(), en);
+        context.drawTextWithShadow(textRenderer, stateLabel, btnX + (btnW - lw) / 2, btnY + (btnH - 8) / 2, labelCol);
     }
 
     public boolean mouseClicked(
@@ -108,14 +162,13 @@ public final class ModuleCardWidget {
             int y,
             int width,
             int height,
-             boolean compact,
+            boolean compact,
             Consumer<Module> openSettingsCallback
     ) {
         if (!MathUtils.isHovered(mouseX, mouseY, x, y, width, height)) {
             return false;
         }
 
-        // Right-click anywhere on the card opens the module's settings screen
         if (button == 1) {
             if (openSettingsCallback != null) {
                 openSettingsCallback.accept(module);
@@ -124,27 +177,21 @@ public final class ModuleCardWidget {
         }
 
         if (button == 0) {
-            int titleY = y + (compact ? 7 : 9);
-            int starX = x + width - GlassToggleSwitch.DEFAULT_WIDTH - 24;
-
-            // 1. Check Favorite Star click
-            if (MathUtils.isHovered(mouseX, mouseY, starX - 2, titleY - 2, 12, 12)) {
-                module.toggleFavorite();
-                return true;
-            }
-
-            // 2. Check Accessible [⚙ Options] button click
-            int footerY = y + height - 16;
-            int cfgW = 52;
-            int cfgX = x + width - cfgW - 8;
-            if (MathUtils.isHovered(mouseX, mouseY, cfgX, footerY, cfgW, 13)) {
+            int gearX = x + width - 15;
+            int gearY = y + 7;
+            if (MathUtils.isHovered(mouseX, mouseY, gearX - 2, gearY - 2, 13, 13)) {
                 if (openSettingsCallback != null) {
                     openSettingsCallback.accept(module);
                 }
                 return true;
             }
 
-            // 3. Left-click anywhere else on the card toggles the module ON/OFF
+            int starX = gearX - 11;
+            if (MathUtils.isHovered(mouseX, mouseY, starX - 2, gearY - 2, 11, 13)) {
+                module.toggleFavorite();
+                return true;
+            }
+
             module.toggle();
             return true;
         }

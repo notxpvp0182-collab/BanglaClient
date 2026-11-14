@@ -8,3 +8,9 @@ out/
 *.log
 *.tmp
 *.bak
+
+# Bangla Client Local Release Secrets
+.banglaclient_secrets.json
+local.properties
+*.bak
+*.tmp

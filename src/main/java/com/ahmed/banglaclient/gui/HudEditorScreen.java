@@ -39,7 +39,7 @@ public final class HudEditorScreen extends Screen {
         int accent = BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary();
 
         // Subtle dark translucent canvas overlay so player can still see their world behind widgets
-        context.fill(0, 0, this.width, this.height, 0x55080A0F);
+        context.fill(0, 0, this.width, this.height, 0x8807090D);
 
         // Center alignment cross-guides when dragging
         if (draggingWidget != null && snappingEnabled) {

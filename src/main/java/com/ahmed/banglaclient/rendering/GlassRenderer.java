@@ -7,9 +7,7 @@ import com.ahmed.banglaclient.util.ColorUtils;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Core rendering engine for the BANGLA CLIENT Liquid Glass aesthetic.
- * Renders beveled rounded glass panels, top-lit specular rim highlights, diagonal surface sheen,
- * and interactive accent badges matching the supplied visual reference dashboard.
+ * Core rendering engine for the BANGLA CLIENT Aura-styled Frosted Glass & PYES structural cards.
  */
 public final class GlassRenderer {
 
@@ -22,7 +20,7 @@ public final class GlassRenderer {
             return client.getThemeManager().getActiveTheme();
         }
         return new Theme(
-                "fallback", "Fallback",
+                "aura_dark", "Aura Dark",
                 ThemeTokens.DEFAULT_BG_PRIMARY,
                 ThemeTokens.DEFAULT_BG_SECONDARY,
                 ThemeTokens.DEFAULT_GLASS_SURFACE,
@@ -39,10 +37,6 @@ public final class GlassRenderer {
         );
     }
 
-    /**
-     * Draws a primary Liquid Glass panel with chamfered/rounded corners, diagonal specular sheen,
-     * and top-lit directional rim borders.
-     */
     public static void drawGlassPanel(
             DrawContext context,
             int x,
@@ -58,9 +52,6 @@ public final class GlassRenderer {
         drawCustomGlassPanel(context, x, y, width, height, baseColor, hovered, activeAccentBorder, true);
     }
 
-    /**
-     * Draws a customizable Liquid Glass panel (used by both Click GUI cards and customizable HUD widgets).
-     */
     public static void drawCustomGlassPanel(
             DrawContext context,
             int x,
@@ -77,75 +68,146 @@ public final class GlassRenderer {
         }
         Theme theme = getTheme();
 
-        // 1. Optional Ambient Shadow
-        ShadowRenderer.drawAmbientShadow(context, x, y, width, height, 3, 0.20f);
+        // 1. Soft Layered Ambient Shadow
+        ShadowRenderer.drawAmbientShadow(context, x, y, width, height, 3, 0.24f);
 
-        // 2. Main Beveled Rounded Fill (1px corner inset for crisp anti-aliased rounded appearance)
-        int topFill = hovered ? ColorUtils.scaleBrightness(surfaceArgb, 1.22f) : ColorUtils.scaleBrightness(surfaceArgb, 1.10f);
+        // 2. Anti-aliased 1px chamfered rounded glass fill
+        int topFill = hovered ? ColorUtils.scaleBrightness(surfaceArgb, 1.18f) : ColorUtils.scaleBrightness(surfaceArgb, 1.06f);
         int bottomFill = surfaceArgb;
 
-        // Center body
         context.fillGradient(x + 1, y + 1, x + width - 1, y + height - 1, topFill, bottomFill);
-        // Left & right vertical edges (inset by 2px vertically for rounded corners)
-        context.fillGradient(x, y + 2, x + 1, y + height - 2, topFill, bottomFill);
-        context.fillGradient(x + width - 1, y + 2, x + width, y + height - 2, topFill, bottomFill);
-        // Top & bottom horizontal caps (inset by 2px horizontally)
-        context.fill(x + 2, y, x + width - 2, y + 1, topFill);
-        context.fill(x + 2, y + height - 1, x + width - 2, y + height, bottomFill);
+        context.fillGradient(x, y + 1, x + 1, y + height - 1, topFill, bottomFill);
+        context.fillGradient(x + width - 1, y + 1, x + width, y + height - 1, topFill, bottomFill);
+        context.fill(x + 1, y, x + width - 1, y + 1, topFill);
+        context.fill(x + 1, y + height - 1, x + width - 1, y + height, bottomFill);
 
-        // 3. Top-Center Specular Liquid Reflection (replicates the KPI card sheen from the reference image)
-        int sheenHeight = Math.min(height / 2, 26);
-        if (sheenHeight > 3 && width > 12) {
-            int specularStart = hovered
-                    ? ColorUtils.multiplyAlpha(theme.getSpecularTop(), 1.35f)
+        // 3. Restrained Aura Top Inner Specular Sheen
+        int sheenHeight = Math.min(height / 3, 16);
+        if (sheenHeight > 2 && width > 10) {
+            int specTop = hovered
+                    ? ColorUtils.multiplyAlpha(theme.getSpecularTop(), 1.25f)
                     : theme.getSpecularTop();
-            int specularEnd = 0x00FFFFFF;
-            context.fillGradient(x + 2, y + 1, x + width - 2, y + 1 + sheenHeight, specularStart, specularEnd);
+            context.fillGradient(x + 1, y + 1, x + width - 1, y + 1 + sheenHeight, specTop, 0x00FFFFFF);
         }
 
-        // 4. Directional Rim Border (Brighter along the top edge, subtle along sides and bottom)
+        // 4. Crisp 1px Aura Border
         if (drawBorder) {
             int accent = BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null
                     ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
                     : theme.getAccentPrimary();
 
-            int topBorderColor;
-            int sideBorderColor;
-            int bottomBorderColor;
+            int topBorder;
+            int bottomBorder;
 
             if (activeAccentBorder) {
-                topBorderColor = ColorUtils.withAlpha(accent, 0.72f);
-                sideBorderColor = ColorUtils.withAlpha(accent, 0.38f);
-                bottomBorderColor = ColorUtils.withAlpha(accent, 0.22f);
+                topBorder = ColorUtils.withAlpha(accent, 0.58f);
+                bottomBorder = ColorUtils.withAlpha(accent, 0.24f);
             } else if (hovered) {
-                topBorderColor = theme.getBorderStrong();
-                sideBorderColor = theme.getBorderSubtle();
-                bottomBorderColor = ColorUtils.multiplyAlpha(theme.getBorderSubtle(), 0.65f);
+                topBorder = theme.getBorderStrong();
+                bottomBorder = theme.getBorderSubtle();
             } else {
-                topBorderColor = ColorUtils.multiplyAlpha(theme.getBorderStrong(), 0.75f);
-                sideBorderColor = theme.getBorderSubtle();
-                bottomBorderColor = ColorUtils.multiplyAlpha(theme.getBorderSubtle(), 0.45f);
+                topBorder = theme.getBorderSubtle();
+                bottomBorder = ColorUtils.multiplyAlpha(theme.getBorderSubtle(), 0.55f);
             }
 
-            // Top rim
-            context.fill(x + 2, y, x + width - 2, y + 1, topBorderColor);
-            // Bottom rim
-            context.fill(x + 2, y + height - 1, x + width - 2, y + height, bottomBorderColor);
-            // Left & right rims
-            context.fillGradient(x, y + 2, x + 1, y + height - 2, topBorderColor, bottomBorderColor);
-            context.fillGradient(x + width - 1, y + 2, x + width, y + height - 2, topBorderColor, bottomBorderColor);
-
-            // 4 corner bevel pixels
-            context.fill(x + 1, y + 1, x + 2, y + 2, topBorderColor);
-            context.fill(x + width - 2, y + 1, x + width - 1, y + 2, topBorderColor);
-            context.fill(x + 1, y + height - 2, x + 2, y + height - 1, sideBorderColor);
-            context.fill(x + width - 2, y + height - 2, x + width - 1, y + height - 1, sideBorderColor);
+            context.fill(x + 1, y, x + width - 1, y + 1, topBorder);
+            context.fill(x + 1, y + height - 1, x + width - 1, y + height, bottomBorder);
+            context.fillGradient(x, y + 1, x + 1, y + height - 1, topBorder, bottomBorder);
+            context.fillGradient(x + width - 1, y + 1, x + width, y + height - 1, topBorder, bottomBorder);
         }
     }
 
     /**
-     * Draws a rounded pill badge (e.g., keybind indicator, ON/OFF status, or category count).
+     * Draws a PYES-style subtle top-left corner bracket accent (`┌`) in restrained Aura silver/white.
      */
+    public static void drawCornerBracket(DrawContext context, int x, int y, int length, int color) {
+        if (context == null || length <= 1) return;
+        context.fill(x, y, x + length, y + 1, color);
+        context.fill(x, y + 1, x + 1, y + length, color);
+    }
+
+    /**
+     * Draws crisp monochrome geometric vector icons for categories and module cards (zero blurry bitmaps).
+     */
+    public static void drawVectorIcon(DrawContext context, int x, int y, int size, String iconType, int color) {
+        if (context == null || size < 6) return;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+
+        switch (iconType == null ? "" : iconType.toUpperCase()) {
+            case "DASHBOARD", "HOME" -> {
+                int half = (size - 3) / 2;
+                drawOutlineBorder(context, x, y, half, half, color);
+                drawOutlineBorder(context, x + half + 2, y, half, half, color);
+                drawOutlineBorder(context, x, y + half + 2, half, half, color);
+                drawOutlineBorder(context, x + half + 2, y + half + 2, half, half, color);
+            }
+            case "HUD" -> {
+                drawOutlineBorder(context, x, y + 1, size, size - 2, color);
+                context.fill(x + 2, y + 3, x + size - 2, y + 4, color);
+                context.fill(x + 2, y + 6, x + size / 2, y + 7, color);
+            }
+            case "COMBAT", "PVP" -> {
+                // Shield / Crosshair vector
+                drawOutlineBorder(context, x + 1, y + 1, size - 2, size - 3, color);
+                context.fill(cx - 1, y + 3, cx + 1, y + size - 4, color);
+                context.fill(x + 3, cy - 1, x + size - 3, cy, color);
+            }
+            case "VISUAL" -> {
+                // Sparkle / Wand vector
+                context.fill(cx, y + 1, cx + 1, y + size - 1, color);
+                context.fill(x + 1, cy, x + size - 1, cy + 1, color);
+                context.fill(cx - 2, cy - 2, cx + 3, cy + 3, color);
+            }
+            case "INVENTORY" -> {
+                drawOutlineBorder(context, x + 1, y + 2, size - 2, size - 3, color);
+                context.fill(x + 3, y, x + size - 3, y + 2, color);
+                context.fill(x + 3, cy, x + size - 3, cy + 1, color);
+            }
+            case "MOVEMENT" -> {
+                // Double chevrons (>>)
+                context.fill(x + 2, cy - 3, x + 4, cy - 1, color);
+                context.fill(x + 4, cy - 1, x + 6, cy + 1, color);
+                context.fill(x + 2, cy + 1, x + 4, cy + 3, color);
+                context.fill(x + 6, cy - 3, x + 8, cy - 1, color);
+                context.fill(x + 8, cy - 1, x + 10, cy + 1, color);
+                context.fill(x + 6, cy + 1, x + 8, cy + 3, color);
+            }
+            case "WORLD" -> {
+                drawOutlineBorder(context, x + 1, y + 1, size - 2, size - 2, color);
+                context.fill(x + 2, cy, x + size - 2, cy + 1, color);
+                context.fill(cx, y + 2, cx + 1, y + size - 2, color);
+            }
+            case "CHAT" -> {
+                drawOutlineBorder(context, x + 1, y + 1, size - 2, size - 4, color);
+                context.fill(x + 3, y + 3, x + size - 3, y + 4, color);
+                context.fill(x + 3, y + 5, x + size - 5, y + 6, color);
+                context.fill(x + 2, y + size - 3, x + 4, y + size - 1, color);
+            }
+            case "AUDIO" -> {
+                context.fill(x + 2, cy - 2, x + 5, cy + 2, color);
+                context.fill(x + 5, y + 2, x + 7, y + size - 2, color);
+                context.fill(x + 9, cy - 3, x + 10, cy + 3, color);
+            }
+            case "PERFORMANCE" -> {
+                context.fill(x + 1, y + size - 3, x + 3, y + size - 1, color);
+                context.fill(x + 4, y + size - 6, x + 6, y + size - 1, color);
+                context.fill(x + 7, y + size - 9, x + 9, y + size - 1, color);
+            }
+            case "SETTINGS", "UTILITY" -> {
+                drawOutlineBorder(context, x + 2, y + 2, size - 4, size - 4, color);
+                context.fill(cx - 1, y, cx + 1, y + 2, color);
+                context.fill(cx - 1, y + size - 2, cx + 1, y + size, color);
+                context.fill(x, cy - 1, x + 2, cy + 1, color);
+                context.fill(x + size - 2, cy - 1, x + size, cy + 1, color);
+            }
+            default -> {
+                drawOutlineBorder(context, x + 1, y + 1, size - 2, size - 2, color);
+                context.fill(cx - 1, cy - 1, cx + 1, cy + 1, color);
+            }
+        }
+    }
+
     public static void drawPillBadge(
             DrawContext context,
             int x,
@@ -159,25 +221,28 @@ public final class GlassRenderer {
             return;
         }
         int bgFill = filledAccent
-                ? ColorUtils.withAlpha(tintColor, 0.24f)
-                : ColorUtils.withAlpha(tintColor, 0.12f);
+                ? ColorUtils.withAlpha(tintColor, 0.20f)
+                : ColorUtils.withAlpha(tintColor, 0.08f);
         int borderFill = filledAccent
-                ? ColorUtils.withAlpha(tintColor, 0.55f)
-                : ColorUtils.withAlpha(tintColor, 0.25f);
+                ? ColorUtils.withAlpha(tintColor, 0.50f)
+                : ColorUtils.withAlpha(tintColor, 0.22f);
 
         context.fill(x + 1, y, x + width - 1, y + height, bgFill);
         context.fill(x, y + 1, x + 1, y + height - 1, bgFill);
         context.fill(x + width - 1, y + 1, x + width, y + height - 1, bgFill);
 
-        // Top & bottom subtle border
         context.fill(x + 1, y, x + width - 1, y + 1, borderFill);
-        context.fill(x + 1, y + height - 1, x + width - 1, y + height, ColorUtils.multiplyAlpha(borderFill, 0.5f));
+        context.fill(x + 1, y + height - 1, x + width - 1, y + height, ColorUtils.multiplyAlpha(borderFill, 0.65f));
     }
 
-    /**
-     * Draws a crisp 1px horizontal divider with faded ends.
-     */
-    public static void drawOutlineBorder(DrawContext c, int x, int y, int w, int h, int col) { c.fill(x, y, x + w, y + 1, col); c.fill(x, y + h - 1, x + w, y + h, col); c.fill(x, y + 1, x + 1, y + h - 1, col); c.fill(x + w - 1, y + 1, x + w, y + h - 1, col); }
+    public static void drawOutlineBorder(DrawContext c, int x, int y, int w, int h, int col) {
+        if (c == null || w <= 0 || h <= 0) return;
+        c.fill(x, y, x + w, y + 1, col);
+        c.fill(x, y + h - 1, x + w, y + h, col);
+        c.fill(x, y + 1, x + 1, y + h - 1, col);
+        c.fill(x + w - 1, y + 1, x + w, y + h - 1, col);
+    }
+
     public static void drawHorizontalDivider(DrawContext context, int x, int y, int width) {
         if (context == null || width <= 4) {
             return;

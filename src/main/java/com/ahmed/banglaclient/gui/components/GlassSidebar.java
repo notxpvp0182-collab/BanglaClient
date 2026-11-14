@@ -1,61 +1,64 @@
 package com.ahmed.banglaclient.gui.components;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.animation.Animation;
+import com.ahmed.banglaclient.animation.Easing;
+import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.module.ModuleCategory;
 import com.ahmed.banglaclient.rendering.ClipRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
+import com.ahmed.banglaclient.theme.ThemeTokens;
 import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Renders the Left Navigation Sidebar of the Click GUI, modeled directly after the
- * reference dark liquid-glass dashboard ("BANGLA CLIENT" header, sectioned items, and bottom preset card).
+ * PYES-structured, Aura-styled Left Navigation Sidebar:
+ * - Brand Header ("BANGLA CLIENT" + "MODS & HUD MANAGER")
+ * - Smooth sliding active tab indicator + monochrome vector icons
+ * - Bottom Connection / Version & Performance Preset status area
  */
 public final class GlassSidebar {
     public enum SidebarTab {
-        HOME("Home", "OVERVIEW", null),
-        HUD("HUD", "MODULES", ModuleCategory.HUD),
-        COMBAT("PvP Information", "MODULES", ModuleCategory.COMBAT),
-        VISUAL("Visual", "MODULES", ModuleCategory.VISUAL),
-        INVENTORY("Inventory", "MODULES", ModuleCategory.INVENTORY),
-        MOVEMENT("Movement", "MODULES", ModuleCategory.MOVEMENT),
-        WORLD("World", "MODULES", ModuleCategory.WORLD),
-        CHAT("Chat", "MODULES", ModuleCategory.CHAT),
-        AUDIO("Audio", "MODULES", ModuleCategory.AUDIO),
-        PERFORMANCE("Performance", "MODULES", ModuleCategory.PERFORMANCE),
-        UTILITY("Utility", "MODULES", ModuleCategory.UTILITY),
-        SETTINGS("Settings", "CLIENT & SYSTEM", null),
-        THEMES("Themes", "CLIENT & SYSTEM", null),
-        ABOUT("About", "CLIENT & SYSTEM", null);
+        HOME("DASHBOARD", "OVERVIEW", null, "DASHBOARD"),
+        HUD("HUD", "MODULES", ModuleCategory.HUD, "HUD"),
+        COMBAT("PvP / Combat", "MODULES", ModuleCategory.COMBAT, "COMBAT"),
+        VISUAL("Visuals", "MODULES", ModuleCategory.VISUAL, "VISUAL"),
+        INVENTORY("Inventory", "MODULES", ModuleCategory.INVENTORY, "INVENTORY"),
+        MOVEMENT("Movement", "MODULES", ModuleCategory.MOVEMENT, "MOVEMENT"),
+        WORLD("World", "MODULES", ModuleCategory.WORLD, "WORLD"),
+        CHAT("Chat", "MODULES", ModuleCategory.CHAT, "CHAT"),
+        AUDIO("Audio", "MODULES", ModuleCategory.AUDIO, "AUDIO"),
+        PERFORMANCE("Performance", "MODULES", ModuleCategory.PERFORMANCE, "PERFORMANCE"),
+        UTILITY("Utility", "MODULES", ModuleCategory.UTILITY, "UTILITY"),
+        THEMES("Themes", "CLIENT", null, "VISUAL"),
+        SETTINGS("Settings", "CLIENT", null, "SETTINGS"),
+        ABOUT("About", "CLIENT", null, "DASHBOARD");
 
         private final String label;
         private final String sectionHeader;
         private final ModuleCategory moduleCategory;
+        private final String iconKey;
 
-        SidebarTab(String label, String sectionHeader, ModuleCategory moduleCategory) {
+        SidebarTab(String label, String sectionHeader, ModuleCategory moduleCategory, String iconKey) {
             this.label = label;
             this.sectionHeader = sectionHeader;
             this.moduleCategory = moduleCategory;
+            this.iconKey = iconKey;
         }
 
-        public String getLabel() {
-            return label;
-        }
-
-        public String getSectionHeader() {
-            return sectionHeader;
-        }
-
-        public ModuleCategory getModuleCategory() {
-            return moduleCategory;
-        }
+        public String getLabel() { return label; }
+        public String getSectionHeader() { return sectionHeader; }
+        public ModuleCategory getModuleCategory() { return moduleCategory; }
+        public String getIconKey() { return iconKey; }
     }
 
     private final SmoothScrollContainer scrollContainer = new SmoothScrollContainer();
     private SidebarTab selectedTab = SidebarTab.HOME;
+    private final Animation activeIndicatorY = new Animation(0.0f, 170L, Easing.EASE_OUT_CUBIC);
+    private boolean indicatorInitialized = false;
 
     public void render(
             DrawContext context,
@@ -72,18 +75,20 @@ public final class GlassSidebar {
                 ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
                 : theme.getAccentPrimary();
 
-        // Sidebar container background
         GlassRenderer.drawGlassPanel(context, x, y, width, height, false, false, false);
 
-        // Brand Identity Header ("BANGLA CLIENT" text, no oversized graphical logo)
-        context.fill(x + 12, y + 14, x + 18, y + 24, accent);
-        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(BanglaClient.CLIENT_NAME, width - 26), x + 20, y + 12, theme.getTextPrimary());
-        GlassRenderer.drawHorizontalDivider(context, x + 10, y + 34, width - 20);
+        // 1. PYES-style Brand Header with BC Identity Emblem + "BANGLA CLIENT" + "MODS & HUD MANAGER"
+        BcIdentityManager.drawIdentityIcon(context, x + 8, y + 8, 16, 16);
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth("BANGLA CLIENT", width - 30),
+                x + 28, y + 7, theme.getTextPrimary());
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth("MODS & HUD", width - 30),
+                x + 28, y + 17, theme.getTextMuted());
+        GlassRenderer.drawHorizontalDivider(context, x + 6, y + 30, width - 12);
 
-        // Scrollable navigation list area
-        int listY = y + 40;
-        int bottomCardHeight = 52;
-        int listHeight = Math.max(40, height - 46 - bottomCardHeight);
+        // 2. Scrollable Navigation List
+        int listY = y + 34;
+        int bottomStatusHeight = 44;
+        int listHeight = Math.max(40, height - 38 - bottomStatusHeight);
 
         scrollContainer.tickAndInterpolate();
         int totalContentHeight = calculateContentHeight();
@@ -97,70 +102,86 @@ public final class GlassSidebar {
                 if (!tab.getSectionHeader().equals(lastSection)) {
                     lastSection = tab.getSectionHeader();
                     drawY += 4;
-                    context.drawTextWithShadow(textRenderer, lastSection, x + 12, drawY, theme.getTextMuted());
-                    drawY += 13;
+                    context.drawTextWithShadow(textRenderer, lastSection, x + 10, drawY, theme.getTextMuted());
+                    drawY += 12;
                 }
 
                 boolean active = (tab == selectedTab);
-                boolean hovered = MathUtils.isHovered(mouseX, mouseY, x + 8, drawY, width - 16, 20)
+                boolean hovered = MathUtils.isHovered(mouseX, mouseY, x + 6, drawY, width - 12, 20)
                         && mouseY >= listY && mouseY <= (listY + listHeight);
 
-                if (active || hovered) {
-                    GlassRenderer.drawGlassPanel(
-                            context, x + 8, drawY, width - 16, 20,
-                            true, hovered, active
-                    );
-                    if (active) {
-                        context.fill(x + 8, drawY + 4, x + 11, drawY + 16, accent);
+                if (active) {
+                    if (!indicatorInitialized) {
+                        activeIndicatorY.snapTo(drawY);
+                        indicatorInitialized = true;
+                    } else {
+                        activeIndicatorY.animateTo(drawY);
                     }
                 }
 
-                int labelColor = active ? theme.getTextPrimary() : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
-                context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(tab.getLabel(), width - 38), x + 12, drawY + 6, labelColor);
+                if (active || hovered) {
+                    int fill = active
+                            ? ColorUtils.withAlpha(accent, 0.14f)
+                            : ColorUtils.withAlpha(0xFFFFFF, 0.05f);
+                    GlassRenderer.drawCustomGlassPanel(context, x + 6, drawY, width - 12, 20, fill, hovered, active, true);
+                }
 
-                // Count badge for module categories
+                int iconCol = active ? theme.getTextPrimary() : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
+                GlassRenderer.drawVectorIcon(context, x + 11, drawY + 5, 10, tab.getIconKey(), iconCol);
+
+                int labelColor = active ? theme.getTextPrimary() : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
+                context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(tab.getLabel(), width - 44),
+                        x + 25, drawY + 6, labelColor);
+
                 if (tab.getModuleCategory() != null && BanglaClient.getInstance() != null) {
                     int count = BanglaClient.getInstance().getModuleManager()
                             .getModulesByCategory(tab.getModuleCategory()).size();
-                    String badge = String.valueOf(count);
-                    int bw = textRenderer.getWidth(badge) + 8;
-                    int bx = x + width - bw - 14;
-                    GlassRenderer.drawPillBadge(context, bx, drawY + 4, bw, 12, accent, active);
-                    context.drawTextWithShadow(textRenderer, badge, bx + 4, drawY + 6,
-                            active ? accent : theme.getTextMuted());
+                    String countStr = String.valueOf(count);
+                    int cw = textRenderer.getWidth(countStr);
+                    context.drawTextWithShadow(textRenderer, countStr, x + width - cw - 11, drawY + 6,
+                            active ? theme.getTextSecondary() : theme.getTextMuted());
                 }
 
                 drawY += 22;
             }
+
+            // Smooth sliding left indicator bar
+            int indY = Math.round(activeIndicatorY.getValue());
+            context.fill(x + 6, indY + 4, x + 8, indY + 16, accent);
         });
 
-        scrollContainer.renderScrollbar(context, x + width - 5, listY, 3, listHeight, mouseX, mouseY);
+        scrollContainer.renderScrollbar(context, x + width - 4, listY, 2, listHeight, mouseX, mouseY);
 
-        // Bottom Pinned Performance Preset Card (inspired by bottom sidebar card in reference image)
-        int cardY = y + height - bottomCardHeight - 4;
-        boolean cardHovered = MathUtils.isHovered(mouseX, mouseY, x + 8, cardY, width - 16, bottomCardHeight - 4);
-        GlassRenderer.drawGlassPanel(context, x + 8, cardY, width - 16, bottomCardHeight - 4, true, cardHovered, false);
+        // 3. Bottom PYES-style Status & Quality Preset Card
+        int statusY = y + height - bottomStatusHeight - 3;
+        GlassRenderer.drawHorizontalDivider(context, x + 6, statusY - 3, width - 12);
+        boolean cardHovered = MathUtils.isHovered(mouseX, mouseY, x + 6, statusY, width - 12, bottomStatusHeight);
+        GlassRenderer.drawGlassPanel(context, x + 6, statusY, width - 12, bottomStatusHeight, true, cardHovered, false);
+
+        // Status dot + "CONNECTED / READY"
+        context.fill(x + 12, statusY + 7, x + 16, statusY + 11, ThemeTokens.STATUS_SUCCESS);
+        context.drawTextWithShadow(textRenderer, "READY", x + 20, statusY + 5, theme.getTextPrimary());
 
         String presetName = BanglaClient.getInstance() != null
                 ? BanglaClient.getInstance().getPerformancePreset().getDisplayName()
                 : "Balanced";
-        context.drawTextWithShadow(textRenderer, "Graphics Mode", x + 14, cardY + 7, theme.getTextSecondary());
-        context.drawTextWithShadow(textRenderer, "Preset: " + presetName, x + 14, cardY + 19, accent);
-        context.drawTextWithShadow(textRenderer, "Click to cycle preset", x + 14, cardY + 31, theme.getTextMuted());
+        context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth("Quality: " + presetName, width - 20),
+                x + 12, statusY + 17, theme.getTextSecondary());
+        context.drawTextWithShadow(textRenderer, "VERSION " + BanglaClient.CLIENT_VERSION,
+                x + 12, statusY + 29, theme.getTextMuted());
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button, int x, int y, int width, int height, Runnable onTabChanged) {
-        int listY = y + 40;
-        int bottomCardHeight = 52;
-        int listHeight = Math.max(40, height - 46 - bottomCardHeight);
+        int listY = y + 34;
+        int bottomStatusHeight = 44;
+        int listHeight = Math.max(40, height - 38 - bottomStatusHeight);
 
-        if (scrollContainer.onMouseClicked(mouseX, mouseY, button, x + width - 5, listY, 3, listHeight)) {
+        if (scrollContainer.onMouseClicked(mouseX, mouseY, button, x + width - 4, listY, 3, listHeight)) {
             return true;
         }
 
-        // Bottom preset card click
-        int cardY = y + height - bottomCardHeight - 4;
-        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, x + 8, cardY, width - 16, bottomCardHeight - 4)) {
+        int statusY = y + height - bottomStatusHeight - 3;
+        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, x + 6, statusY, width - 12, bottomStatusHeight)) {
             if (BanglaClient.getInstance() != null) {
                 BanglaClient.getInstance().setPerformancePreset(
                         BanglaClient.getInstance().getPerformancePreset().next()
@@ -172,15 +193,15 @@ public final class GlassSidebar {
             return true;
         }
 
-        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, x + 4, listY, width - 10, listHeight)) {
+        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, x + 4, listY, width - 8, listHeight)) {
             int drawY = Math.round(listY - scrollContainer.getScrollOffset());
             String lastSection = "";
             for (SidebarTab tab : SidebarTab.values()) {
                 if (!tab.getSectionHeader().equals(lastSection)) {
                     lastSection = tab.getSectionHeader();
-                    drawY += 17;
+                    drawY += 16;
                 }
-                if (MathUtils.isHovered(mouseX, mouseY, x + 8, drawY, width - 16, 20)) {
+                if (MathUtils.isHovered(mouseX, mouseY, x + 6, drawY, width - 12, 20)) {
                     this.selectedTab = tab;
                     if (onTabChanged != null) {
                         onTabChanged.run();
@@ -194,7 +215,7 @@ public final class GlassSidebar {
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int button, int height) {
-        int listHeight = Math.max(40, height - 98);
+        int listHeight = Math.max(40, height - 82);
         return scrollContainer.onMouseDragged(mouseX, mouseY, button, listHeight);
     }
 
@@ -203,8 +224,8 @@ public final class GlassSidebar {
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount, int x, int y, int width, int height) {
-        int listY = y + 40;
-        int listHeight = Math.max(40, height - 98);
+        int listY = y + 34;
+        int listHeight = Math.max(40, height - 82);
         return scrollContainer.onMouseScrolled(mouseX, mouseY, verticalAmount, x, listY, width, listHeight);
     }
 
@@ -214,17 +235,14 @@ public final class GlassSidebar {
         for (SidebarTab tab : SidebarTab.values()) {
             if (!tab.getSectionHeader().equals(lastSection)) {
                 lastSection = tab.getSectionHeader();
-                total += 17;
+                total += 16;
             }
             total += 22;
         }
         return total + 6;
     }
 
-    public SidebarTab getSelectedTab() {
-        return selectedTab;
-    }
-
+    public SidebarTab getSelectedTab() { return selectedTab; }
     public void setSelectedTab(SidebarTab selectedTab) {
         if (selectedTab != null) {
             this.selectedTab = selectedTab;

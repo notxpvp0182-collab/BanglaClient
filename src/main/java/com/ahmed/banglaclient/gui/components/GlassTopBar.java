@@ -1,16 +1,20 @@
 package com.ahmed.banglaclient.gui.components;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.animation.Animation;
+import com.ahmed.banglaclient.animation.Easing;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
+import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Renders the Click GUI Top Utility Bar: interactive real-time Search Input, Clear button,
- * Filter pills (All / Enabled / Favorites), Density toggle, HUD Editor shortcut, and Version pill.
+ * PYES-structured, Aura-styled Top Header Bar:
+ * [SETTINGS] button | [Search modules... 🔍] | [Filter: Enabled / ★] | [□□□ Grid Density]
  */
 public final class GlassTopBar {
     private String searchQuery = "";
@@ -18,6 +22,9 @@ public final class GlassTopBar {
     private boolean filterOnlyEnabled = false;
     private boolean filterOnlyFavorites = false;
     private boolean compactDensity = false;
+    private boolean settingsShortcutClicked = false;
+
+    private final Animation searchFocusAnim = new Animation(0.0f, 160L, Easing.EASE_OUT_CUBIC);
 
     public void render(
             DrawContext context,
@@ -34,51 +41,75 @@ public final class GlassTopBar {
                 ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
                 : theme.getAccentPrimary();
 
+        searchFocusAnim.animateTo(searchFocused ? 1.0f : 0.0f);
+
         GlassRenderer.drawGlassPanel(context, x, y, width, height, false, false, false);
 
-        // 1. Search Box
-        int searchX = x + 10;
-        int searchY = y + 4;
-        int searchW = Math.max(75, Math.min(145, width / 3));
-        int searchH = height - 8;
-        boolean searchHovered = MathUtils.isHovered(mouseX, mouseY, searchX, searchY, searchW, searchH);
-        GlassRenderer.drawGlassPanel(context, searchX, searchY, searchW, searchH, true, searchHovered, searchFocused);
+        int innerY = y + 5;
+        int innerH = height - 10;
+
+        // 1. Left: PYES-style [⚙ SETTINGS] quick button
+        int settingsBtnW = 76;
+        int settingsBtnX = x + 8;
+        boolean settingsHov = MathUtils.isHovered(mouseX, mouseY, settingsBtnX, innerY, settingsBtnW, innerH);
+        GlassRenderer.drawGlassPanel(context, settingsBtnX, innerY, settingsBtnW, innerH, true, settingsHov, false);
+        GlassRenderer.drawVectorIcon(context, settingsBtnX + 7, innerY + (innerH - 10) / 2, 10, "SETTINGS",
+                settingsHov ? theme.getTextPrimary() : theme.getTextSecondary());
+        context.drawTextWithShadow(textRenderer, "SETTINGS", settingsBtnX + 21, innerY + (innerH - 8) / 2,
+                settingsHov ? theme.getTextPrimary() : theme.getTextSecondary());
+
+        // 2. Center: Filter Pills ([ACTIVE] [★])
+        int pillX = settingsBtnX + settingsBtnW + 8;
+        pillX += renderFilterPill(context, textRenderer, "ACTIVE", pillX, innerY + 1, innerH - 2, filterOnlyEnabled, accent, mouseX, mouseY) + 5;
+        pillX += renderFilterPill(context, textRenderer, "★ FAV", pillX, innerY + 1, innerH - 2, filterOnlyFavorites, accent, mouseX, mouseY) + 5;
+
+        // 3. Right Side: Grid Density Icon [□□□] + [Search modules...] input box
+        int gridBtnW = 28;
+        int gridBtnX = x + width - gridBtnW - 8;
+        boolean gridHov = MathUtils.isHovered(mouseX, mouseY, gridBtnX, innerY, gridBtnW, innerH);
+        GlassRenderer.drawGlassPanel(context, gridBtnX, innerY, gridBtnW, innerH, true, gridHov, compactDensity);
+        // Draw 3 mini squares (□□□) like PYES top-right
+        int sqY = innerY + (innerH - 4) / 2;
+        int sqCol = compactDensity || gridHov ? theme.getTextPrimary() : theme.getTextMuted();
+        context.fill(gridBtnX + 5, sqY, gridBtnX + 9, sqY + 4, sqCol);
+        context.fill(gridBtnX + 12, sqY, gridBtnX + 16, sqY + 4, sqCol);
+        context.fill(gridBtnX + 19, sqY, gridBtnX + 23, sqY + 4, sqCol);
+
+        int searchW = Math.max(96, Math.min(180, gridBtnX - pillX - 8));
+        int searchX = gridBtnX - searchW - 6;
+        boolean searchHov = MathUtils.isHovered(mouseX, mouseY, searchX, innerY, searchW, innerH);
+        GlassRenderer.drawGlassPanel(context, searchX, innerY, searchW, innerH, true, searchHov, searchFocused);
+
+        float focusVal = searchFocusAnim.getValue();
+        if (focusVal > 0.02f) {
+            GlassRenderer.drawOutlineBorder(context, searchX, innerY, searchW, innerH,
+                    ColorUtils.withAlpha(accent, 0.35f * focusVal));
+        }
 
         String displaySearch;
         int searchTextColor;
         if (searchQuery.isEmpty() && !searchFocused) {
-            displaySearch = "Search modules, categories...";
+            displaySearch = "Search modules...";
             searchTextColor = theme.getTextMuted();
         } else {
             String cursor = (searchFocused && (System.currentTimeMillis() / 500L) % 2L == 0L) ? "|" : "";
-            displaySearch = textRenderer.trimToWidth(searchQuery, searchW - 28) + cursor;
+            displaySearch = textRenderer.trimToWidth(searchQuery, searchW - 26) + cursor;
             searchTextColor = theme.getTextPrimary();
         }
-        context.drawTextWithShadow(textRenderer, displaySearch, searchX + 8, searchY + (searchH - 8) / 2, searchTextColor);
+        context.drawTextWithShadow(textRenderer, displaySearch, searchX + 8, innerY + (innerH - 8) / 2, searchTextColor);
 
-        // Clear 'X' button inside search bar when non-empty
+        // Search icon or clear 'x' on right side of search box
         if (!searchQuery.isEmpty()) {
-            int clearX = searchX + searchW - 16;
-            boolean clearHover = MathUtils.isHovered(mouseX, mouseY, clearX - 2, searchY + 2, 14, searchH - 4);
-            context.drawTextWithShadow(textRenderer, "x", clearX + 3, searchY + (searchH - 8) / 2,
-                    clearHover ? accent : theme.getTextSecondary());
+            int clearX = searchX + searchW - 14;
+            boolean clearHover = MathUtils.isHovered(mouseX, mouseY, clearX - 2, innerY, 14, innerH);
+            context.drawTextWithShadow(textRenderer, "×", clearX + 2, innerY + (innerH - 8) / 2,
+                    clearHover ? theme.getTextPrimary() : theme.getTextSecondary());
+        } else {
+            int magX = searchX + searchW - 14;
+            int magY = innerY + (innerH - 8) / 2;
+            GlassRenderer.drawOutlineBorder(context, magX, magY, 6, 6, theme.getTextMuted());
+            context.fill(magX + 5, magY + 5, magX + 8, magY + 8, theme.getTextMuted());
         }
-
-        // 2. Filter Pills: [Enabled] [Favorites] [Compact]
-        int pillX = searchX + searchW + 10;
-        int pillY = y + 6;
-        int pillH = height - 12;
-
-        pillX += renderFilterPill(context, textRenderer, "Enabled", pillX, pillY, pillH, filterOnlyEnabled, accent, mouseX, mouseY) + 6;
-        pillX += renderFilterPill(context, textRenderer, "Favorites ★", pillX, pillY, pillH, filterOnlyFavorites, accent, mouseX, mouseY) + 6;
-        renderFilterPill(context, textRenderer, compactDensity ? "Compact" : "Comfortable", pillX, pillY, pillH, compactDensity, accent, mouseX, mouseY);
-
-        // 3. Right-hand Version Badge ("v1.0.0")
-        String verText = "v" + BanglaClient.CLIENT_VERSION;
-        int verW = textRenderer.getWidth(verText) + 12;
-        int verX = x + width - verW - 10;
-        GlassRenderer.drawPillBadge(context, verX, pillY, verW, pillH, accent, true);
-        context.drawTextWithShadow(textRenderer, verText, verX + 6, pillY + (pillH - 8) / 2, accent);
     }
 
     private int renderFilterPill(
@@ -94,11 +125,11 @@ public final class GlassTopBar {
             double mouseY
     ) {
         Theme theme = GlassRenderer.getTheme();
-        int width = tr.getWidth(text) + 14;
+        int width = tr.getWidth(text) + 12;
         boolean hovered = MathUtils.isHovered(mouseX, mouseY, x, y, width, height);
         GlassRenderer.drawPillBadge(context, x, y, width, height, active ? accent : theme.getTextSecondary(), active || hovered);
-        int textColor = active ? accent : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
-        context.drawTextWithShadow(tr, text, x + 7, y + 5, textColor);
+        int textColor = active ? theme.getTextPrimary() : (hovered ? theme.getTextPrimary() : theme.getTextSecondary());
+        context.drawTextWithShadow(tr, text, x + 6, y + (height - 8) / 2, textColor);
         return width;
     }
 
@@ -106,67 +137,75 @@ public final class GlassTopBar {
         if (button != 0) {
             return false;
         }
-        int searchX = x + 10;
-        int searchY = y + 4;
-        int searchW = Math.max(75, Math.min(145, width / 3));
-        int searchH = height - 8;
+        int innerY = y + 5;
+        int innerH = height - 10;
 
-        // Clear search button
+        // 1. Settings button click
+        int settingsBtnW = 76;
+        int settingsBtnX = x + 8;
+        if (MathUtils.isHovered(mouseX, mouseY, settingsBtnX, innerY, settingsBtnW, innerH)) {
+            settingsShortcutClicked = true;
+            if (onFilterChanged != null) onFilterChanged.run();
+            return true;
+        }
+
+        // 2. Filter Pills
+        MinecraftClient mc = MinecraftClient.getInstance();
+        TextRenderer tr = mc != null ? mc.textRenderer : null;
+        int pillX = settingsBtnX + settingsBtnW + 8;
+        int actW = (tr != null ? tr.getWidth("ACTIVE") : 36) + 12;
+        if (MathUtils.isHovered(mouseX, mouseY, pillX, innerY + 1, actW, innerH - 2)) {
+            filterOnlyEnabled = !filterOnlyEnabled;
+            if (onFilterChanged != null) onFilterChanged.run();
+            return true;
+        }
+        pillX += actW + 5;
+
+        int favW = (tr != null ? tr.getWidth("★ FAV") : 30) + 12;
+        if (MathUtils.isHovered(mouseX, mouseY, pillX, innerY + 1, favW, innerH - 2)) {
+            filterOnlyFavorites = !filterOnlyFavorites;
+            if (onFilterChanged != null) onFilterChanged.run();
+            return true;
+        }
+        pillX += favW + 5;
+
+        // 3. Grid Density Toggle [□□□]
+        int gridBtnW = 28;
+        int gridBtnX = x + width - gridBtnW - 8;
+        if (MathUtils.isHovered(mouseX, mouseY, gridBtnX, innerY, gridBtnW, innerH)) {
+            compactDensity = !compactDensity;
+            if (onFilterChanged != null) onFilterChanged.run();
+            return true;
+        }
+
+        // 4. Search Box
+        int searchW = Math.max(96, Math.min(180, gridBtnX - pillX - 8));
+        int searchX = gridBtnX - searchW - 6;
+
         if (!searchQuery.isEmpty()) {
-            int clearX = searchX + searchW - 16;
-            if (MathUtils.isHovered(mouseX, mouseY, clearX - 2, searchY + 2, 14, searchH - 4)) {
+            int clearX = searchX + searchW - 14;
+            if (MathUtils.isHovered(mouseX, mouseY, clearX - 2, innerY, 14, innerH)) {
                 searchQuery = "";
-                if (onFilterChanged != null) {
-                    onFilterChanged.run();
-                }
+                if (onFilterChanged != null) onFilterChanged.run();
                 return true;
             }
         }
 
-        // Focus search bar
-        if (MathUtils.isHovered(mouseX, mouseY, searchX, searchY, searchW, searchH)) {
+        if (MathUtils.isHovered(mouseX, mouseY, searchX, innerY, searchW, innerH)) {
             searchFocused = true;
             return true;
         } else {
             searchFocused = false;
         }
 
-        // Filter pills hit testing
-        MinecraftClientTextWidthHelper helper = new MinecraftClientTextWidthHelper();
-        int pillX = searchX + searchW + 10;
-        int pillY = y + 6;
-        int pillH = height - 12;
+        return false;
+    }
 
-        int enabledW = helper.getWidth("Enabled") + 14;
-        if (MathUtils.isHovered(mouseX, mouseY, pillX, pillY, enabledW, pillH)) {
-            filterOnlyEnabled = !filterOnlyEnabled;
-            if (onFilterChanged != null) {
-                onFilterChanged.run();
-            }
+    public boolean consumeSettingsShortcutClick() {
+        if (settingsShortcutClicked) {
+            settingsShortcutClicked = false;
             return true;
         }
-        pillX += enabledW + 6;
-
-        int favW = helper.getWidth("Favorites ★") + 14;
-        if (MathUtils.isHovered(mouseX, mouseY, pillX, pillY, favW, pillH)) {
-            filterOnlyFavorites = !filterOnlyFavorites;
-            if (onFilterChanged != null) {
-                onFilterChanged.run();
-            }
-            return true;
-        }
-        pillX += favW + 6;
-
-        String densityLabel = compactDensity ? "Compact" : "Comfortable";
-        int densityW = helper.getWidth(densityLabel) + 14;
-        if (MathUtils.isHovered(mouseX, mouseY, pillX, pillY, densityW, pillH)) {
-            compactDensity = !compactDensity;
-            if (onFilterChanged != null) {
-                onFilterChanged.run();
-            }
-            return true;
-        }
-
         return false;
     }
 
@@ -204,38 +243,11 @@ public final class GlassTopBar {
         return false;
     }
 
-    public String getSearchQuery() {
-        return searchQuery;
-    }
-
-    public void setSearchQuery(String searchQuery) {
-        this.searchQuery = searchQuery != null ? searchQuery : "";
-    }
-
-    public boolean isSearchFocused() {
-        return searchFocused;
-    }
-
-    public void setSearchFocused(boolean searchFocused) {
-        this.searchFocused = searchFocused;
-    }
-
-    public boolean isFilterOnlyEnabled() {
-        return filterOnlyEnabled;
-    }
-
-    public boolean isFilterOnlyFavorites() {
-        return filterOnlyFavorites;
-    }
-
-    public boolean isCompactDensity() {
-        return compactDensity;
-    }
-
-    private static final class MinecraftClientTextWidthHelper {
-        int getWidth(String text) {
-            net.minecraft.client.MinecraftClient mc = net.minecraft.client.MinecraftClient.getInstance();
-            return mc != null && mc.textRenderer != null ? mc.textRenderer.getWidth(text) : text.length() * 6;
-        }
-    }
+    public String getSearchQuery() { return searchQuery; }
+    public void setSearchQuery(String searchQuery) { this.searchQuery = searchQuery != null ? searchQuery : ""; }
+    public boolean isSearchFocused() { return searchFocused; }
+    public void setSearchFocused(boolean searchFocused) { this.searchFocused = searchFocused; }
+    public boolean isFilterOnlyEnabled() { return filterOnlyEnabled; }
+    public boolean isFilterOnlyFavorites() { return filterOnlyFavorites; }
+    public boolean isCompactDensity() { return compactDensity; }
 }

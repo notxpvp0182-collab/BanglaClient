@@ -39,7 +39,7 @@ public final class ConfigManager {
     private boolean reducedMotion = false;
     private int clickGuiKeyCode = org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT;
     private int hudEditorKeyCode = org.lwjgl.glfw.GLFW.GLFW_KEY_H;
-    private String activeThemeId = "red_theme";
+    private String activeThemeId = "aura_dark";
 
     public ConfigManager(Path configDir, ModuleManager moduleManager) {
         this.configDir = configDir;

@@ -8,13 +8,13 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Hardware-adaptive background blur and smoked-glass backdrop renderer.
- * Uses Minecraft's native blur pass in HIGH/BALANCED modes and falls back to
- * zero-cost translucent smoked charcoal in LOW mode.
+ * Hardware-adaptive Aura-style atmospheric frosted backdrop renderer.
+ * Performs a single shared blur capture per frame with graceful fallback on low-end or shader failure.
  */
 public final class BlurRenderer {
     private static long lastScreenBlurFrame = -1L;
     private static long frameCounter = 0L;
+    private static boolean blurFailedOnce = false;
 
     private BlurRenderer() {
     }
@@ -23,43 +23,47 @@ public final class BlurRenderer {
         frameCounter++;
     }
 
-    /**
-     * Renders full-screen background blur for modal screens (Click GUI, HUD Editor, Settings)
-     * at most once per frame, plus a dark obsidian vignette overlay matching the reference image.
-     */
     public static void renderScreenBackdrop(DrawContext context, int screenWidth, int screenHeight, float openProgress) {
         if (context == null || screenWidth <= 0 || screenHeight <= 0) {
             return;
         }
+        float clampedProgress = Math.max(0.0f, Math.min(1.0f, openProgress));
         BanglaClient bangla = BanglaClient.getInstance();
         PerformancePreset preset = bangla != null ? bangla.getPerformancePreset() : PerformancePreset.BALANCED;
         Theme theme = bangla != null && bangla.getThemeManager() != null
                 ? bangla.getThemeManager().getActiveTheme()
                 : null;
 
-        if (preset.isBlurEnabled() && lastScreenBlurFrame != frameCounter) {
+        // Shared once-per-frame blur pass (skipped in FPS_BOOST / LOW mode)
+        if (preset.isBlurEnabled() && !blurFailedOnce && lastScreenBlurFrame != frameCounter) {
             lastScreenBlurFrame = frameCounter;
             MinecraftClient mc = MinecraftClient.getInstance();
-            if (mc.world != null && mc.gameRenderer != null) {
+            if (mc != null && mc.world != null && mc.gameRenderer != null) {
                 try {
                     mc.gameRenderer.renderBlur();
-                } catch (Throwable ignored) {
-                    // Safe fallback if a third-party shader mod overrides gameRenderer blur
+                } catch (Throwable t) {
+                    blurFailedOnce = true;
+                    BanglaClient.LOGGER.warn("Shader blur pass unavailable, falling back to translucent charcoal backdrop.");
                 }
             }
         }
 
-        int baseColor = theme != null ? theme.getBackgroundPrimary() : 0xFF080A0F;
-        float targetAlpha = preset == PerformancePreset.FPS_BOOST ? 0.22f : 0.14f;
-        int topTint = ColorUtils.withAlpha(baseColor, targetAlpha * openProgress * 0.90f);
-        int bottomTint = ColorUtils.withAlpha(baseColor, targetAlpha * openProgress);
-
+        // Layer 1: Deep Aura Charcoal base
+        int baseColor = theme != null ? theme.getBackgroundPrimary() : 0xEE08090C;
+        float baseAlpha = preset == PerformancePreset.FPS_BOOST ? 0.82f : 0.72f;
+        int topTint = ColorUtils.withAlpha(baseColor, baseAlpha * clampedProgress);
+        int bottomTint = ColorUtils.withAlpha(baseColor, Math.min(0.92f, (baseAlpha + 0.12f) * clampedProgress));
         context.fillGradient(0, 0, screenWidth, screenHeight, topTint, bottomTint);
+
+        // Layer 2: Subtle Aura atmospheric top mist & vignette (skipped in FPS_BOOST mode)
+        if (preset != PerformancePreset.FPS_BOOST && clampedProgress > 0.05f) {
+            int auroraMistTop = ColorUtils.withAlpha(0xCBD5E1, 0.045f * clampedProgress);
+            context.fillGradient(0, 0, screenWidth, Math.max(40, screenHeight / 3), auroraMistTop, 0x00FFFFFF);
+            int bottomVignette = ColorUtils.withAlpha(0x000000, 0.35f * clampedProgress);
+            context.fillGradient(0, screenHeight - Math.max(40, screenHeight / 4), screenWidth, screenHeight, 0x00000000, bottomVignette);
+        }
     }
 
-    /**
-     * Renders a localized frosted glass surface tint for individual HUD widgets or cards.
-     */
     public static void renderFrostedRegion(
             DrawContext context,
             int x,
@@ -76,8 +80,8 @@ public final class BlurRenderer {
         PerformancePreset preset = bangla != null ? bangla.getPerformancePreset() : PerformancePreset.BALANCED;
 
         float effectiveAlpha = preset.getBaseSurfaceAlpha() * opacityMultiplier;
-        int topColor = ColorUtils.withAlpha(ColorUtils.scaleBrightness(baseGlassColor, 1.18f), effectiveAlpha);
-        int bottomColor = ColorUtils.withAlpha(baseGlassColor, Math.min(0.96f, effectiveAlpha * 1.06f));
+        int topColor = ColorUtils.withAlpha(ColorUtils.scaleBrightness(baseGlassColor, 1.12f), effectiveAlpha);
+        int bottomColor = ColorUtils.withAlpha(baseGlassColor, Math.min(0.96f, effectiveAlpha * 1.04f));
 
         context.fillGradient(x, y, x + width, y + height, topColor, bottomColor);
     }
