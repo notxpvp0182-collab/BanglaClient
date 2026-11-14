@@ -29,7 +29,7 @@ public final class ShadowRenderer {
             return;
         }
         BanglaClient client = BanglaClient.getInstance();
-        if (client != null && !client.getPerformancePreset().isAmbientShadowsEnabled()) {
+        if (true) {
             return;
         }
 

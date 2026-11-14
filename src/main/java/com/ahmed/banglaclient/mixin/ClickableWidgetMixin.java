@@ -1,11 +1,9 @@
 package com.ahmed.banglaclient.mixin;
 
-import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.cosmetics.PlayerPreviewRenderer;
 import com.ahmed.banglaclient.cosmetics.SkinCapeManager;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.Theme;
-import com.ahmed.banglaclient.util.ColorUtils;
 import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -20,6 +18,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Renders all Minecraft buttons in Pure 2D Aura Dark & White Glass (Zero 3D shading, Zero lag).
+ */
 @Mixin(ClickableWidget.class)
 public abstract class ClickableWidgetMixin {
 
@@ -32,7 +33,7 @@ public abstract class ClickableWidgetMixin {
     @Shadow public boolean visible;
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
-    private void banglaclient$renderPureLiquidGlassButton(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void banglaclient$render2DAuraButton(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!this.visible || !((Object) this instanceof PressableWidget)) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) return;
@@ -41,191 +42,86 @@ public abstract class ClickableWidgetMixin {
         if (w < 10 || h < 10) return;
 
         Theme theme = GlassRenderer.getTheme();
-        int accent = BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null
-                ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
-                : 0xFFEF4444;
-
         boolean hov = this.active && MathUtils.isHovered(mouseX, mouseY, x, y, w, h);
         String label = getMessage() != null ? getMessage().getString() : "";
 
-        // 1. Bottom-Right Bangla SMP Card
+        // 1. Bottom-Right Bangla SMP 2D Aura Card
         if ("__BANGLA_SMP__".equals(label)) {
-            drawGlassCapsule(context, x, y, w, h, 0x4E10131C, 0x68080A10, hov ? 0xFFEF4444 : 0x88FFFFFF, hov ? 0x55EF4444 : 0x22EF4444);
-            context.drawTextWithShadow(mc.textRenderer, "BANGLA SMP", x + 10, y + 5, 0xFFEF4444);
-            context.drawTextWithShadow(mc.textRenderer, "play.banglasmp.net", x + 10, y + 16, 0xFFFFFFFF);
+            draw2DAuraBox(context, x, y, w, h, hov);
+            context.drawTextWithShadow(mc.textRenderer, "BANGLA SMP", x + 8, y + 4, 0xFFFFFFFF);
+            context.drawTextWithShadow(mc.textRenderer, "play.banglasmp.net", x + 8, y + 14, theme.getTextSecondary());
             ci.cancel();
             return;
         }
 
-        // 2. Fixed Top-Right Account Display Pill: [HEAD (12x12)] [NAME (offset x+20)] -> Zero Overlap!
+        // 2. Top-Right Account Pill: [HEAD] [NAME]
         if (label.startsWith("__USER__:")) {
             String uname = label.substring(9);
-            drawGlassCapsule(context, x, y, w, h, 0x48141824, 0x600A0D14, hov ? 0xFFFFFFFF : 0x88FFFFFF, 0x22FFFFFF);
-
+            draw2DAuraBox(context, x, y, w, h, hov);
             int headSize = 12;
             int pad = 4;
-            int headX = x + pad;
-            int headY = y + (h - headSize) / 2;
-            SkinCapeManager scm = SkinCapeManager.getInstance();
-            PlayerPreviewRenderer.drawPlayerHead(context, scm.getActiveSkinTextures(), headX, headY, headSize);
-
-            int textX = headX + headSize + pad;
-            int maxTextW = Math.max(12, w - (textX - x) - pad);
-            String trimmed = mc.textRenderer.trimToWidth(uname, maxTextW);
+            PlayerPreviewRenderer.drawPlayerHead(context, SkinCapeManager.getInstance().getActiveSkinTextures(), x + pad, y + (h - headSize) / 2, headSize);
+            int textX = x + pad + headSize + pad;
+            String trimmed = mc.textRenderer.trimToWidth(uname, Math.max(12, w - (textX - x) - pad));
             context.drawTextWithShadow(mc.textRenderer, trimmed, textX, y + (h - 8) / 2, 0xFFFFFFFF);
             ci.cancel();
             return;
         }
 
-        // 3. Left-Side Installed-Mod Shortcuts
-        if (label.startsWith("__LEFT_")) {
-            int sep = label.indexOf(':');
-            String type = sep > 0 ? label.substring(0, sep) : label;
-            String text = sep > 0 ? label.substring(sep + 1) : "Mod";
-            int bgTop = hov ? ColorUtils.withAlpha(accent, 0.42f) : 0x48141824;
-            int bgBot = hov ? ColorUtils.withAlpha(accent, 0.22f) : 0x62090C12;
-            int border = hov ? 0xFFFFFFFF : 0x77FFFFFF;
-            drawGlassCapsule(context, x, y, w, h, bgTop, bgBot, border, hov ? 0x44EF4444 : 0x18EF4444);
+        // 3. Left-Side Auto-Detected Mod Buttons with Custom 2D Vector Icons
+        if (label.startsWith("__MODBTN__:")) {
+            String payload = label.substring(11);
+            int sep = payload.indexOf(':');
+            String iconKey = sep > 0 ? payload.substring(0, sep) : "UTILITY";
+            String modTitle = sep > 0 ? payload.substring(sep + 1) : payload;
 
-            int ix = x + 5, iy = y + (h - 14) / 2;
-            switch (type) {
-                case "__LEFT_IAS__" -> drawUserIcon(context, ix, iy, 0xFFEF4444);
-                case "__LEFT_REPLAY__" -> drawPlayCircleIcon(context, ix, iy, 0xFFEF4444);
-                case "__LEFT_FLASHBACK__" -> drawRewindIcon(context, ix, iy, 0xFFEF4444);
-                default -> drawPuzzleIcon(context, ix, iy, 0xFFEF4444);
+            draw2DAuraBox(context, x, y, w, h, hov);
+            int iconCol = hov ? 0xFFFFFFFF : theme.getTextSecondary();
+            GlassRenderer.drawVectorIcon(context, x + 5, y + (h - 10) / 2, 10, iconKey, iconCol);
+
+            if (w > 28) {
+                String trimmed = mc.textRenderer.trimToWidth(modTitle, w - 22);
+                context.drawTextWithShadow(mc.textRenderer, trimmed, x + 19, y + (h - 8) / 2, hov ? 0xFFFFFFFF : theme.getTextSecondary());
             }
-            String trimmed = mc.textRenderer.trimToWidth(text, w - 24);
-            context.drawTextWithShadow(mc.textRenderer, trimmed, x + 22, y + (h - 8) / 2, 0xFFFFFFFF);
             ci.cancel();
             return;
         }
 
-        // 4. Top-Right Toolbar Icons
+        // 4. Top-Right 2D Aura Toolbar Icons
         if (label.startsWith("__ICON_")) {
-            int bgTop = hov ? ColorUtils.withAlpha(accent, 0.48f) : 0x48141824;
-            int bgBot = hov ? ColorUtils.withAlpha(accent, 0.26f) : 0x62090C12;
-            int border = hov ? 0xFFFFFFFF : 0x80FFFFFF;
-            drawGlassCapsule(context, x, y, w, h, bgTop, bgBot, border, hov ? 0x44EF4444 : 0x18FFFFFF);
-            int icCol = hov ? accent : 0xFFFFFFFF;
-            int ix = x + (w - 16) / 2;
-            int iy = y + (h - 16) / 2;
+            draw2DAuraBox(context, x, y, w, h, hov);
+            int icCol = hov ? 0xFFFFFFFF : theme.getTextSecondary();
+            int ix = x + (w - 10) / 2;
+            int iy = y + (h - 10) / 2;
             switch (label) {
-                case "__ICON_COLOR__" -> drawPaletteIcon(context, ix, iy, accent, hov);
-                case "__ICON_HUD__" -> drawHudReticleIcon(context, ix, iy, icCol);
-                case "__ICON_PACKS__" -> drawFolderIcon(context, ix, iy, icCol);
-                case "__ICON_INFO__" -> drawInfoIcon(context, ix, iy, icCol);
-                default -> drawGearIcon(context, ix, iy, icCol);
+                case "__ICON_HUD__" -> GlassRenderer.drawVectorIcon(context, ix, iy, 10, "HUD", icCol);
+                case "__ICON_PACKS__" -> GlassRenderer.drawVectorIcon(context, ix, iy, 10, "PACKS", icCol);
+                case "__ICON_INFO__" -> GlassRenderer.drawVectorIcon(context, ix, iy, 10, "INFO", icCol);
+                default -> GlassRenderer.drawVectorIcon(context, ix, iy, 10, "SETTINGS", icCol);
             }
             ci.cancel();
             return;
         }
 
-        // 5. Center / Pause / Standard Buttons
-        boolean isRedQuitBtn = label.contains("Quit") || label.contains("Disconnect");
-        if (isRedQuitBtn) {
-            int bgTop = hov ? 0xEEEF4444 : 0xD8DC2626;
-            int bgBot = hov ? 0xEEB91C1C : 0xD8991B1B;
-            drawGlassCapsule(context, x, y, w, h, bgTop, bgBot, hov ? 0xFFFFFFFF : 0xBBFFFFFF, 0x55EF4444);
-        } else {
-            int bgTop = hov ? ColorUtils.withAlpha(accent, 0.44f) : 0x44222634;
-            int bgBot = hov ? ColorUtils.withAlpha(accent, 0.24f) : 0x5A10131C;
-            int border = hov ? 0xFFFFFFFF : 0x80FFFFFF;
-            drawGlassCapsule(context, x, y, w, h, bgTop, bgBot, border, hov ? 0x44EF4444 : 0x18FFFFFF);
-        }
-
+        // 5. All Standard Minecraft & Client Buttons (Pure 2D Aura Dark & White)
+        draw2DAuraBox(context, x, y, w, h, hov);
         if (!label.isEmpty()) {
             TextRenderer tr = mc.textRenderer;
-            String trimmed = tr.trimToWidth(label, w - 10);
+            String trimmed = tr.trimToWidth(label, w - 8);
             int tw = tr.getWidth(trimmed);
-            int txtCol = !this.active ? theme.getTextMuted() : 0xFFFFFFFF;
+            int txtCol = !this.active ? theme.getTextMuted() : (hov ? 0xFFFFFFFF : 0xFFE2E8F0);
             context.drawTextWithShadow(tr, trimmed, x + (w - tw) / 2, y + (h - 8) / 2, txtCol);
         }
         ci.cancel();
     }
 
     @Unique
-    private static void drawGlassCapsule(DrawContext context, int x, int y, int w, int h, int bgTop, int bgBot, int borderCol, int outerGlow) {
-        context.fill(x - 1, y + 1, x + w + 1, y + h - 1, outerGlow);
-        context.fillGradient(x + 2, y, x + w - 2, y + h, bgTop, bgBot);
-        context.fillGradient(x + 1, y + 1, x + 2, y + h - 1, bgTop, bgBot);
-        context.fillGradient(x + w - 2, y + 1, x + w - 1, y + h - 1, bgTop, bgBot);
-        context.fill(x, y + 2, x + 1, y + h - 2, bgTop);
-        context.fill(x + w - 1, y + 2, x + w, y + h - 2, bgTop);
-        context.fill(x + 3, y + 1, x + w - 3, y + 2, 0x55FFFFFF);
-        GlassRenderer.drawOutlineBorder(context, x, y, w, h, borderCol);
-    }
-
-    @Unique
-    private static void drawPuzzleIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 3, y + 3, x + 7, y + 7, col);
-        context.fill(x + 9, y + 3, x + 13, y + 7, col);
-        context.fill(x + 3, y + 9, x + 7, y + 13, col);
-        context.fill(x + 9, y + 9, x + 13, y + 13, col);
-        context.fill(x + 6, y + 5, x + 10, y + 11, col);
-    }
-
-    @Unique
-    private static void drawUserIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 5, y + 2, x + 9, y + 6, col);
-        context.fill(x + 2, y + 7, x + 12, y + 12, col);
-    }
-
-    @Unique
-    private static void drawPlayCircleIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 2, y + 2, x + 12, y + 12, col);
-        context.fill(x + 3, y + 3, x + 11, y + 11, 0xFF141824);
-        context.fill(x + 5, y + 4, x + 9, y + 10, col);
-    }
-
-    @Unique
-    private static void drawRewindIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 2, y + 2, x + 12, y + 12, col);
-        context.fill(x + 4, y + 4, x + 10, y + 10, 0xFF141824);
-        context.fill(x + 6, y + 5, x + 9, y + 9, col);
-    }
-
-    @Unique
-    private static void drawPaletteIcon(DrawContext context, int x, int y, int accent, boolean hov) {
-        context.fill(x + 3, y + 3, x + 13, y + 13, hov ? accent : 0xFFFFFFFF);
-        context.fill(x + 4, y + 4, x + 12, y + 12, 0xFF141A24);
-        context.fill(x + 5, y + 5, x + 7, y + 7, 0xFFEF4444);
-        context.fill(x + 9, y + 5, x + 11, y + 7, 0xFF38BDF8);
-        context.fill(x + 5, y + 9, x + 7, y + 11, 0xFF10B981);
-        context.fill(x + 9, y + 9, x + 11, y + 11, 0xFFFBBF24);
-    }
-
-    @Unique
-    private static void drawHudReticleIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 2, y + 3, x + 6, y + 4, col);
-        context.fill(x + 2, y + 3, x + 3, y + 7, col);
-        context.fill(x + 10, y + 3, x + 14, y + 4, col);
-        context.fill(x + 13, y + 3, x + 14, y + 7, col);
-        context.fill(x + 2, y + 12, x + 6, y + 13, col);
-        context.fill(x + 2, y + 9, x + 3, y + 13, col);
-        context.fill(x + 10, y + 12, x + 14, y + 13, col);
-        context.fill(x + 13, y + 9, x + 14, y + 13, col);
-        context.fill(x + 6, y + 6, x + 10, y + 10, col);
-    }
-
-    @Unique
-    private static void drawFolderIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 2, y + 3, x + 6, y + 5, col);
-        context.fill(x + 2, y + 5, x + 14, y + 13, col);
-        context.fill(x + 4, y + 7, x + 12, y + 11, 0xFF141A24);
-    }
-
-    @Unique
-    private static void drawInfoIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 7, y + 3, x + 9, y + 5, col);
-        context.fill(x + 7, y + 6, x + 9, y + 12, col);
-        context.fill(x + 5, y + 12, x + 11, y + 13, col);
-    }
-
-    @Unique
-    private static void drawGearIcon(DrawContext context, int x, int y, int col) {
-        context.fill(x + 6, y + 2, x + 10, y + 14, col);
-        context.fill(x + 2, y + 6, x + 14, y + 10, col);
-        context.fill(x + 4, y + 4, x + 12, y + 12, col);
-        context.fill(x + 6, y + 6, x + 10, y + 10, 0xFF141A24);
+    private static void draw2DAuraBox(DrawContext context, int x, int y, int w, int h, boolean hov) {
+        int bg = hov ? 0xE6181A20 : 0xD80E1014;
+        int border = hov ? 0x99FFFFFF : 0x28FFFFFF;
+        context.fill(x + 1, y, x + w - 1, y + h, bg);
+        context.fill(x, y + 1, x + 1, y + h - 1, bg);
+        context.fill(x + w - 1, y + 1, x + w, y + h - 1, bg);
+        GlassRenderer.drawOutlineBorder(context, x, y, w, h, border);
     }
 }

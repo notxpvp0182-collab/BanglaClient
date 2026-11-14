@@ -33,18 +33,13 @@ public final class ConfigValidatorAndThemeTest {
     }
 
     @Test
-    public void testThemeManagerBuiltInThemesAndCycling() {
+    public void testThemeManagerSingleAuraDarkTheme() {
         ThemeManager tm = new ThemeManager();
-        Assertions.assertEquals(4, tm.getAllThemes().size());
+        Assertions.assertEquals(1, tm.getAllThemes().size());
 
         Theme initial = tm.getActiveTheme();
         Assertions.assertEquals("aura_dark", initial.getId());
-
-        tm.cycleNextTheme();
-        Assertions.assertEquals("aura_light", tm.getActiveTheme().getId());
-
-        tm.setActiveThemeById("custom_theme");
-        Assertions.assertEquals("Custom Theme", tm.getActiveTheme().getDisplayName());
+        Assertions.assertEquals("Aura Dark", initial.getDisplayName());
     }
 
     @Test
