@@ -8,7 +8,9 @@
     "BossBarHudMixin",
     "ChatHudMixin",
     "ClickableWidgetMixin",
+    "ClientConnectionMixin",
     "ClientPlayerInteractionManagerMixin",
+    "ClientWorldMixin",
     "EndCrystalEntityRendererMixin",
     "EntityRendererMixin",
     "EntityRendererMixin$LivingNametagHookMixin",
@@ -26,7 +28,8 @@
     "PlayerListHudMixin",
     "ServerListMixin",
     "SplashOverlayMixin",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "WorldWeatherMixin"
   ],
   "injectors": {
     "defaultRequire": 0

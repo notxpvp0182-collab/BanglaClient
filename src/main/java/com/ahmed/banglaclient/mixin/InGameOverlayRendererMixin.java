@@ -1,7 +1,9 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.module.visual.ClearWaterModule;
 import com.ahmed.banglaclient.module.visual.CustomFireOverlayModule;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.hud.InGameOverlayRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.texture.Sprite;
@@ -22,9 +24,7 @@ public abstract class InGameOverlayRendererMixin {
             CallbackInfo ci
     ) {
         BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla == null || bangla.getModuleManager() == null) {
-            return;
-        }
+        if (bangla == null || bangla.getModuleManager() == null) return;
         var fireOpt = bangla.getModuleManager().getModule(CustomFireOverlayModule.class);
         if (fireOpt.isPresent() && fireOpt.get().isEnabled()) {
             if (fireOpt.get().shouldHideOverlayCompletely()) {
@@ -34,6 +34,21 @@ public abstract class InGameOverlayRendererMixin {
             matrices.translate(0.0f, fireOpt.get().getVerticalOffset(), 0.0f);
             float scale = fireOpt.get().getOpacityScale();
             matrices.scale(1.0f, scale, 1.0f);
+        }
+    }
+
+    @Inject(method = "renderUnderwaterOverlay", at = @At("HEAD"), cancellable = true, require = 0)
+    private static void banglaclient$clearUnderwaterTextureOverlay(
+            MinecraftClient client,
+            MatrixStack matrices,
+            VertexConsumerProvider vertexConsumers,
+            CallbackInfo ci
+    ) {
+        BanglaClient bangla = BanglaClient.getInstance();
+        if (bangla == null || bangla.getModuleManager() == null) return;
+        var waterOpt = bangla.getModuleManager().getModule(ClearWaterModule.class);
+        if (waterOpt.isPresent() && waterOpt.get().shouldSoftenWaterOverlay()) {
+            ci.cancel();
         }
     }
 }

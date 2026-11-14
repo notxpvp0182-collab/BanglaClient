@@ -333,7 +333,7 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
         if (!renderedCustom) {
-            this.renderPanoramaBackground(context, delta);
+            float pSpeed = 1.0f; if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getModuleManager() != null) { var panOpt = BanglaClient.getInstance().getModuleManager().getModule(com.ahmed.banglaclient.module.visual.CustomPanoramaModule.class); if (panOpt.isPresent()) pSpeed = panOpt.get().getRotationSpeedMultiplier(); } this.renderPanoramaBackground(context, delta * pSpeed);
             context.fill(0, 0, w, h, 0x44060709);
         }
 
