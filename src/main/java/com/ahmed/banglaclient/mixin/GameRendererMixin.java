@@ -37,7 +37,7 @@ public abstract class GameRendererMixin {
         if (bangla == null || bangla.getModuleManager() == null) return;
         var hurtCamOpt = bangla.getModuleManager().getModule(CustomHurtCameraModule.class);
         if (hurtCamOpt.isPresent() && hurtCamOpt.get().isEnabled()) {
-            if (hurtCamOpt.get().getHurtTiltMultiplier() <= 0.01f) {
+            float mult = hurtCamOpt.get().getHurtTiltMultiplier(); if (mult <= 0.01f) { ci.cancel(); } else if (Math.abs(mult - 1.0f) > 0.01f) { matrices.scale(mult, mult, 1.0f); } if (false) {
                 ci.cancel();
             }
         }

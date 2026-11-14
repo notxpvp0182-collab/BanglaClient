@@ -1,6 +1,7 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.module.hud.CpsCounterModule;
 import com.ahmed.banglaclient.module.utility.MiddleClickPearlModule;
 import com.ahmed.banglaclient.module.visual.ZoomModule;
 import net.minecraft.client.MinecraftClient;
@@ -18,9 +19,7 @@ public abstract class MouseMixin {
     @Inject(method = "onMouseScroll(JDD)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void banglaclient$interceptZoomScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.currentScreen != null) {
-            return;
-        }
+        if (mc == null || mc.currentScreen != null) return;
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getModuleManager() != null) {
             var zoomOpt = bangla.getModuleManager().getModule(ZoomModule.class);
@@ -31,18 +30,17 @@ public abstract class MouseMixin {
     }
 
     @Inject(method = "onMouseButton(JLnet/minecraft/client/input/MouseInput;I)V", at = @At("HEAD"), require = 0)
-    private void banglaclient$onMiddleClickPearl(long window, MouseInput input, int action, CallbackInfo ci) {
-        if (input == null || action != GLFW.GLFW_PRESS || input.button() != GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
-            return;
-        }
+    private void banglaclient$onMouseButtonEvents(long window, MouseInput input, int action, CallbackInfo ci) {
+        if (input == null || action != GLFW.GLFW_PRESS) return;
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.currentScreen != null) {
-            return;
-        }
+        if (mc == null || mc.currentScreen != null) return;
+
         BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla != null && bangla.getModuleManager() != null) {
-            var pearlOpt = bangla.getModuleManager().getModule(MiddleClickPearlModule.class);
-            pearlOpt.ifPresent(MiddleClickPearlModule::onMiddleMouseClick);
+        if (bangla == null || bangla.getModuleManager() == null) return;
+
+        if (input.button() == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+            bangla.getModuleManager().getModule(MiddleClickPearlModule.class)
+                    .ifPresent(MiddleClickPearlModule::onMiddleMouseClick);
         }
     }
 }

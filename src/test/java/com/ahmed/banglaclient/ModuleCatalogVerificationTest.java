@@ -23,7 +23,8 @@ public final class ModuleCatalogVerificationTest {
             "com.ahmed.banglaclient.module.visual.ClearWaterModule",
             "com.ahmed.banglaclient.module.movement.ToggleSprintModule",
             "com.ahmed.banglaclient.module.utility.FastBlockPlacementModule",
-            "com.ahmed.banglaclient.module.utility.LatencyOptimizerModule"
+            "com.ahmed.banglaclient.module.utility.LatencyOptimizerModule",
+            "com.ahmed.banglaclient.module.world.SlimeChunkInfoModule"
     };
 
     @Test

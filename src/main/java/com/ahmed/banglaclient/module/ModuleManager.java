@@ -95,6 +95,7 @@ import com.ahmed.banglaclient.module.world.BlockInfoModule;
 import com.ahmed.banglaclient.module.world.ChunkInfoModule;
 import com.ahmed.banglaclient.module.world.CompassHudModule;
 import com.ahmed.banglaclient.module.world.LightLevelModule;
+import com.ahmed.banglaclient.module.world.SlimeChunkInfoModule;
 import com.ahmed.banglaclient.module.world.TimeDisplayModule;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -205,6 +206,7 @@ public final class ModuleManager {
         register(new TimeDisplayModule());
         register(new LightLevelModule());
         register(new ChunkInfoModule());
+        register(new SlimeChunkInfoModule());
         register(new BlockInfoModule());
         register(new CompassHudModule());
 
