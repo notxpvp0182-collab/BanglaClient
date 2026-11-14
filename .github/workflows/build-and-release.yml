@@ -1,4 +1,4 @@
-name: Build & Auto-Release BANGLA CLIENT JAR
+name: Build & Auto-Release JAR
 
 on:
   push:
@@ -21,39 +21,31 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      - name: Grant Execute Permission for Gradlew
-        run: chmod +x gradlew
+      - name: Set up Gradle 8.14
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
 
-      - name: Validate & Build Mod JAR
-        run: ./gradlew build --no-daemon
+      - name: Build Mod JAR & Run Tests
+        run: gradle build --no-daemon
 
-      - name: Verify Built JAR Exists
-        id: verify_jar
+      - name: Find & Verify Built Mod JAR
+        id: find_jar
         run: |
-          JAR_FILE=$(ls build/libs/banglaclient-*.jar | grep -v "\-sources\.jar" | grep -v "\-dev\.jar" | head -n 1)
-          if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
-            echo "Error: Mod JAR was not generated!"
+          JAR_PATH=$(ls build/libs/banglaclient-*.jar | grep -v "\-sources\.jar" | grep -v "\-dev\.jar" | head -n 1)
+          if [ -z "$JAR_PATH" ] || [ ! -f "$JAR_PATH" ]; then
+            echo "JAR file not found!"
             exit 1
           fi
-          echo "jar_path=$JAR_FILE" >> $GITHUB_OUTPUT
-          echo "jar_name=$(basename $JAR_FILE)" >> $GITHUB_OUTPUT
-          echo "Verified JAR: $JAR_FILE"
+          echo "jar_path=$JAR_PATH" >> $GITHUB_OUTPUT
+          echo "Verified JAR: $JAR_PATH"
 
-      - name: Automatically Create GitHub Release & Upload JAR
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0-build.${{ github.run_number }}
-          name: "BANGLA CLIENT v1.0.0 (Build #${{ github.run_number }})"
-          body: |
-            ### BANGLA CLIENT — Automatic Build Release
-            - **Minecraft Version:** 1.21.11 (Fabric)
-            - **Build Number:** #${{ github.run_number }}
-            - **Commit:** `${{ github.sha }}`
-            - **UI Design:** PYES Structure + AURA Frosted Dark Glass
-          files: ${{ steps.verify_jar.outputs.jar_path }}
-          draft: false
-          prerelease: false
+      - name: Upload JAR to GitHub Releases Automatically
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v1.0.0-build.${{ github.run_number }}"
+          TITLE="BANGLA CLIENT v1.0.0 (Build #${{ github.run_number }})"
+          NOTES="Automatic JAR release built from commit ${{ github.sha }} (Minecraft 1.21.11 Fabric - PYES Structure + AURA Theme)."
+          gh release create "$TAG" "${{ steps.find_jar.outputs.jar_path }}" --title "$TITLE" --notes "$NOTES"

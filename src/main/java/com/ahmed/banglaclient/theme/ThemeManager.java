@@ -10,9 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Manages BANGLA CLIENT themes including Aura Dark (primary), Aura Light, Red Theme, and Custom Theme.
- */
 public final class ThemeManager {
     private final Map<String, Theme> themes = new LinkedHashMap<>();
     private String activeThemeId = "aura_dark";
@@ -33,7 +30,6 @@ public final class ThemeManager {
     public void rebuildThemes() {
         themes.clear();
 
-        // 1. AURA DARK (Primary Reference Visual Identity)
         themes.put("aura_dark", new Theme(
                 "aura_dark",
                 "Aura Dark",
@@ -52,7 +48,6 @@ public final class ThemeManager {
                 0x45FFFFFF
         ));
 
-        // 2. AURA LIGHT (Clean Frosted Off-White)
         themes.put("aura_light", new Theme(
                 "aura_light",
                 "Aura Light",
@@ -71,7 +66,6 @@ public final class ThemeManager {
                 0x480F172A
         ));
 
-        // 3. Classic Red Theme (Retained for backwards compatibility)
         themes.put("red_theme", new Theme(
                 "red_theme",
                 "Crimson Dark",
@@ -90,7 +84,6 @@ public final class ThemeManager {
                 0x50EF4444
         ));
 
-        // 4. User-Customizable Theme
         int priRgb = (Color.HSBtoRGB(customPrimaryHue, 0.35f, 0.95f) & 0x00FFFFFF) | 0xFF000000;
         int secRgb = (Color.HSBtoRGB(customSecondaryHue, 0.30f, 0.85f) & 0x00FFFFFF) | 0xFF000000;
         int tintBase = Color.HSBtoRGB(customPrimaryHue, 0.20f, Math.max(0.05f, customTintBrightness)) & 0x00FFFFFF;
@@ -121,9 +114,7 @@ public final class ThemeManager {
     }
 
     public void register(Theme theme) {
-        if (theme != null) {
-            themes.put(theme.getId(), theme);
-        }
+        if (theme != null) themes.put(theme.getId(), theme);
     }
 
     public Theme getActiveTheme() {

@@ -6,13 +6,9 @@ import com.ahmed.banglaclient.theme.ThemeTokens;
 import com.ahmed.banglaclient.util.ColorUtils;
 import net.minecraft.client.gui.DrawContext;
 
-/**
- * Core rendering engine for the BANGLA CLIENT Aura-styled Frosted Glass & PYES structural cards.
- */
 public final class GlassRenderer {
 
-    private GlassRenderer() {
-    }
+    private GlassRenderer() {}
 
     public static Theme getTheme() {
         BanglaClient client = BanglaClient.getInstance();
@@ -37,41 +33,18 @@ public final class GlassRenderer {
         );
     }
 
-    public static void drawGlassPanel(
-            DrawContext context,
-            int x,
-            int y,
-            int width,
-            int height,
-            boolean elevated,
-            boolean hovered,
-            boolean activeAccentBorder
-    ) {
+    public static void drawGlassPanel(DrawContext context, int x, int y, int width, int height, boolean elevated, boolean hovered, boolean activeAccentBorder) {
         Theme theme = getTheme();
         int baseColor = elevated ? theme.getGlassElevated() : theme.getGlassSurface();
         drawCustomGlassPanel(context, x, y, width, height, baseColor, hovered, activeAccentBorder, true);
     }
 
-    public static void drawCustomGlassPanel(
-            DrawContext context,
-            int x,
-            int y,
-            int width,
-            int height,
-            int surfaceArgb,
-            boolean hovered,
-            boolean activeAccentBorder,
-            boolean drawBorder
-    ) {
-        if (context == null || width < 4 || height < 4) {
-            return;
-        }
+    public static void drawCustomGlassPanel(DrawContext context, int x, int y, int width, int height, int surfaceArgb, boolean hovered, boolean activeAccentBorder, boolean drawBorder) {
+        if (context == null || width < 4 || height < 4) return;
         Theme theme = getTheme();
 
-        // 1. Soft Layered Ambient Shadow
         ShadowRenderer.drawAmbientShadow(context, x, y, width, height, 3, 0.24f);
 
-        // 2. Anti-aliased 1px chamfered rounded glass fill
         int topFill = hovered ? ColorUtils.scaleBrightness(surfaceArgb, 1.18f) : ColorUtils.scaleBrightness(surfaceArgb, 1.06f);
         int bottomFill = surfaceArgb;
 
@@ -81,16 +54,12 @@ public final class GlassRenderer {
         context.fill(x + 1, y, x + width - 1, y + 1, topFill);
         context.fill(x + 1, y + height - 1, x + width - 1, y + height, bottomFill);
 
-        // 3. Restrained Aura Top Inner Specular Sheen
         int sheenHeight = Math.min(height / 3, 16);
         if (sheenHeight > 2 && width > 10) {
-            int specTop = hovered
-                    ? ColorUtils.multiplyAlpha(theme.getSpecularTop(), 1.25f)
-                    : theme.getSpecularTop();
+            int specTop = hovered ? ColorUtils.multiplyAlpha(theme.getSpecularTop(), 1.25f) : theme.getSpecularTop();
             context.fillGradient(x + 1, y + 1, x + width - 1, y + 1 + sheenHeight, specTop, 0x00FFFFFF);
         }
 
-        // 4. Crisp 1px Aura Border
         if (drawBorder) {
             int accent = BanglaClient.getInstance() != null && BanglaClient.getInstance().getThemeManager() != null
                     ? BanglaClient.getInstance().getThemeManager().getEffectiveAccentPrimary()
@@ -117,18 +86,12 @@ public final class GlassRenderer {
         }
     }
 
-    /**
-     * Draws a PYES-style subtle top-left corner bracket accent (`┌`) in restrained Aura silver/white.
-     */
     public static void drawCornerBracket(DrawContext context, int x, int y, int length, int color) {
         if (context == null || length <= 1) return;
         context.fill(x, y, x + length, y + 1, color);
         context.fill(x, y + 1, x + 1, y + length, color);
     }
 
-    /**
-     * Draws crisp monochrome geometric vector icons for categories and module cards (zero blurry bitmaps).
-     */
     public static void drawVectorIcon(DrawContext context, int x, int y, int size, String iconType, int color) {
         if (context == null || size < 6) return;
         int cx = x + size / 2;
@@ -148,13 +111,11 @@ public final class GlassRenderer {
                 context.fill(x + 2, y + 6, x + size / 2, y + 7, color);
             }
             case "COMBAT", "PVP" -> {
-                // Shield / Crosshair vector
                 drawOutlineBorder(context, x + 1, y + 1, size - 2, size - 3, color);
                 context.fill(cx - 1, y + 3, cx + 1, y + size - 4, color);
                 context.fill(x + 3, cy - 1, x + size - 3, cy, color);
             }
             case "VISUAL" -> {
-                // Sparkle / Wand vector
                 context.fill(cx, y + 1, cx + 1, y + size - 1, color);
                 context.fill(x + 1, cy, x + size - 1, cy + 1, color);
                 context.fill(cx - 2, cy - 2, cx + 3, cy + 3, color);
@@ -165,7 +126,6 @@ public final class GlassRenderer {
                 context.fill(x + 3, cy, x + size - 3, cy + 1, color);
             }
             case "MOVEMENT" -> {
-                // Double chevrons (>>)
                 context.fill(x + 2, cy - 3, x + 4, cy - 1, color);
                 context.fill(x + 4, cy - 1, x + 6, cy + 1, color);
                 context.fill(x + 2, cy + 1, x + 4, cy + 3, color);
@@ -208,24 +168,10 @@ public final class GlassRenderer {
         }
     }
 
-    public static void drawPillBadge(
-            DrawContext context,
-            int x,
-            int y,
-            int width,
-            int height,
-            int tintColor,
-            boolean filledAccent
-    ) {
-        if (context == null || width < 4 || height < 4) {
-            return;
-        }
-        int bgFill = filledAccent
-                ? ColorUtils.withAlpha(tintColor, 0.20f)
-                : ColorUtils.withAlpha(tintColor, 0.08f);
-        int borderFill = filledAccent
-                ? ColorUtils.withAlpha(tintColor, 0.50f)
-                : ColorUtils.withAlpha(tintColor, 0.22f);
+    public static void drawPillBadge(DrawContext context, int x, int y, int width, int height, int tintColor, boolean filledAccent) {
+        if (context == null || width < 4 || height < 4) return;
+        int bgFill = filledAccent ? ColorUtils.withAlpha(tintColor, 0.20f) : ColorUtils.withAlpha(tintColor, 0.08f);
+        int borderFill = filledAccent ? ColorUtils.withAlpha(tintColor, 0.50f) : ColorUtils.withAlpha(tintColor, 0.22f);
 
         context.fill(x + 1, y, x + width - 1, y + height, bgFill);
         context.fill(x, y + 1, x + 1, y + height - 1, bgFill);
@@ -244,9 +190,7 @@ public final class GlassRenderer {
     }
 
     public static void drawHorizontalDivider(DrawContext context, int x, int y, int width) {
-        if (context == null || width <= 4) {
-            return;
-        }
+        if (context == null || width <= 4) return;
         Theme theme = getTheme();
         context.fill(x, y, x + width, y + 1, theme.getBorderSubtle());
     }

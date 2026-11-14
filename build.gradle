@@ -96,10 +96,10 @@ tasks.register('generateModIcon') {
             srcBg = ImageIO.read(rawJpg)
         }
         if (srcBg == null) {
-            def url = new URL('https://i.postimg.cc/05X5w9Vm/0b436142caf939e1091ed9c1b48bd323.jpg')
+            try { def url = new URL('https://i.postimg.cc/05X5w9Vm/0b436142caf939e1091ed9c1b48bd323.jpg')
             def conn = url.openConnection()
             conn.setRequestProperty('User-Agent', 'Mozilla/5.0')
-            srcBg = ImageIO.read(conn.getInputStream())
+            srcBg = ImageIO.read(conn.getInputStream()) } catch (Throwable ignored) { srcBg = new BufferedImage(1280, 720, BufferedImage.TYPE_INT_ARGB) }
         }
         if (srcBg != null) {
             int w = srcBg.getWidth()
