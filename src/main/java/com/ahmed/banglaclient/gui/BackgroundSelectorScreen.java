@@ -15,7 +15,6 @@ import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.CharInput;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -27,7 +26,11 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * 2D Aura Dark Custom Main Menu Background Selector (Supports GIF, PNG, JPG, JPEG, Rename, Delete, Drag & Drop).
+ * 2D AMOLED Aura Background Selector:
+ * - Left-clicking an image only highlights it; clicking [Select] applies it and shows the ✓ checkmark.
+ * - No filenames under images (full-bleed clean image cards).
+ * - Only [Select] and [Delete] buttons at the bottom (no Rename button).
+ * - Clicking [Delete] opens a Confirm / Cancel modal dialog.
  */
 public final class BackgroundSelectorScreen extends Screen {
     private final Screen parentScreen;
@@ -37,13 +40,12 @@ public final class BackgroundSelectorScreen extends Screen {
     private boolean closing = false;
 
     private BackgroundEntry highlightedEntry = null;
-    private boolean renaming = false;
-    private String renameInput = "";
+    private boolean confirmingDelete = false;
 
     private int winX, winY, winW, winH;
 
     public BackgroundSelectorScreen(Screen parentScreen) {
-        super(Text.literal("Background Customizer"));
+        super(Text.literal("Backgrounds"));
         this.parentScreen = parentScreen;
     }
 
@@ -54,6 +56,7 @@ public final class BackgroundSelectorScreen extends Screen {
         this.winX = (this.width - this.winW) / 2;
         this.winY = (this.height - this.winH) / 2;
         this.closing = false;
+        this.confirmingDelete = false;
         this.openAnim.snapTo(0.0f);
         this.openAnim.animateTo(1.0f);
         this.highlightedEntry = manager.getActiveBackground();
@@ -65,6 +68,7 @@ public final class BackgroundSelectorScreen extends Screen {
         for (Path p : paths) {
             manager.importFile(p);
         }
+        GlassRenderer.playClickSound();
         this.highlightedEntry = manager.getActiveBackground();
     }
 
@@ -89,26 +93,26 @@ public final class BackgroundSelectorScreen extends Screen {
         try {
             GlassRenderer.drawGlassPanel(context, winX, winY, winW, winH, false, false, true);
 
-            // Header: [← Back] | Menu Backgrounds | [Folder] [Refresh]
+            // Header: [← Back] | Backgrounds | [Folder] [Reload]
             boolean backHov = MathUtils.isHovered(mouseX, mouseY, winX + 8, winY + 7, 46, 16);
             GlassRenderer.drawPillBadge(context, winX + 8, winY + 7, 46, 16, 0xFFFFFFFF, backHov);
-            context.drawTextWithShadow(textRenderer, "← Back", winX + 14, winY + 11, 0xFFFFFFFF);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "← Back", winX + 14, winY + 11, 0xFFFFFFFF);
 
-            context.drawTextWithShadow(textRenderer, "Menu Backgrounds (GIF / PNG / JPG)", winX + 60, winY + 11, 0xFFFFFFFF);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Backgrounds", winX + 60, winY + 11, 0xFFFFFFFF);
 
             int folderX = winX + winW - 96;
             boolean folHov = MathUtils.isHovered(mouseX, mouseY, folderX, winY + 7, 44, 16);
             GlassRenderer.drawPillBadge(context, folderX, winY + 7, 44, 16, 0xFFFFFFFF, folHov);
-            context.drawTextWithShadow(textRenderer, "Folder", folderX + 8, winY + 11, 0xFFFFFFFF);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Folder", folderX + 8, winY + 11, 0xFFFFFFFF);
 
             int refX = winX + winW - 48;
             boolean refHov = MathUtils.isHovered(mouseX, mouseY, refX, winY + 7, 40, 16);
             GlassRenderer.drawPillBadge(context, refX, winY + 7, 40, 16, 0xFFFFFFFF, refHov);
-            context.drawTextWithShadow(textRenderer, "Reload", refX + 6, winY + 11, 0xFFFFFFFF);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Reload", refX + 6, winY + 11, 0xFFFFFFFF);
 
             GlassRenderer.drawHorizontalDivider(context, winX + 8, winY + 27, winW - 16);
 
-            // Grid Area
+            // Image Grid Area (Full-bleed image cards with NO filename text)
             int gridX = winX + 8;
             int gridY = winY + 32;
             int gridW = winW - 16;
@@ -118,8 +122,8 @@ public final class BackgroundSelectorScreen extends Screen {
             int cols = gridW >= 320 ? 3 : 2;
             int gap = 6;
             int cardW = (gridW - 8 - (cols - 1) * gap) / cols;
-            int cardH = 64;
-            int totalSlots = items.size() + 1; // +1 for Default Minecraft Panorama
+            int cardH = 60;
+            int totalSlots = items.size() + 1;
             int rows = (int) Math.ceil((double) totalSlots / cols);
 
             gridScroll.tickAndInterpolate();
@@ -128,16 +132,20 @@ public final class BackgroundSelectorScreen extends Screen {
             ClipRenderer.renderClipped(context, gridX, gridY, gridW - 4, gridH, () -> {
                 int startY = Math.round(gridY - gridScroll.getScrollOffset());
 
-                // Slot 0: Default Minecraft Background
-                boolean defActive = manager.getActiveBackground() == null;
+                // Slot 0: Default Minecraft Background Card
+                boolean defApplied = (manager.getActiveBackground() == null);
+                boolean defHighlighted = (highlightedEntry == null);
                 boolean defHov = MathUtils.isHovered(mouseX, mouseY, gridX, startY, cardW, cardH);
-                GlassRenderer.drawGlassPanel(context, gridX, startY, cardW, cardH, true, defHov, defActive);
-                context.fill(gridX + 4, startY + 4, gridX + cardW - 4, startY + cardH - 18, 0xFF141820);
-                context.drawTextWithShadow(textRenderer, "Default", gridX + 8, startY + cardH - 13, 0xFFFFFFFF);
-                if (defActive) {
-                    GlassRenderer.drawPillBadge(context, gridX + cardW - 16, startY + 5, 12, 12, 0xFF34D399, true); context.drawTextWithShadow(textRenderer, "✓", gridX + cardW - 13, startY + 7, 0xFF34D399);
+                GlassRenderer.drawGlassPanel(context, gridX, startY, cardW, cardH, true, defHov, defHighlighted);
+                context.fillGradient(gridX + 3, startY + 3, gridX + cardW - 3, startY + cardH - 3, 0xFF141822, 0xFF07090E);
+                GlassRenderer.drawVectorIcon(context, gridX + (cardW - 12) / 2, startY + (cardH - 12) / 2, 12, "WORLD", 0xFF94A3B8);
+
+                if (defApplied) {
+                    GlassRenderer.drawPillBadge(context, gridX + cardW - 16, startY + 5, 12, 12, 0xFF34D399, true);
+                    context.drawTextWithShadow(textRenderer, "✓", gridX + cardW - 13, startY + 7, 0xFF34D399);
                 }
 
+                // Uploaded / Ready-made Image Cards (Pure image, NO text below)
                 for (int i = 0; i < items.size(); i++) {
                     BackgroundEntry entry = items.get(i);
                     int slot = i + 1;
@@ -147,58 +155,62 @@ public final class BackgroundSelectorScreen extends Screen {
                     int cy = startY + r * (cardH + gap);
                     if (cy + cardH < gridY || cy > gridY + gridH) continue;
 
-                    boolean isSelected = manager.getActiveBackground() == entry || highlightedEntry == entry;
+                    boolean isHighlighted = (highlightedEntry == entry);
+                    boolean isApplied = (manager.getActiveBackground() == entry);
                     boolean hov = MathUtils.isHovered(mouseX, mouseY, cx, cy, cardW, cardH);
-                    GlassRenderer.drawGlassPanel(context, cx, cy, cardW, cardH, true, hov, isSelected);
+                    GlassRenderer.drawGlassPanel(context, cx, cy, cardW, cardH, true, hov, isHighlighted);
 
                     Identifier tex = entry.getCurrentFrameTexture();
                     if (tex != null) {
                         try {
-                            context.drawTexture(RenderPipelines.GUI_TEXTURED, tex, cx + 3, cy + 3, 0.0f, 0.0f, cardW - 6, cardH - 18, cardW - 6, cardH - 18);
+                            context.drawTexture(RenderPipelines.GUI_TEXTURED, tex, cx + 3, cy + 3, 0.0f, 0.0f, cardW - 6, cardH - 6, cardW - 6, cardH - 6);
                         } catch (Throwable ignored) {}
                     }
 
-                    String label = (entry.isAnimatedGif() ? "[GIF] " : "") + entry.getDisplayName();
-                    context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(label, cardW - 16), cx + 5, cy + cardH - 13, 0xFFFFFFFF); if (manager.getActiveBackground() == entry) { GlassRenderer.drawPillBadge(context, cx + cardW - 16, cy + 5, 12, 12, 0xFF34D399, true); context.drawTextWithShadow(textRenderer, "✓", cx + cardW - 13, cy + 7, 0xFF34D399); }
+                    if (isApplied) {
+                        GlassRenderer.drawPillBadge(context, cx + cardW - 16, cy + 5, 12, 12, 0xFF34D399, true);
+                        context.drawTextWithShadow(textRenderer, "✓", cx + cardW - 13, cy + 7, 0xFF34D399);
+                    }
                 }
             });
 
             gridScroll.renderScrollbar(context, gridX + gridW - 3, gridY, 2, gridH, mouseX, mouseY);
 
-            // Bottom Action Bar: [Apply] [Rename] [Delete]
+            // Bottom Action Bar: ONLY [Select] and [Delete]
             int botY = winY + winH - 24;
-            int btnW = (winW - 24) / 3;
+            int btnW = (winW - 22) / 2;
 
-            boolean appHov = MathUtils.isHovered(mouseX, mouseY, winX + 8, botY, btnW, 18);
-            GlassRenderer.drawPillBadge(context, winX + 8, botY, btnW, 18, 0xFFFFFFFF, appHov);
-            context.drawTextWithShadow(textRenderer, "Select", winX + 8 + (btnW - textRenderer.getWidth("Select")) / 2, botY + 5, 0xFFFFFFFF);
+            boolean selHov = MathUtils.isHovered(mouseX, mouseY, winX + 8, botY, btnW, 18);
+            GlassRenderer.drawPillBadge(context, winX + 8, botY, btnW, 18, 0xFFFFFFFF, selHov || true);
+            String selLbl = GlassRenderer.toSmallCaps("Select");
+            context.drawTextWithShadow(textRenderer, selLbl, winX + 8 + (btnW - textRenderer.getWidth(selLbl)) / 2, botY + 5, 0xFFFFFFFF);
 
-            int renX = winX + 12 + btnW;
-            boolean renHov = MathUtils.isHovered(mouseX, mouseY, renX, botY, btnW, 18);
-            GlassRenderer.drawPillBadge(context, renX, botY, btnW, 18, 0xFFFFFFFF, renHov);
-            context.drawTextWithShadow(textRenderer, "Rename", renX + (btnW - textRenderer.getWidth("Rename")) / 2, botY + 5, 0xFFFFFFFF);
-
-            int delX = winX + 16 + btnW * 2;
+            int delX = winX + 14 + btnW;
             boolean delHov = MathUtils.isHovered(mouseX, mouseY, delX, botY, btnW, 18);
             GlassRenderer.drawPillBadge(context, delX, botY, btnW, 18, ThemeTokens.STATUS_ERROR, delHov);
-            context.drawTextWithShadow(textRenderer, "Delete", delX + (btnW - textRenderer.getWidth("Delete")) / 2, botY + 5, 0xFFFFFFFF);
+            String delLbl = GlassRenderer.toSmallCaps("Delete");
+            context.drawTextWithShadow(textRenderer, delLbl, delX + (btnW - textRenderer.getWidth(delLbl)) / 2, botY + 5, 0xFFFFFFFF);
 
-            // Rename Modal
-            if (renaming && highlightedEntry != null) {
-                context.fill(0, 0, this.width, this.height, 0x99000000);
-                int mw = 220, mh = 76;
+            // Delete Confirmation Modal
+            if (confirmingDelete && highlightedEntry != null) {
+                context.fill(0, 0, this.width, this.height, 0xB0000000);
+                int mw = 210, mh = 68;
                 int mx = (this.width - mw) / 2, my = (this.height - mh) / 2;
                 GlassRenderer.drawGlassPanel(context, mx, my, mw, mh, true, false, true);
-                context.drawTextWithShadow(textRenderer, "Rename Background", mx + 10, my + 8, 0xFFFFFFFF);
-                GlassRenderer.drawGlassPanel(context, mx + 10, my + 24, mw - 20, 18, false, false, true);
-                context.drawTextWithShadow(textRenderer, renameInput + "|", mx + 14, my + 29, 0xFFFFFFFF);
+
+                String title = GlassRenderer.toSmallCaps("Delete this background?");
+                context.drawTextWithShadow(textRenderer, title, mx + (mw - textRenderer.getWidth(title)) / 2, my + 14, 0xFFFFFFFF);
 
                 int hw = (mw - 26) / 2;
-                GlassRenderer.drawPillBadge(context, mx + 10, my + 48, hw, 18, 0xFFFFFFFF, true);
-                context.drawTextWithShadow(textRenderer, "Save", mx + 10 + (hw - textRenderer.getWidth("Save")) / 2, my + 53, 0xFFFFFFFF);
+                boolean cfHov = MathUtils.isHovered(mouseX, mouseY, mx + 10, my + 40, hw, 18);
+                GlassRenderer.drawPillBadge(context, mx + 10, my + 40, hw, 18, ThemeTokens.STATUS_ERROR, cfHov || true);
+                String cfLbl = GlassRenderer.toSmallCaps("Confirm");
+                context.drawTextWithShadow(textRenderer, cfLbl, mx + 10 + (hw - textRenderer.getWidth(cfLbl)) / 2, my + 45, 0xFFFFFFFF);
 
-                GlassRenderer.drawPillBadge(context, mx + 16 + hw, my + 48, hw, 18, 0xFFFFFFFF, false);
-                context.drawTextWithShadow(textRenderer, "Cancel", mx + 16 + hw + (hw - textRenderer.getWidth("Cancel")) / 2, my + 53, theme.getTextSecondary());
+                boolean cnHov = MathUtils.isHovered(mouseX, mouseY, mx + 16 + hw, my + 40, hw, 18);
+                GlassRenderer.drawPillBadge(context, mx + 16 + hw, my + 40, hw, 18, 0xFFFFFFFF, cnHov);
+                String cnLbl = GlassRenderer.toSmallCaps("Cancel");
+                context.drawTextWithShadow(textRenderer, cnLbl, mx + 16 + hw + (hw - textRenderer.getWidth(cnLbl)) / 2, my + 45, theme.getTextSecondary());
             }
         } finally {
             matrices.popMatrix();
@@ -210,32 +222,38 @@ public final class BackgroundSelectorScreen extends Screen {
         double mouseX = click.x(), mouseY = click.y();
         if (click.button() != 0 || closing) return super.mouseClicked(click, doubled);
 
-        if (renaming && highlightedEntry != null) {
-            int mw = 220, mh = 76;
+        // 1. Delete Confirmation Modal Clicks
+        if (confirmingDelete && highlightedEntry != null) {
+            int mw = 210, mh = 68;
             int mx = (this.width - mw) / 2, my = (this.height - mh) / 2;
             int hw = (mw - 26) / 2;
-            if (MathUtils.isHovered(mouseX, mouseY, mx + 10, my + 48, hw, 18)) {
-                manager.renameEntry(highlightedEntry, renameInput);
+            if (MathUtils.isHovered(mouseX, mouseY, mx + 10, my + 40, hw, 18)) {
+                GlassRenderer.playClickSound();
+                manager.deleteEntry(highlightedEntry);
                 highlightedEntry = manager.getActiveBackground();
-                renaming = false;
+                confirmingDelete = false;
                 return true;
             }
-            if (MathUtils.isHovered(mouseX, mouseY, mx + 16 + hw, my + 48, hw, 18)) {
-                renaming = false;
+            if (MathUtils.isHovered(mouseX, mouseY, mx + 16 + hw, my + 40, hw, 18)) {
+                GlassRenderer.playClickSound();
+                confirmingDelete = false;
                 return true;
             }
             return true;
         }
 
         if (MathUtils.isHovered(mouseX, mouseY, winX + 8, winY + 7, 46, 16)) {
+            GlassRenderer.playClickSound();
             close();
             return true;
         }
         if (MathUtils.isHovered(mouseX, mouseY, winX + winW - 96, winY + 7, 44, 16)) {
+            GlassRenderer.playClickSound();
             try { Util.getOperatingSystem().open(manager.getBackgroundsDir().toFile()); } catch (Throwable ignored) {}
             return true;
         }
         if (MathUtils.isHovered(mouseX, mouseY, winX + winW - 48, winY + 7, 40, 16)) {
+            GlassRenderer.playClickSound();
             manager.refreshLibrary();
             return true;
         }
@@ -245,17 +263,18 @@ public final class BackgroundSelectorScreen extends Screen {
             return true;
         }
 
+        // 2. Left-clicking an image ONLY highlights it (does NOT select/apply it yet!)
         if (MathUtils.isHovered(mouseX, mouseY, gridX, gridY, gridW - 4, gridH)) {
             List<BackgroundEntry> items = manager.getEntries();
             int cols = gridW >= 320 ? 3 : 2;
             int gap = 6;
             int cardW = (gridW - 8 - (cols - 1) * gap) / cols;
-            int cardH = 64;
+            int cardH = 60;
             int startY = Math.round(gridY - gridScroll.getScrollOffset());
 
             if (MathUtils.isHovered(mouseX, mouseY, gridX, startY, cardW, cardH)) {
                 highlightedEntry = null;
-                manager.setSelectedId("");
+                GlassRenderer.playClickSound();
                 return true;
             }
 
@@ -268,29 +287,28 @@ public final class BackgroundSelectorScreen extends Screen {
                 int cy = startY + r * (cardH + gap);
                 if (MathUtils.isHovered(mouseX, mouseY, cx, cy, cardW, cardH)) {
                     highlightedEntry = entry;
-                    manager.setSelectedId(entry.getId());
+                    GlassRenderer.playClickSound();
                     return true;
                 }
             }
         }
 
+        // 3. Bottom [Select] and [Delete] Buttons
         int botY = winY + winH - 24;
-        int btnW = (winW - 24) / 3;
+        int btnW = (winW - 22) / 2;
+
+        // [Select] -> Applies the highlighted background and shows the ✓ checkmark!
         if (MathUtils.isHovered(mouseX, mouseY, winX + 8, botY, btnW, 18)) {
+            GlassRenderer.playClickSound();
             manager.setSelectedId(highlightedEntry != null ? highlightedEntry.getId() : "");
             return true;
         }
-        if (MathUtils.isHovered(mouseX, mouseY, winX + 12 + btnW, botY, btnW, 18)) {
+
+        // [Delete] -> Opens Confirm / Cancel popup for the highlighted image
+        if (MathUtils.isHovered(mouseX, mouseY, winX + 14 + btnW, botY, btnW, 18)) {
             if (highlightedEntry != null) {
-                renaming = true;
-                renameInput = highlightedEntry.getDisplayName();
-            }
-            return true;
-        }
-        if (MathUtils.isHovered(mouseX, mouseY, winX + 16 + btnW * 2, botY, btnW, 18)) {
-            if (highlightedEntry != null) {
-                manager.deleteEntry(highlightedEntry);
-                highlightedEntry = manager.getActiveBackground();
+                GlassRenderer.playClickSound();
+                confirmingDelete = true;
             }
             return true;
         }
@@ -318,16 +336,12 @@ public final class BackgroundSelectorScreen extends Screen {
     @Override
     public boolean keyPressed(KeyInput input) {
         int key = input.key();
-        if (renaming) {
-            if (key == GLFW.GLFW_KEY_ESCAPE) { renaming = false; return true; }
+        if (confirmingDelete) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) { confirmingDelete = false; return true; }
             if (key == GLFW.GLFW_KEY_ENTER && highlightedEntry != null) {
-                manager.renameEntry(highlightedEntry, renameInput);
+                manager.deleteEntry(highlightedEntry);
                 highlightedEntry = manager.getActiveBackground();
-                renaming = false;
-                return true;
-            }
-            if (key == GLFW.GLFW_KEY_BACKSPACE && !renameInput.isEmpty()) {
-                renameInput = renameInput.substring(0, renameInput.length() - 1);
+                confirmingDelete = false;
                 return true;
             }
             return true;
@@ -337,16 +351,6 @@ public final class BackgroundSelectorScreen extends Screen {
             return true;
         }
         return super.keyPressed(input);
-    }
-
-    @Override
-    public boolean charTyped(CharInput input) {
-        char chr = (char) input.codepoint();
-        if (renaming && chr >= 32 && chr != 127 && renameInput.length() < 28) {
-            renameInput += chr;
-            return true;
-        }
-        return super.charTyped(input);
     }
 
     @Override
