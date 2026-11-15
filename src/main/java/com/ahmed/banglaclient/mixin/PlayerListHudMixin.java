@@ -51,7 +51,7 @@ public abstract class PlayerListHudMixin {
                 || BcIdentityManager.isVerifiedBcUserByName(original.getString());
 
         if (isBc) {
-            MutableText spacing = Text.literal("   ");
+            MutableText spacing = Text.literal("    ");
             cir.setReturnValue(spacing.append(original));
         }
     }
@@ -70,7 +70,7 @@ public abstract class PlayerListHudMixin {
 
             if (isBc) {
                 // Draw large 10x10 BC Identity Icon right in the reserved space at x (same height as player name!)
-                BcIdentityManager.drawIdentityIcon(context, x, y - 1, 10, 10);
+                BcIdentityManager.drawIdentityIcon(context, x - 1, y - 3, 14, 14);
             }
         }
         context.drawTextWithShadow(textRenderer, text, x, y, color);

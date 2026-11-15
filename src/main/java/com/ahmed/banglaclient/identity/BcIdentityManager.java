@@ -142,15 +142,15 @@ public final class BcIdentityManager {
         if (context == null || textRenderer == null || screenWidth <= 0 || screenHeight <= 0) return;
 
         String title = GlassRenderer.toSmallCaps("BANGLA CLIENT");
-        float scale = 1.25f;
-        int iconSize = 14;
+        float scale = 1.45f;
+        int iconSize = 22;
         int scaledTextW = Math.round(textRenderer.getWidth(title) * scale);
         int totalW = iconSize + 5 + scaledTextW;
 
         int x = screenWidth - totalW - 10;
-        int y = screenHeight - 20;
+        int y = screenHeight - 24;
 
-        drawIdentityIcon(context, x, y - 2, iconSize, iconSize);
+        drawIdentityIcon(context, x, y - 5, iconSize, iconSize);
 
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
@@ -161,7 +161,7 @@ public final class BcIdentityManager {
     }
 
     public static MutableText createBcPrefixBadge() {
-        return Text.literal("✦ ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFFFFF)).withBold(true));
+        return Text.literal("\uE001 ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFFFFF)));
     }
 
     public static Set<UUID> getVerifiedBcUuids() {

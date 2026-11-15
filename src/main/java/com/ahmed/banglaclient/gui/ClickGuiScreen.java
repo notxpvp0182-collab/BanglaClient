@@ -136,7 +136,7 @@ public final class ClickGuiScreen extends Screen {
             int mainW = windowWidth - sidebarW - 10;
             int mainH = windowHeight - topBarH - 10;
 
-            sidebar.render(context, textRenderer, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, mouseX, mouseY);
+            sidebar.render(context, textRenderer, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, mouseX, mouseY); GlassSidebar.SidebarTab hovTab = sidebar.getHoveredTab(mouseX, mouseY, windowX + 3, windowY + 3, sidebarW, windowHeight - 6); if (hovTab != null) { String hText = GlassRenderer.toSmallCaps(hovTab.getLabel()); int htw = textRenderer.getWidth(hText) + 12; GlassRenderer.drawGlassPanel(context, windowX + sidebarW + 8, Math.max(windowY + 4, mouseY - 12), htw, 16, true, true, true); context.drawTextWithShadow(textRenderer, hText, windowX + sidebarW + 14, Math.max(windowY + 4, mouseY - 12) + 4, 0xFFFFFFFF); }
             topBar.render(context, textRenderer, mainX, windowY + 3, mainW, topBarH, mouseX, mouseY);
 
             float pageTrans = pageTransitionAnim.getValue();
@@ -161,7 +161,7 @@ public final class ClickGuiScreen extends Screen {
         int columns = width >= 250 ? 2 : 1;
         int gap = 5;
         int cardW = (width - 8 - (gap * (columns - 1))) / columns;
-        int cardH = 26;
+        int cardH = 44;
         int rows = (int) Math.ceil((double) filteredModules.size() / columns);
         int totalContentHeight = rows * (cardH + gap) + 4;
 
@@ -354,7 +354,7 @@ public final class ClickGuiScreen extends Screen {
             int columns = mainW >= 250 ? 2 : 1;
             int gap = 5;
             int cardW = (mainW - 8 - (gap * (columns - 1))) / columns;
-            int cardH = 26;
+            int cardH = 44;
             int startY = Math.round(mainY - mainScroll.getScrollOffset());
 
             for (int i = 0; i < filteredModules.size(); i++) {

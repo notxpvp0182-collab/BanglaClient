@@ -135,7 +135,7 @@ public final class BackgroundSelectorScreen extends Screen {
                 context.fill(gridX + 4, startY + 4, gridX + cardW - 4, startY + cardH - 18, 0xFF141820);
                 context.drawTextWithShadow(textRenderer, "Default", gridX + 8, startY + cardH - 13, 0xFFFFFFFF);
                 if (defActive) {
-                    context.drawTextWithShadow(textRenderer, "●", gridX + cardW - 12, startY + cardH - 13, 0xFFFFFFFF);
+                    GlassRenderer.drawPillBadge(context, gridX + cardW - 16, startY + 5, 12, 12, 0xFF34D399, true); context.drawTextWithShadow(textRenderer, "✓", gridX + cardW - 13, startY + 7, 0xFF34D399);
                 }
 
                 for (int i = 0; i < items.size(); i++) {
@@ -159,7 +159,7 @@ public final class BackgroundSelectorScreen extends Screen {
                     }
 
                     String label = (entry.isAnimatedGif() ? "[GIF] " : "") + entry.getDisplayName();
-                    context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(label, cardW - 16), cx + 5, cy + cardH - 13, 0xFFFFFFFF);
+                    context.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(label, cardW - 16), cx + 5, cy + cardH - 13, 0xFFFFFFFF); if (manager.getActiveBackground() == entry) { GlassRenderer.drawPillBadge(context, cx + cardW - 16, cy + 5, 12, 12, 0xFF34D399, true); context.drawTextWithShadow(textRenderer, "✓", cx + cardW - 13, cy + 7, 0xFF34D399); }
                 }
             });
 

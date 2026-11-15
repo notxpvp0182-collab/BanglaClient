@@ -163,6 +163,7 @@ public final class GlassSidebar {
         return scrollContainer.onMouseScrolled(mouseX, mouseY, verticalAmount, x, listY, width, listHeight);
     }
 
+    public SidebarTab getHoveredTab(double mouseX, double mouseY, int x, int y, int width, int height) { int listY = y + 29; int listHeight = Math.max(30, height - 33); if (!MathUtils.isHovered(mouseX, mouseY, x + 1, listY, width - 5, listHeight)) return null; int btnSize = 20, btnStep = 23; int drawY = Math.round(listY - scrollContainer.getScrollOffset()) + 2; int btnX = x + (width - btnSize) / 2 - 1; for (SidebarTab tab : SidebarTab.values()) { if (MathUtils.isHovered(mouseX, mouseY, btnX, drawY, btnSize, btnSize)) return tab; drawY += btnStep; } return null; }
     public SidebarTab getSelectedTab() { return selectedTab; }
     public void setSelectedTab(SidebarTab selectedTab) {
         if (selectedTab != null) {
