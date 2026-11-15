@@ -29,6 +29,8 @@ public final class KeybindManager {
     private KeyBinding vanillaHudEditorBinding;
     private KeyBinding chatScrollUpBinding;
     private KeyBinding chatScrollDownBinding;
+    private int chatUpHoldTicks = 0;
+    private int chatDownHoldTicks = 0;
 
     public KeybindManager(ModuleManager moduleManager) {
         this.moduleManager = moduleManager;
@@ -46,8 +48,8 @@ public final class KeybindManager {
 
     private void onClientTick(MinecraftClient client) {
         if (client == null || client.getWindow() == null) return;
-        while (chatScrollUpBinding != null && chatScrollUpBinding.wasPressed()) { com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollUp(2); }
-        while (chatScrollDownBinding != null && chatScrollDownBinding.wasPressed()) { com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollDown(2); }
+        boolean upHeld = (chatScrollUpBinding != null && chatScrollUpBinding.isPressed()) || (client.currentScreen == null && InputUtil.isKeyPressed(client.getWindow(), GLFW.GLFW_KEY_UP)); if (upHeld) { chatUpHoldTicks++; if (chatUpHoldTicks == 1) com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollUp(2); else if (chatUpHoldTicks >= 30 && chatUpHoldTicks % 2 == 0) com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollUp(1); } else { chatUpHoldTicks = 0; }
+        boolean downHeld = (chatScrollDownBinding != null && chatScrollDownBinding.isPressed()) || (client.currentScreen == null && InputUtil.isKeyPressed(client.getWindow(), GLFW.GLFW_KEY_DOWN)); if (downHeld) { chatDownHoldTicks++; if (chatDownHoldTicks == 1) com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollDown(2); else if (chatDownHoldTicks >= 40) com.ahmed.banglaclient.livestream.LiveStreamManager.get().jumpToLiveBottom(); } else { chatDownHoldTicks = 0; }
         if (vanillaClickGuiBinding != null && vanillaClickGuiBinding.wasPressed() && client.currentScreen == null) {
             client.setScreen(new ClickGuiScreen(false));
             return;

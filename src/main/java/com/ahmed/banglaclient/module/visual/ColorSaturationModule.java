@@ -99,7 +99,13 @@ public final class ColorSaturationModule extends Module {
     /**
      * Renders the real-time color grading pass (Saturation, Contrast, Brightness, Hue) over the game viewport.
      */
+    public float getSaturation() { return saturationSetting.getFloatValue(); }
+    public float getContrast() { return contrastSetting.getFloatValue(); }
+    public float getBrightness() { return brightnessSetting.getFloatValue(); }
+    public float getHue() { return hueSetting.getFloatValue(); }
+    public boolean isActiveNonIdentity() { return isEnabled() && (Math.abs(getSaturation() - 1.0f) > 0.005f || Math.abs(getContrast() - 1.0f) > 0.005f || Math.abs(getBrightness() - 1.0f) > 0.005f || Math.abs(getHue()) > 0.1f); }
     public void renderColorGradingOverlay(DrawContext context, int screenWidth, int screenHeight) {
+        if (!com.ahmed.banglaclient.rendering.SaturationShaderRenderer.isShaderUnavailable()) return;
         if (!isEnabled() || context == null) return;
         float sat = saturationSetting.getFloatValue();
         float con = contrastSetting.getFloatValue();

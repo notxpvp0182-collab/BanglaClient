@@ -111,7 +111,7 @@ public final class SkinCapeManager {
             int w = img.getWidth();
             int h = img.getHeight();
             if (asCape) {
-                boolean validCape = (w == 64 && h == 32) || (w == 128 && h == 64) || (w == 22 && h == 17);
+                boolean validCape = (w >= 16 && h >= 8);
                 if (!validCape) return null;
             } else {
                 boolean validSkin = (w == 64 && (h == 64 || h == 32)) || (w == 128 && (h == 128 || h == 64));

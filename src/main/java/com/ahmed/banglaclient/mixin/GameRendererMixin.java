@@ -17,6 +17,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/WorldRenderer;drawEntityOutlinesFramebuffer()V"), require = 0)
+    private void banglaclient$renderColorSaturationShader(net.minecraft.client.render.RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
+        com.ahmed.banglaclient.rendering.SaturationShaderRenderer.renderWorldPass();
+    }
 
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$applySmoothZoomFov(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {

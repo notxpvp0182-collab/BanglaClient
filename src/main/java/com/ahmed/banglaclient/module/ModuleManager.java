@@ -303,6 +303,7 @@ public final class ModuleManager {
     }
     public List<Module> searchModules(String query, ModuleCategory optionalCategoryFilter, boolean onlyEnabled, boolean onlyFavorites) {
         return modulesById.values().stream()
+                .filter(m -> !(m instanceof LiveStreamHudModule))
                 .filter(m -> optionalCategoryFilter == null || m.getCategory() == optionalCategoryFilter)
                 .filter(m -> !onlyEnabled || m.isEnabled())
                 .filter(m -> !onlyFavorites || m.isFavorite())

@@ -197,7 +197,7 @@ public final class GlassRenderer {
         } else if (id.contains("crystal") || id.contains("anchor") || id.contains("pearl") || id.contains("arrow")) {
             drawOutlineBorder(c, x + 2, y + 2, size - 4, size - 4, col);
             c.fill(cx - 1, cy - 1, cx + 2, cy + 2, col);
-        } else if (id.contains("fullbright") || id.contains("light") || id.contains("sky") || id.contains("moon") || id.contains("weather")) {
+        } else if (id.contains("saturation") || id.contains("color")) { drawOutlineBorder(c, x + 1, y + 1, size - 2, size - 2, col); c.fill(x + 2, y + 2, cx, cy, col); c.fill(cx, cy, x + size - 2, y + size - 2, col); } else if (id.contains("slime")) { drawOutlineBorder(c, x + 1, y + 1, size - 2, size - 2, col); c.fill(x + 2, y + 3, x + 4, y + 5, col); c.fill(x + size - 4, y + 3, x + size - 2, y + 5, col); c.fill(x + 3, y + 6, x + size - 3, y + 8, col); } else if (id.contains("fullbright") || id.contains("light") || id.contains("sky") || id.contains("moon") || id.contains("weather")) {
             c.fill(cx - 2, cy - 2, cx + 3, cy + 3, col);
             c.fill(cx, y, cx + 1, y + 2, col);
             c.fill(cx, y + size - 2, cx + 1, y + size, col);
