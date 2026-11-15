@@ -4,6 +4,7 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.gui.HudEditorScreen;
 import com.ahmed.banglaclient.module.HudModule;
 import com.ahmed.banglaclient.module.ModuleManager;
+import com.ahmed.banglaclient.module.visual.ColorSaturationModule;
 import com.ahmed.banglaclient.module.visual.ZoomModule;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.minecraft.client.MinecraftClient;
@@ -25,6 +26,7 @@ public final class HudManager {
         int screenWidth = client.getWindow().getScaledWidth();
         int screenHeight = client.getWindow().getScaledHeight();
 
+        moduleManager.getModule(ColorSaturationModule.class).ifPresent(cs -> cs.renderColorGradingOverlay(context, screenWidth, screenHeight));
         if (hudVisible) {
             for (HudModule hudModule : moduleManager.getHudModules()) {
                 if (!hudModule.isEnabled()) continue;

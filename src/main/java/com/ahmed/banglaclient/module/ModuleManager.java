@@ -74,7 +74,10 @@ import com.ahmed.banglaclient.module.utility.MiddleClickPearlModule;
 import com.ahmed.banglaclient.module.utility.RightClickDelayModule;
 import com.ahmed.banglaclient.module.utility.ScreenshotManagerModule;
 import com.ahmed.banglaclient.module.utility.WaypointManagerModule;
+import com.ahmed.banglaclient.livestream.LiveStreamHudModule;
+import com.ahmed.banglaclient.livestream.LiveStreamManager;
 import com.ahmed.banglaclient.module.visual.ClearWaterModule;
+import com.ahmed.banglaclient.module.visual.ColorSaturationModule;
 import com.ahmed.banglaclient.module.visual.CustomFireOverlayModule;
 import com.ahmed.banglaclient.module.visual.CustomFogModule;
 import com.ahmed.banglaclient.module.visual.CustomGlintModule;
@@ -146,6 +149,16 @@ public final class ModuleManager {
         register(new WorldInfoModule());
         register(new SessionTimerModule());
         register(new TabListHeadsModule());
+        register(new LiveStreamHudModule("ls_live_indicator", "LS: Live Indicator", 12f, 12f, 68f, 20f, false, () -> LiveStreamManager.get().snapshot().state() == LiveStreamManager.ConnectionState.LIVE ? "LIVE" : LiveStreamManager.get().snapshot().state().name()));
+        register(new LiveStreamHudModule("ls_viewer_count", "LS: Viewer Count", 84f, 12f, 92f, 20f, false, () -> "Viewers: " + LiveStreamManager.formatCompactNumber(LiveStreamManager.get().snapshot().viewerCount())));
+        register(new LiveStreamHudModule("ls_like_count", "LS: Like Count", 180f, 12f, 82f, 20f, false, () -> "Likes: " + LiveStreamManager.formatCompactNumber(LiveStreamManager.get().snapshot().likeCount())));
+        register(new LiveStreamHudModule("ls_channel_name", "LS: Channel Name", 12f, 36f, 128f, 20f, false, () -> "Channel: " + LiveStreamManager.get().snapshot().channelName()));
+        register(new LiveStreamHudModule("ls_channel_handle", "LS: Channel Handle", 144f, 36f, 102f, 20f, false, () -> "Handle: " + LiveStreamManager.get().snapshot().channelHandle()));
+        register(new LiveStreamHudModule("ls_subscriber_count", "LS: Subscribers", 12f, 60f, 118f, 20f, false, () -> "Subs: " + LiveStreamManager.formatCompactNumber(LiveStreamManager.get().snapshot().subscriberCount())));
+        register(new LiveStreamHudModule("ls_stream_duration", "LS: Stream Duration", 134f, 60f, 112f, 20f, false, () -> { var s = LiveStreamManager.get().snapshot(); if (s.streamStartEpochMs() <= 0L || s.state() != LiveStreamManager.ConnectionState.LIVE) return "Live: --:--"; long sec = Math.max(0L, (System.currentTimeMillis() - s.streamStartEpochMs()) / 1000L); return String.format("Live: %02d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60); }));
+        register(new LiveStreamHudModule("ls_stream_title", "LS: Stream Title", 12f, 84f, 220f, 20f, false, () -> "Title: " + LiveStreamManager.get().snapshot().streamTitle()));
+        register(new LiveStreamHudModule("ls_connection_status", "LS: Stream Status", 12f, 108f, 190f, 20f, false, () -> "Status: " + LiveStreamManager.get().snapshot().statusMessage()));
+        register(new LiveStreamHudModule("ls_live_chat", "LS: YouTube Live Chat", 12f, 136f, 260f, 140f, true, null));
 
         // PvP / Combat (16 Essential Modules)
         register(new ArmorStatusModule());
@@ -167,6 +180,7 @@ public final class ModuleManager {
 
         // Visual (17 Working Modules)
         register(new FullbrightModule());
+        register(new ColorSaturationModule());
         register(new ZoomModule());
         register(new CustomFogModule());
         register(new CustomSkyModule());

@@ -27,6 +27,8 @@ public final class KeybindManager {
     private final Map<Integer, Boolean> previousKeyState = new HashMap<>();
     private KeyBinding vanillaClickGuiBinding;
     private KeyBinding vanillaHudEditorBinding;
+    private KeyBinding chatScrollUpBinding;
+    private KeyBinding chatScrollDownBinding;
 
     public KeybindManager(ModuleManager moduleManager) {
         this.moduleManager = moduleManager;
@@ -37,11 +39,15 @@ public final class KeybindManager {
                 "banglaclient.key.open_click_gui", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, BANGLA_KEY_CATEGORY));
         this.vanillaHudEditorBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "banglaclient.key.open_hud_editor", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_H, BANGLA_KEY_CATEGORY));
+        this.chatScrollUpBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding("banglaclient.key.chat_up", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_UP, BANGLA_KEY_CATEGORY));
+        this.chatScrollDownBinding = KeyBindingHelper.registerKeyBinding(new KeyBinding("banglaclient.key.chat_down", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_DOWN, BANGLA_KEY_CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
     }
 
     private void onClientTick(MinecraftClient client) {
         if (client == null || client.getWindow() == null) return;
+        while (chatScrollUpBinding != null && chatScrollUpBinding.wasPressed()) { com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollUp(2); }
+        while (chatScrollDownBinding != null && chatScrollDownBinding.wasPressed()) { com.ahmed.banglaclient.livestream.LiveStreamManager.get().scrollDown(2); }
         if (vanillaClickGuiBinding != null && vanillaClickGuiBinding.wasPressed() && client.currentScreen == null) {
             client.setScreen(new ClickGuiScreen(false));
             return;

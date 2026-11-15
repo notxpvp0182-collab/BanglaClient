@@ -81,10 +81,20 @@ public abstract class EntityRendererMixin<T extends Entity, S extends EntityRend
         VertexConsumer vc = immediate.getBuffer(RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
         int light = 0xF000F0;
 
-        vc.vertex(pos, iconX, iconY + iconSize, -0.01f).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX + iconSize, iconY + iconSize, -0.01f).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX + iconSize, iconY, -0.01f).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        vc.vertex(pos, iconX, iconY, -0.01f).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        // Emit BOTH front and back winding orders so negative Y scale (-0.025f) never backface-culls the icon!
+        for (float zOff : new float[]{0.03f, -0.03f}) {
+            // Winding 1 (CCW for negative Y scale)
+            vc.vertex(pos, iconX, iconY, zOff).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX + iconSize, iconY, zOff).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX + iconSize, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+
+            // Winding 2 (CW fallback)
+            vc.vertex(pos, iconX, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX + iconSize, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX + iconSize, iconY, zOff).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+            vc.vertex(pos, iconX, iconY, zOff).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        }
         immediate.draw();
     }
 

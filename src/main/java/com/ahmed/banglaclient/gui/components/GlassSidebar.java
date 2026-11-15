@@ -29,7 +29,8 @@ public final class GlassSidebar {
         PERFORMANCE("Performance", "MODULES", ModuleCategory.PERFORMANCE, "PERFORMANCE"),
         UTILITY("Utility", "MODULES", ModuleCategory.UTILITY, "UTILITY"),
         SETTINGS("Settings", "CLIENT", null, "SETTINGS"),
-        ABOUT("About", "CLIENT", null, "ABOUT");
+        ABOUT("About", "CLIENT", null, "ABOUT"),
+        LIVESTREAM("LiveStream", "CLIENT", null, "REPLAY");
 
         private final String label;
         private final String sectionHeader;
@@ -68,8 +69,8 @@ public final class GlassSidebar {
         GlassRenderer.drawGlassPanel(context, x, y, width, height, false, false, false);
 
         // Top BC Emblem Icon centered in the icon dock
-        int logoSize = 14;
-        BcIdentityManager.drawIdentityIcon(context, x + (width - logoSize) / 2, y + 6, logoSize, logoSize);
+        int logoSize = 22;
+        BcIdentityManager.drawIdentityIcon(context, x + (width - logoSize) / 2, y + 3, logoSize, logoSize);
         GlassRenderer.drawHorizontalDivider(context, x + 5, y + 25, width - 10);
 
         int listY = y + 29;

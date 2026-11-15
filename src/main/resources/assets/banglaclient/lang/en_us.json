@@ -1,10 +1,7 @@
 {
-  "banglaclient.title": "BANGLA CLIENT",
-  "banglaclient.credits": "Developed by Ahmed",
-  "banglaclient.key.category": "BANGLA CLIENT",
   "key.category.banglaclient.general": "BANGLA CLIENT",
-  "banglaclient.key.open_click_gui": "Open Click GUI",
-  "banglaclient.key.open_hud_editor": "Open HUD Editor",
-  "banglaclient.menu.switch_to_vanilla": "Switch to Default Minecraft Theme",
-  "banglaclient.menu.switch_to_bangla": "Switch to BANGLA CLIENT Theme"
+  "banglaclient.key.open_click_gui": "Open BANGLA CLIENT ClickGUI",
+  "banglaclient.key.open_hud_editor": "Open BANGLA CLIENT HUD Editor",
+  "banglaclient.key.chat_up": "LiveStream Chat Scroll Up",
+  "banglaclient.key.chat_down": "LiveStream Chat Scroll Down"
 }

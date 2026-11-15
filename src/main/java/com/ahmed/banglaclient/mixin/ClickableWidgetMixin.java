@@ -8,8 +8,10 @@ import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.PressableWidget;
+import net.minecraft.client.gui.widget.TexturedButtonWidget;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -20,9 +22,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Locale;
 
-/**
- * Renders all Minecraft buttons in AMOLED Glass with Custom Vector Icons & Small-Caps Typography.
- */
 @Mixin(ClickableWidget.class)
 public abstract class ClickableWidgetMixin {
 
@@ -37,8 +36,11 @@ public abstract class ClickableWidgetMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 0)
     private void banglaclient$renderAmoledButtonWithCustomIcons(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!this.visible || !((Object) this instanceof PressableWidget)) return;
+        // Do NOT override vanilla Inventory / Recipe Book / Container textured buttons!
+        if ((Object) this instanceof TexturedButtonWidget) return;
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null || mc.textRenderer == null) return;
+        if (mc.currentScreen instanceof HandledScreen<?>) return;
 
         int x = getX(), y = getY(), w = getWidth(), h = getHeight();
         if (w < 10 || h < 10) return;
@@ -47,10 +49,8 @@ public abstract class ClickableWidgetMixin {
         boolean hov = this.active && MathUtils.isHovered(mouseX, mouseY, x, y, w, h);
         String label = getMessage() != null ? getMessage().getString() : "";
 
-        // 1. Upgraded Bottom-Right Bangla SMP Server Badge
         if ("__BANGLA_SMP__".equals(label)) {
             drawAmoledBox(context, x, y, w, h, hov);
-            // Live green status indicator dot + Server Globe icon
             context.fill(x + 7, y + 6, x + 11, y + 10, 0xFF34D399);
             GlassRenderer.drawVectorIcon(context, x + 6, y + 13, 8, "WORLD", 0xFFFFFFFF);
             GlassRenderer.drawSmallCapsText(context, mc.textRenderer, "BANGLA SMP", x + 17, y + 4, 0xFFFFFFFF);
@@ -59,7 +59,6 @@ public abstract class ClickableWidgetMixin {
             return;
         }
 
-        // 2. Top-Right Account Pill: [HEAD] [NAME]
         if (label.startsWith("__USER__:")) {
             String uname = label.substring(9);
             drawAmoledBox(context, x, y, w, h, hov);
@@ -73,7 +72,6 @@ public abstract class ClickableWidgetMixin {
             return;
         }
 
-        // 3. Left-Side Icon-Only Mod Dock Buttons (__MODICON__:ICONKEY)
         if (label.startsWith("__MODICON__:")) {
             String iconKey = label.substring(12);
             drawAmoledBox(context, x, y, w, h, hov);
@@ -84,7 +82,6 @@ public abstract class ClickableWidgetMixin {
             return;
         }
 
-        // 4. Top-Right Toolbar Icons
         if (label.startsWith("__ICON_")) {
             drawAmoledBox(context, x, y, w, h, hov);
             int icCol = hov ? 0xFFFFFFFF : 0xFFE2E8F0;
@@ -102,7 +99,6 @@ public abstract class ClickableWidgetMixin {
             return;
         }
 
-        // 5. All Main Menu, Pause Menu & Standard Buttons with Custom Icon + Small-Caps Text
         drawAmoledBox(context, x, y, w, h, hov);
         if (!label.isEmpty()) {
             TextRenderer tr = mc.textRenderer;

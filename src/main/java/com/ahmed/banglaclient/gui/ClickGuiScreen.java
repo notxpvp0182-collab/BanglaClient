@@ -303,6 +303,11 @@ public final class ClickGuiScreen extends Screen {
         int mainH = windowHeight - topBarH - 10;
 
         if (sidebar.mouseClicked(mouseX, mouseY, button, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, () -> {
+            if (sidebar.getSelectedTab() == GlassSidebar.SidebarTab.LIVESTREAM) {
+                sidebar.setSelectedTab(GlassSidebar.SidebarTab.HOME);
+                if (this.client != null) this.client.setScreen(new LiveStreamGuiScreen(this));
+                return;
+            }
             topBar.clearQuickFilters();
             mainScroll.resetScroll();
             triggerPageTransition();
