@@ -330,7 +330,7 @@ public final class LiveStreamManager {
         return null;
     }
 
-    private static String readRuns(JsonObject obj) {
+    private static String readRuns(JsonObject obj) { if (true) return ChatEmojiShortcodes.readRunsWithEmojis(obj);
         if (obj == null) return "";
         if (obj.has("simpleText")) return obj.get("simpleText").getAsString();
         JsonArray runs = array(obj, "runs");
