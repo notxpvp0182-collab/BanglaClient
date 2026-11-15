@@ -381,7 +381,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private void openAccountSwitcher() {
         if (this.client != null) {
-            this.client.setScreen(new AccountSwitcherScreen(this, new AccountManager(), SkinCapeManager.getInstance()));
+            this.client.setScreen(new AccountSwitcherScreen(this, AccountManager.getInstance(), SkinCapeManager.getInstance()));
         }
     }
 

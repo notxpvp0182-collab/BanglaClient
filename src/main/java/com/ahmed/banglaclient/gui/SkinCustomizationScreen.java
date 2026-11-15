@@ -9,16 +9,17 @@ import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import com.ahmed.banglaclient.theme.ThemeTokens;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.PlayerSkinWidget;
 import net.minecraft.client.input.KeyInput;
-import net.minecraft.client.input.MouseInput;
 import net.minecraft.entity.player.PlayerSkinType;
 import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.text.Text;
 import net.minecraft.util.AssetInfo;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import org.joml.Matrix3x2fStack;
 import org.lwjgl.glfw.GLFW;
@@ -27,9 +28,9 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Wardrobe Screen with ONE Single Rotatable 3D Character Model in the Center:
- * - Skins Page: Browse uploaded skins with ◀ / ▶ on the 3D rotatable character model.
- * - Capes Page: Automatically rotates the 3D character to show the back so you see your Cape on the character's back, and browse capes with ◀ / ▶!
+ * Wardrobe Screen:
+ * - Skins Page: Single Center 3D Rotatable Character Model with ◀ / ▶ skin selector.
+ * - Capes Page: Renders your character from the BACK with the selected Cape attached on the character's back, with ◀ / ▶ cape selector!
  */
 public final class SkinCustomizationScreen extends Screen {
     private final Screen parentScreen;
@@ -71,9 +72,6 @@ public final class SkinCustomizationScreen extends Screen {
         this.addDrawableChild(this.center3DCharacterWidget);
     }
 
-    /**
-     * Supplies the exact Skin + Cape textures for the currently browsed carousel item to the 3D character model!
-     */
     private SkinTextures resolveLivePreviewSkinTextures() {
         SkinTextures vanillaDefault = SkinCapeManager.getAuthenticatedAccountDefaultSkin(client);
         List<SkinEntry> skins = manager.getSkins();
@@ -99,17 +97,38 @@ public final class SkinCustomizationScreen extends Screen {
         return new SkinTextures(body, capeAsset, capeAsset != null ? capeAsset : vanillaDefault.elytra(), model, true);
     }
 
-    private void rotateCharacterToShowBack(boolean showBack) {
-        if (this.center3DCharacterWidget != null) {
-            try {
-                // Drag horizontally to turn the 3D model 180 degrees so the cape on the back faces the camera
-                this.center3DCharacterWidget.mouseDragged(
-                        new Click(center3DCharacterWidget.getX() + 20, center3DCharacterWidget.getY() + 20, new MouseInput(0, 0)),
-                        showBack ? 95.0 : -95.0,
-                        0.0
-                );
-            } catch (Throwable ignored) {}
-        }
+    /**
+     * Renders the character seen from the BACK with the selected Cape attached on their back!
+     */
+    private void renderCharacterBackWithCape(DrawContext context, int centerX, int topY, float scale) {
+        SkinTextures tex = resolveLivePreviewSkinTextures();
+        Identifier skinId = tex.body().texturePath();
+        Identifier capeId = tex.cape() != null ? tex.cape().texturePath() : null;
+
+        Matrix3x2fStack matrices = context.getMatrices();
+        matrices.pushMatrix();
+        matrices.translate(centerX, topY);
+        matrices.scale(scale, scale);
+        try {
+            // Back of Head (u=24, v=8, 8x8)
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, -12, 0, 24.0f, 8.0f, 24, 24, 8, 8, 64, 64);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, -13, -1, 56.0f, 8.0f, 26, 26, 8, 8, 64, 64);
+            // Back of Torso (u=32, v=20, 8x12)
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, -12, 24, 32.0f, 20.0f, 24, 36, 8, 12, 64, 64);
+            // Back of Arms (u=52, v=20, 4x12)
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, -24, 24, 52.0f, 20.0f, 12, 36, 4, 12, 64, 64);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, 12, 24, 44.0f, 52.0f, 12, 36, 4, 12, 64, 64);
+            // Back of Legs (u=12, v=20, 4x12)
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, -12, 60, 12.0f, 20.0f, 12, 36, 4, 12, 64, 64);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, skinId, 0, 60, 28.0f, 52.0f, 12, 36, 4, 12, 64, 64);
+
+            // Render Equipped Cape directly on the character's back (u=1, v=1, 10x16 on 64x32 cape sheet)
+            if (capeId != null) {
+                context.fill(-16, 23, 16, 73, 0x66000000);
+                context.drawTexture(RenderPipelines.GUI_TEXTURED, capeId, -15, 24, 1.0f, 1.0f, 30, 48, 10, 16, 64, 32);
+            }
+        } catch (Throwable ignored) {}
+        matrices.popMatrix();
     }
 
     private void syncCarouselIndicesWithActiveSelection() {
@@ -169,6 +188,11 @@ public final class SkinCustomizationScreen extends Screen {
             return;
         }
 
+        if (this.center3DCharacterWidget != null) {
+            this.center3DCharacterWidget.visible = !viewingCapesPage;
+            this.center3DCharacterWidget.active = !viewingCapesPage;
+        }
+
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, anim);
 
         Matrix3x2fStack matrices = context.getMatrices();
@@ -181,7 +205,6 @@ public final class SkinCustomizationScreen extends Screen {
         try {
             GlassRenderer.drawGlassPanel(context, winX, winY, winW, winH, false, false, true);
 
-            // Top Header: [← Back] | [SKINS] [CAPES] | [Folder]
             boolean backHov = MathUtils.isHovered(mouseX, mouseY, winX + 6, winY + 6, 46, 16);
             GlassRenderer.drawPillBadge(context, winX + 6, winY + 6, 46, 16, 0xFFFFFFFF, backHov);
             GlassRenderer.drawSmallCapsText(context, textRenderer, "← Back", winX + 12, winY + 10, 0xFFFFFFFF);
@@ -203,7 +226,6 @@ public final class SkinCustomizationScreen extends Screen {
 
             GlassRenderer.drawHorizontalDivider(context, winX + 6, winY + 26, winW - 12);
 
-            // Single Center Stage Box with Rotatable 3D Character Model (No duplicate side models!)
             int centerX = winX + winW / 2;
             int stageY = winY + 32;
             int stageW = 118;
@@ -212,20 +234,21 @@ public final class SkinCustomizationScreen extends Screen {
 
             GlassRenderer.drawGlassPanel(context, stageX, stageY, stageW, stageH, true, false, true);
 
-            if (this.center3DCharacterWidget != null) {
+            if (!viewingCapesPage && this.center3DCharacterWidget != null) {
                 int w3d = Math.max(20, Math.round(92 * anim));
                 int h3d = Math.max(20, Math.round((stageH - 24) * anim));
                 this.center3DCharacterWidget.setWidth(w3d);
                 this.center3DCharacterWidget.setHeight(h3d);
                 this.center3DCharacterWidget.setPosition(centerX - w3d / 2, stageY + 4 + (stageH - 24 - h3d) / 2);
                 this.center3DCharacterWidget.render(context, mouseX, mouseY, delta);
+            } else if (viewingCapesPage) {
+                renderCharacterBackWithCape(context, centerX, stageY + 10, 1.05f * anim);
             }
 
             String itemTitle = GlassRenderer.toSmallCaps(getCurrentBrowsedTitle());
             String trimmedTitle = textRenderer.trimToWidth(itemTitle, stageW - 10);
             context.drawTextWithShadow(textRenderer, trimmedTitle, centerX - textRenderer.getWidth(trimmedTitle) / 2, stageY + stageH - 13, 0xFFFFFFFF);
 
-            // Left [◀] and Right [▶] Carousel Arrows
             int arrowSize = 24;
             int arrowY = stageY + (stageH - arrowSize) / 2;
             int leftArrowX = stageX - arrowSize - 12;
@@ -239,7 +262,6 @@ public final class SkinCustomizationScreen extends Screen {
             GlassRenderer.drawGlassPanel(context, rightArrowX, arrowY, arrowSize, arrowSize, true, rHov, rHov);
             context.drawTextWithShadow(textRenderer, "▶", rightArrowX + 9, arrowY + 8, 0xFFFFFFFF);
 
-            // Bottom Action Bar
             int botY = winY + winH - 25;
             int btnW = (winW - 30) / 4;
 
@@ -287,6 +309,7 @@ public final class SkinCustomizationScreen extends Screen {
                 manager.setCustomCapeOverride(true);
             }
         }
+        manager.saveSelection();
         GlassRenderer.playClickSound();
     }
 
@@ -305,18 +328,12 @@ public final class SkinCustomizationScreen extends Screen {
         int skinsTabX = winX + (winW / 2) - tabW - 3;
         int capesTabX = winX + (winW / 2) + 3;
         if (MathUtils.isHovered(mouseX, mouseY, skinsTabX, winY + 6, tabW, 16)) {
-            if (viewingCapesPage) {
-                viewingCapesPage = false;
-                rotateCharacterToShowBack(false);
-            }
+            viewingCapesPage = false;
             GlassRenderer.playClickSound();
             return true;
         }
         if (MathUtils.isHovered(mouseX, mouseY, capesTabX, winY + 6, tabW, 16)) {
-            if (!viewingCapesPage) {
-                viewingCapesPage = true;
-                rotateCharacterToShowBack(true);
-            }
+            viewingCapesPage = true;
             GlassRenderer.playClickSound();
             return true;
         }

@@ -28,7 +28,9 @@ public final class ModuleCardWidget {
     private final Animation visibilityAnim = new Animation(1.0f, 180L, Easing.EASE_OUT_CUBIC);
     private boolean lastEnabledState;
     private boolean removingFromFilteredView = false;
-    private boolean showingDescription = false;
+    private static Module activeDescriptionPopupModule = null;
+    public static Module getActiveDescriptionPopupModule() { return activeDescriptionPopupModule; }
+    public static void clearDescriptionPopup() { activeDescriptionPopupModule = null; }
 
     public ModuleCardWidget(Module module) {
         this.module = module;
@@ -88,7 +90,7 @@ public final class ModuleCardWidget {
 
         boolean infoHov = MathUtils.isHovered(mouseX, mouseY, infoX - 1, topIconsY - 1, 10, 10);
         context.drawTextWithShadow(textRenderer, "?", infoX + 1, topIconsY,
-                ColorUtils.multiplyAlpha(showingDescription || infoHov ? 0xFFFFFFFF : theme.getTextMuted(), vis));
+                ColorUtils.multiplyAlpha(infoHov ? 0xFFFFFFFF : theme.getTextMuted(), vis));
 
         boolean starHov = MathUtils.isHovered(mouseX, mouseY, starX - 1, topIconsY - 1, 10, 10);
         context.drawTextWithShadow(textRenderer, module.isFavorite() ? "★" : "☆", starX, topIconsY,
@@ -98,7 +100,7 @@ public final class ModuleCardWidget {
         context.drawTextWithShadow(textRenderer, "⚙", gearX, topIconsY,
                 ColorUtils.multiplyAlpha(gearHov ? 0xFFFFFFFF : theme.getTextMuted(), vis));
 
-        if (showingDescription) {
+        if (false) {
             // Show module description when [?] is toggled ON
             List<OrderedText> lines = textRenderer.wrapLines(Text.literal(module.getDescription()), width - 12);
             int maxL = Math.min(2, lines.size());
@@ -167,7 +169,7 @@ public final class ModuleCardWidget {
 
             if (MathUtils.isHovered(mouseX, mouseY, infoX - 2, topIconsY - 2, 11, 12)) {
                 GlassRenderer.playClickSound();
-                showingDescription = !showingDescription;
+                activeDescriptionPopupModule = module;
                 return true;
             }
             if (MathUtils.isHovered(mouseX, mouseY, starX - 2, topIconsY - 2, 11, 12)) {

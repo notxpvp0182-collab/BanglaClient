@@ -13,9 +13,7 @@ import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
 import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
 import net.minecraft.util.Identifier;
 import org.joml.Matrix3x2fStack;
 
@@ -25,9 +23,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Manages BANGLA CLIENT identity detection, transparent large GUI watermark, Tab List icon, and Nametag icon.
- */
 public final class BcIdentityManager {
     public static final int PROTOCOL_VERSION = 1;
     public static final Identifier CHANNEL_ID = Identifier.of(BanglaClient.MOD_ID, "identity_v1");
@@ -44,9 +39,7 @@ public final class BcIdentityManager {
         );
 
         @Override
-        public Id<? extends CustomPayload> getId() {
-            return ID;
-        }
+        public Id<? extends CustomPayload> getId() { return ID; }
     }
 
     private static final Set<UUID> verifiedBcUuids = ConcurrentHashMap.newKeySet();
@@ -124,44 +117,55 @@ public final class BcIdentityManager {
         return false;
     }
 
+    /**
+     * Renders the BANGLA CLIENT Identity Icon in full HD, cropping out transparent margins so it appears bold and large.
+     */
     public static void drawIdentityIcon(DrawContext context, int x, int y, int width, int height) {
         if (context == null || width <= 0 || height <= 0) return;
         try {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, IDENTITY_ICON, x, y, 0.0f, 0.0f, width, height, width, height);
+            int expand = Math.max(2, width / 4);
+            context.drawTexture(
+                    RenderPipelines.GUI_TEXTURED,
+                    IDENTITY_ICON,
+                    x - expand / 2,
+                    y - expand / 2,
+                    0.0f,
+                    0.0f,
+                    width + expand,
+                    height + expand,
+                    width + expand,
+                    height + expand
+            );
         } catch (Throwable t) {
             context.fill(x + 1, y + height - 3, x + width, y + height, 0xFFEF4444);
             context.fill(x + 2, y + 1, x + width - 2, y + 4, 0xFFFBBF24);
         }
     }
 
-    /**
-     * Renders the Large Transparent Watermark ([BC Icon] ʙᴀɴɢʟᴀ ᴄʟɪᴇɴᴛ) at the bottom-right of all GUI screens.
-     * Zero background box — only the large icon and crisp text!
-     */
     public static void drawWatermark(DrawContext context, int screenWidth, int screenHeight, TextRenderer textRenderer) {
         if (context == null || textRenderer == null || screenWidth <= 0 || screenHeight <= 0) return;
 
         String title = GlassRenderer.toSmallCaps("BANGLA CLIENT");
-        float scale = 1.45f;
-        int iconSize = 22;
+        float scale = 1.55f;
+        int iconSize = 24;
         int scaledTextW = Math.round(textRenderer.getWidth(title) * scale);
-        int totalW = iconSize + 5 + scaledTextW;
+        int totalW = iconSize + 6 + scaledTextW;
 
         int x = screenWidth - totalW - 10;
         int y = screenHeight - 24;
 
-        drawIdentityIcon(context, x, y - 5, iconSize, iconSize);
+        drawIdentityIcon(context, x, y - 6, iconSize, iconSize);
 
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(x + iconSize + 5, y);
+        matrices.translate(x + iconSize + 6, y);
         matrices.scale(scale, scale);
         context.drawTextWithShadow(textRenderer, title, 0, 0, 0xFFFFFFFF);
         matrices.popMatrix();
     }
 
     public static MutableText createBcPrefixBadge() {
-        return Text.literal("\uE001 ").setStyle(Style.EMPTY.withColor(TextColor.fromRgb(0xFFFFFF)));
+        return Text.literal("    ");
     }
 
     public static Set<UUID> getVerifiedBcUuids() {

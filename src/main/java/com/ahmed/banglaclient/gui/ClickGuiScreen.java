@@ -136,7 +136,7 @@ public final class ClickGuiScreen extends Screen {
             int mainW = windowWidth - sidebarW - 10;
             int mainH = windowHeight - topBarH - 10;
 
-            sidebar.render(context, textRenderer, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, mouseX, mouseY); GlassSidebar.SidebarTab hovTab = sidebar.getHoveredTab(mouseX, mouseY, windowX + 3, windowY + 3, sidebarW, windowHeight - 6); if (hovTab != null) { String hText = GlassRenderer.toSmallCaps(hovTab.getLabel()); int htw = textRenderer.getWidth(hText) + 12; GlassRenderer.drawGlassPanel(context, windowX + sidebarW + 8, Math.max(windowY + 4, mouseY - 12), htw, 16, true, true, true); context.drawTextWithShadow(textRenderer, hText, windowX + sidebarW + 14, Math.max(windowY + 4, mouseY - 12) + 4, 0xFFFFFFFF); }
+            sidebar.render(context, textRenderer, windowX + 3, windowY + 3, sidebarW, windowHeight - 6, mouseX, mouseY); 
             topBar.render(context, textRenderer, mainX, windowY + 3, mainW, topBarH, mouseX, mouseY);
 
             float pageTrans = pageTransitionAnim.getValue();
@@ -149,6 +149,46 @@ public final class ClickGuiScreen extends Screen {
                 renderClientSettingsView(context, mainX, mainY + slideOffsetY, mainW, mainH, mouseX, mouseY);
             } else if (activeTab == GlassSidebar.SidebarTab.ABOUT) {
                 renderAboutView(context, mainX, mainY + slideOffsetY, mainW, mainH, mouseX, mouseY);
+            }
+
+            // Floating Category Hover Tooltip Centered Directly Above Mouse Cursor (Top-most layer!)
+            GlassSidebar.SidebarTab hovTab = sidebar.getHoveredTab(mouseX, mouseY, windowX + 3, windowY + 3, sidebarW, windowHeight - 6);
+            if (hovTab != null) {
+                String hText = GlassRenderer.toSmallCaps(hovTab.getLabel());
+                int htw = textRenderer.getWidth(hText) + 12;
+                int tipX = Math.max(4, Math.min(this.width - htw - 4, mouseX - (htw / 2)));
+                int tipY = Math.max(4, mouseY - 18);
+                context.fill(tipX - 1, tipY - 1, tipX + htw + 1, tipY + 16 + 1, 0xEE030406);
+                GlassRenderer.drawGlassPanel(context, tipX, tipY, htw, 16, true, true, true);
+                context.drawTextWithShadow(textRenderer, hText, tipX + 6, tipY + 4, 0xFFFFFFFF);
+            }
+
+            // Floating Description Screen Modal when [?] is clicked
+            Module descMod = ModuleCardWidget.getActiveDescriptionPopupModule();
+            if (descMod != null) {
+                context.fill(windowX, windowY, windowX + windowWidth, windowY + windowHeight, 0xB8030406);
+                int mw = 230, mh = 96;
+                int mx = windowX + (windowWidth - mw) / 2;
+                int my = windowY + (windowHeight - mh) / 2;
+                GlassRenderer.drawGlassPanel(context, mx, my, mw, mh, true, false, true);
+                GlassRenderer.drawModuleIcon(context, mx + 10, my + 10, 12, descMod.getId(), 0xFFFFFFFF);
+                context.drawTextWithShadow(textRenderer, GlassRenderer.toSmallCaps(descMod.getName()), mx + 26, my + 12, 0xFFFFFFFF);
+                GlassRenderer.drawHorizontalDivider(context, mx + 8, my + 26, mw - 16);
+
+                var wrapped = textRenderer.wrapLines(Text.literal(descMod.getDescription()), mw - 20);
+                int ly = my + 32;
+                for (var line : wrapped) {
+                    context.drawTextWithShadow(textRenderer, line, mx + 10, ly, 0xFFCBD5E1);
+                    ly += 10;
+                }
+
+                int closeW = 64, closeH = 16;
+                int closeX = mx + (mw - closeW) / 2;
+                int closeY = my + mh - 22;
+                boolean cHov = MathUtils.isHovered(mouseX, mouseY, closeX, closeY, closeW, closeH);
+                GlassRenderer.drawPillBadge(context, closeX, closeY, closeW, closeH, 0xFFFFFFFF, cHov || true);
+                String clLbl = GlassRenderer.toSmallCaps("Close");
+                context.drawTextWithShadow(textRenderer, clLbl, closeX + (closeW - textRenderer.getWidth(clLbl)) / 2, closeY + 4, 0xFFFFFFFF);
             }
         } finally {
             if (scaling) {
@@ -254,6 +294,7 @@ public final class ClickGuiScreen extends Screen {
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (closing) return false;
+        if (ModuleCardWidget.getActiveDescriptionPopupModule() != null) { GlassRenderer.playClickSound(); ModuleCardWidget.clearDescriptionPopup(); return true; }
         int sidebarW = ThemeTokens.SIDEBAR_WIDTH;
         int topBarH = ThemeTokens.TOPBAR_HEIGHT;
         int mainX = windowX + sidebarW + 6;
@@ -305,7 +346,7 @@ public final class ClickGuiScreen extends Screen {
             }
             rowY += 25;
             if (button == 0 && MathUtils.isHovered(mouseX, mouseY, mainX + 2, rowY, mainW - 10, 22)) {
-                if (this.client != null) this.client.setScreen(new AccountSwitcherScreen(this, new AccountManager(), SkinCapeManager.getInstance()));
+                if (this.client != null) this.client.setScreen(new AccountSwitcherScreen(this, AccountManager.getInstance(), SkinCapeManager.getInstance()));
                 return true;
             }
             rowY += 25;
@@ -423,6 +464,7 @@ public final class ClickGuiScreen extends Screen {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            if (ModuleCardWidget.getActiveDescriptionPopupModule() != null) { ModuleCardWidget.clearDescriptionPopup(); return true; }
             close();
             return true;
         }

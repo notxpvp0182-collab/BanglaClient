@@ -264,7 +264,7 @@ public final class ConfigManager {
             try (Writer writer = Files.newBufferedWriter(tempFile, StandardCharsets.UTF_8)) {
                 GSON.toJson(content, writer);
             }
-            Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try { Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); } catch (IOException moveEx) { Files.move(tempFile, targetFile, StandardCopyOption.REPLACE_EXISTING); }
         } catch (IOException e) {
             BanglaClient.LOGGER.error("Failed to save configuration file {}", targetFile, e);
         }

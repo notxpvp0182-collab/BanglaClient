@@ -62,6 +62,9 @@ public final class BanglaClient implements ClientModInitializer {
 
         this.sessionTracker = new SessionTracker();
         BcIdentityManager.initialize();
+        AccountManager.getInstance();
+        SkinCapeManager.getInstance();
+        com.ahmed.banglaclient.cosmetics.BackgroundManager.getInstance();
         this.themeManager = new ThemeManager();
         this.notificationManager = new NotificationManager();
         this.moduleManager = new ModuleManager();
@@ -116,6 +119,9 @@ public final class BanglaClient implements ClientModInitializer {
             if (this.configManager != null) {
                 LOGGER.info("Saving {} configurations before exit...", CLIENT_NAME);
                 this.configManager.saveAll();
+                AccountManager.getInstance().saveAccounts();
+                SkinCapeManager.getInstance().saveSelection();
+                com.ahmed.banglaclient.cosmetics.BackgroundManager.getInstance().saveSelection();
             }
         });
     }

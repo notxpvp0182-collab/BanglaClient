@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class AccountManager {
+    private static AccountManager instance;
+    public static synchronized AccountManager getInstance() { if (instance == null) instance = new AccountManager(); return instance; }
     private final Path accountsFile;
     private final List<AccountEntry> accounts = new ArrayList<>();
     private Session initialLaunchSession;
