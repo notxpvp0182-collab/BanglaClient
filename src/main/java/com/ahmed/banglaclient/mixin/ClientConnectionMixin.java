@@ -21,7 +21,7 @@ public abstract class ClientConnectionMixin {
     private void banglaclient$configureTcpNoDelay(ChannelHandlerContext context, CallbackInfo ci) {
         try {
             if (this.channel != null) {
-                this.channel.config().setOption(ChannelOption.TCP_NODELAY, true);
+                this.channel.config().setOption(ChannelOption.TCP_NODELAY, true); if (this.channel.remoteAddress() instanceof java.net.InetSocketAddress isa && isa.getAddress() != null) { com.ahmed.banglaclient.cosmetics.ServerFlagManager.registerResolvedServerIp(isa.getHostName(), isa.getAddress().getHostAddress()); }
             }
         } catch (Throwable ignored) {}
     }

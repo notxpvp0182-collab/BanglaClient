@@ -39,7 +39,7 @@ public final class SkinCustomizationScreen extends Screen {
     private boolean closing = false;
 
     private PlayerSkinWidget center3DCharacterWidget;
-    private boolean viewingCapesPage = false;
+    private boolean viewingCapesPage = false; if (this.center3DCharacterWidget != null) ((com.ahmed.banglaclient.mixin.PlayerSkinWidgetAccessor) this.center3DCharacterWidget).banglaclient$setYRotation(210.0f);
     private int skinCarouselIndex = 0;
     private int capeCarouselIndex = 0;
 
@@ -189,8 +189,8 @@ public final class SkinCustomizationScreen extends Screen {
         }
 
         if (this.center3DCharacterWidget != null) {
-            this.center3DCharacterWidget.visible = !viewingCapesPage;
-            this.center3DCharacterWidget.active = !viewingCapesPage;
+            this.center3DCharacterWidget.visible = true;
+            this.center3DCharacterWidget.active = true;
         }
 
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, anim);
@@ -234,7 +234,7 @@ public final class SkinCustomizationScreen extends Screen {
 
             GlassRenderer.drawGlassPanel(context, stageX, stageY, stageW, stageH, true, false, true);
 
-            if (!viewingCapesPage && this.center3DCharacterWidget != null) {
+            if (this.center3DCharacterWidget != null) {
                 int w3d = Math.max(20, Math.round(92 * anim));
                 int h3d = Math.max(20, Math.round((stageH - 24) * anim));
                 this.center3DCharacterWidget.setWidth(w3d);
@@ -328,12 +328,12 @@ public final class SkinCustomizationScreen extends Screen {
         int skinsTabX = winX + (winW / 2) - tabW - 3;
         int capesTabX = winX + (winW / 2) + 3;
         if (MathUtils.isHovered(mouseX, mouseY, skinsTabX, winY + 6, tabW, 16)) {
-            viewingCapesPage = false;
+            viewingCapesPage = false; if (this.center3DCharacterWidget != null) ((com.ahmed.banglaclient.mixin.PlayerSkinWidgetAccessor) this.center3DCharacterWidget).banglaclient$setYRotation(210.0f);
             GlassRenderer.playClickSound();
             return true;
         }
         if (MathUtils.isHovered(mouseX, mouseY, capesTabX, winY + 6, tabW, 16)) {
-            viewingCapesPage = true;
+            viewingCapesPage = true; if (capeCarouselIndex == 0 && !manager.getCapes().isEmpty()) { capeCarouselIndex = 1; applyCurrentSelection(); } if (this.center3DCharacterWidget != null) ((com.ahmed.banglaclient.mixin.PlayerSkinWidgetAccessor) this.center3DCharacterWidget).banglaclient$setYRotation(30.0f);
             GlassRenderer.playClickSound();
             return true;
         }

@@ -53,7 +53,7 @@ public final class ServerFlagManager {
 
     public static CountryData getOrResolveCountry(String rawAddress) {
         if (rawAddress == null || rawAddress.isBlank()) return UNKNOWN_COUNTRY;
-        String key = rawAddress.trim().toLowerCase(Locale.ROOT);
+        String key = extractHost(rawAddress);
 
         CountryData cached = CACHE.get(key);
         if (cached != null) {
@@ -315,6 +315,21 @@ public final class ServerFlagManager {
         });
     }
 
+    public static void registerResolvedServerIp(String hostname, String ipAddress) {
+        if (hostname == null || ipAddress == null || hostname.isBlank() || ipAddress.isBlank()) return;
+        String clean = extractHost(hostname);
+        if (clean.isEmpty()) return;
+        CountryData existing = CACHE.get(clean);
+        if (existing != null && !"unknown".equals(existing.countryCode())) return;
+        CompletableFuture.runAsync(() -> {
+            CountryData geo = queryMultiGeoIp(ipAddress, clean);
+            if (geo != null && !"unknown".equals(geo.countryCode())) {
+                CACHE.put(clean, geo);
+                ensureRealFlagTextureLoaded(geo.countryCode());
+            }
+        });
+    }
+
     private static String extractHost(String raw) {
         String s = raw.trim().toLowerCase(Locale.ROOT);
         int colon = s.indexOf(':');
@@ -328,7 +343,7 @@ public final class ServerFlagManager {
     public static void drawCountryFlag(DrawContext c, int x, int y, String countryCode) {
         if (c == null) return;
         int w = 14, h = 9;
-        c.fill(x - 1, y - 1, x + w + 1, y + h + 1, 0xAA000000);
+        
 
         if (countryCode != null && !countryCode.isEmpty() && !"unknown".equalsIgnoreCase(countryCode)) {
             String cc = countryCode.toLowerCase(Locale.ROOT);

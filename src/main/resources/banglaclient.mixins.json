@@ -6,6 +6,7 @@
   "client": [
     "AbstractClientPlayerEntityMixin",
     "BossBarHudMixin",
+    "CameraMixin",
     "ChatHudMixin",
     "ClickableWidgetMixin",
     "ClientConnectionMixin",
@@ -27,9 +28,11 @@
     "MultiplayerServerListMixin",
     "PlayerListEntryMixin",
     "PlayerListHudMixin",
+    "PlayerSkinWidgetAccessor",
     "ScreenBackgroundMixin",
     "ServerListMixin",
     "SplashOverlayMixin",
+    "TextRendererMixin",
     "TitleScreenMixin",
     "WorldWeatherMixin"
   ],

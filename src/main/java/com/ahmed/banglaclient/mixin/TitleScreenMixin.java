@@ -191,7 +191,7 @@ public abstract class TitleScreenMixin extends Screen {
             if (this.client != null) this.client.setScreen(new OptionsScreen(this, this.client.options));
         }).dimensions(btnX, btnY, halfW, btnH).build());
 
-        registerBanglaButton(ButtonWidget.builder(Text.literal("Quit Game"), b -> {
+        registerBanglaButton(ButtonWidget.builder(Text.literal("Quit"), b -> {
             if (this.client != null) this.client.scheduleStop();
         }).dimensions(btnX + halfW + 4, btnY, btnW - halfW - 4, btnH).build());
 

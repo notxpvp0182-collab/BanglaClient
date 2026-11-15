@@ -413,7 +413,7 @@ public final class ClickGuiScreen extends Screen {
 
                 if (widget != null && widget.mouseClicked(mouseX, mouseY, button, cx, cy, cardW, cardH, true, m -> {
                     if (this.client != null) {
-                        this.client.setScreen(new ModuleSettingsScreen(this, m));
+                        if (m instanceof com.ahmed.banglaclient.module.visual.ColorSaturationModule csm) { this.client.setScreen(new ColorSaturationScreen(this, csm)); } else { this.client.setScreen(new ModuleSettingsScreen(this, m)); }
                     }
                 })) {
                     if ((topBar.isFilterOnlyEnabled() && !module.isEnabled()) || (topBar.isFilterOnlyFavorites() && !module.isFavorite())) { widget.startExitAnimation(); } else if (false) {
