@@ -105,3 +105,150 @@ jar {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
 }
+
+tasks.register('generateBengaliAtlas') {
+    def ttfFile = file('src/main/resources/assets/banglaclient/font/bengali.ttf')
+    def atlasFile = file('src/main/resources/assets/banglaclient/font/bengali_atlas.dat')
+    outputs.file(atlasFile)
+    doLast {
+        System.setProperty('java.awt.headless', 'true')
+        ttfFile.parentFile.mkdirs()
+        if (!ttfFile.exists() || ttfFile.length() < 1000) {
+            try {
+                def url = new URL('https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-SemiBold.ttf')
+                def conn = url.openConnection()
+                conn.setRequestProperty('User-Agent', 'Mozilla/5.0')
+                conn.setConnectTimeout(8000)
+                conn.setReadTimeout(8000)
+                ttfFile.bytes = conn.inputStream.bytes
+            } catch (Throwable ignored) {}
+        }
+        if (ttfFile.exists() && ttfFile.length() > 1000) {
+            Font bnFont = Font.createFont(Font.TRUETYPE_FONT, ttfFile).deriveFont(Font.BOLD, 28.0f)
+            java.util.Set<String> akshars = new java.util.LinkedHashSet<>()
+
+            String[] vowelsAndDigits = [
+                "অ","আ","ই","ঈ","উ","ঊ","ঋ","এ","ঐ","ও","ঔ",
+                "০","১","২","৩","৪","৫","৬","৭","৮","৯","।",
+                "া","ি","ী","ু","ূ","ৃ","ে","ৈ","ো","ৌ","ং","ঃ","ঁ","্","ৎ"
+            ]
+            akshars.addAll(java.util.Arrays.asList(vowelsAndDigits))
+
+            String[] consonants = [
+                "ক","খ","গ","ঘ","ঙ","চ","ছ","জ","ঝ","ঞ",
+                "ট","ঠ","ড","ঢ","ণ","ত","থ","দ","ধ","ন",
+                "প","ফ","ব","ভ","ম","য","র","ল","শ","ষ",
+                "স","হ","ড়","ঢ়","য়"
+            ]
+            String[] suffixes = [
+                "","া","ি","ী","ু","ূ","ৃ","ে","ৈ","ো","ৌ",
+                "ং","ঁ","াং","াঁ","িং","ীং","েং","োং",
+                "্র","্রা","্রি","্রী","্রু","্রে","্রো",
+                "্য","্যা","্যি","্যে","্যো","্"
+            ]
+            for (String c : consonants) {
+                for (String suf : suffixes) {
+                    akshars.add(c + suf)
+                    akshars.add("র্" + c + suf)
+                }
+            }
+
+            String[] conjuncts = [
+                "ক্ক","ক্ত","ক্স","ক্ষ","ক্ষ্ম","গ্ধ","গ্ন","গ্র","ঙ্ক","ঙ্গ",
+                "চ্চ","চ্ছ","চ্ছ্ব","জ্ঞ","ঞ্চ","ঞ্জ","ট্ট","ড্ড","ণ্ট","ণ্ড",
+                "ত্ত","ত্থ","ত্ন","ত্ম","ত্র","দ্গ","দ্ধ","দ্দ","দ্ব","দ্ভ",
+                "ধ্র","ন্ট","ন্ড","ন্ত","ন্তু","ন্থ","ন্দ","ন্ধ","ন্ন","ন্ম",
+                "ন্স","প্ত","প্প","প্র","প্ল","ব্জ","ব্দ","ব্ধ","ব্ব","ব্র",
+                "ভ্র","ম্প","ম্ফ","ম্ব","ম্ভ","ম্ম","ল্ক","ল্গ","ল্ট","ল্ড",
+                "ল্প","ল্ল","শ্চ","শ্ন","শ্ম","শ্য","শ্র","ষ্ক","ষ্ট","ষ্ঠ",
+                "ষ্ণ","ষ্প","স্ক","স্ট","স্ন","স্প","স্ফ","স্ব","স্ম","স্য",
+                "স্র","হ্ন","হ্ম","হ্র","র্ল্ড","্র","্য"
+            ]
+            String[] conjSuffixes = ["","া","ি","ী","ু","ূ","ৃ","ে","ৈ","ো","ৌ","ং","ঁ","্য","্র"]
+            for (String cj : conjuncts) {
+                for (String suf : conjSuffixes) {
+                    akshars.add(cj + suf)
+                    akshars.add("র্" + cj + suf)
+                }
+            }
+
+            BufferedImage canvas = new BufferedImage(112, 42, BufferedImage.TYPE_INT_ARGB)
+            def cg = canvas.createGraphics()
+            cg.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            cg.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
+            cg.setFont(bnFont)
+            def fm = cg.getFontMetrics()
+
+            atlasFile.parentFile.mkdirs()
+            try (def out = new java.io.DataOutputStream(new java.io.FileOutputStream(atlasFile))) {
+                out.writeInt(akshars.size())
+                for (String ak : akshars) {
+                    cg.setComposite(java.awt.AlphaComposite.Clear)
+                    cg.fillRect(0, 0, 112, 42)
+                    cg.setComposite(java.awt.AlphaComposite.SrcOver)
+                    cg.setColor(Color.WHITE)
+                    cg.drawString(ak, 4, 29)
+
+                    int adv = Math.max(4, fm.stringWidth(ak))
+                    java.util.List<int[]> rawSpans = new java.util.ArrayList<>()
+                    for (int y = 0; y < 40; y++) {
+                        int x = 0
+                        while (x < 108) {
+                            int a = (canvas.getRGB(x, y) >>> 24) & 0xFF
+                            if (a >= 65) {
+                                int xStart = x
+                                int sumA = a
+                                int cnt = 1
+                                x++
+                                while (x < 108) {
+                                    int na = (canvas.getRGB(x, y) >>> 24) & 0xFF
+                                    if (na < 65) break
+                                    sumA += na
+                                    cnt++
+                                    x++
+                                }
+                                int avgA = Math.min(255, (int) ((sumA / cnt) * 1.15f))
+                                rawSpans.add([y, y + 1, xStart, x, avgA] as int[])
+                            } else {
+                                x++
+                            }
+                        }
+                    }
+
+                    java.util.List<Integer> mergedRects = new java.util.ArrayList<>()
+                    boolean[] used = new boolean[rawSpans.size()]
+                    for (int i = 0; i < rawSpans.size(); i++) {
+                        if (used[i]) continue
+                        int[] cur = rawSpans.get(i)
+                        int y1 = cur[0], y2 = cur[1], x1 = cur[2], x2 = cur[3], aSum = cur[4], aCnt = 1
+                        for (int j = i + 1; j < rawSpans.size(); j++) {
+                            if (used[j]) continue
+                            int[] nxt = rawSpans.get(j)
+                            if (nxt[0] == y2 && nxt[2] == x1 && nxt[3] == x2) {
+                                y2 = nxt[1]
+                                aSum += nxt[4]
+                                aCnt++
+                                used[j] = true
+                            }
+                        }
+                        int finalA = Math.min(63, ((int) (aSum / aCnt)) >> 2)
+                        int packed = ((y1 & 0x3F) << 26) | ((y2 & 0x3F) << 20) | ((x1 & 0x7F) << 13) | ((x2 & 0x7F) << 6) | finalA
+                        mergedRects.add(packed)
+                    }
+
+                    out.writeUTF(ak)
+                    out.writeByte(adv)
+                    out.writeShort(mergedRects.size())
+                    for (int sp : mergedRects) {
+                        out.writeInt(sp)
+                    }
+                }
+            }
+            cg.dispose()
+        }
+    }
+}
+
+tasks.named('processResources') {
+    dependsOn tasks.named('generateBengaliAtlas')
+}

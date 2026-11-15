@@ -62,8 +62,9 @@ public final class EmojiRenderer {
         StringBuilder seg = new StringBuilder();
 
         for (int i = 0; i < len; ) {
-            int cp = input.codePointAt(i);
+            int cp = input.codePointAt(i); if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { width += tr.getWidth(WorldLanguageShaper.shape(seg.toString())); seg.setLength(0); } int start = i; while (i < len && (BengaliFontEngine.isBengaliChar(input.codePointAt(i)))) { i += Character.charCount(input.codePointAt(i)); } width += BengaliFontEngine.measureBengaliWidth(input.substring(start, i)); continue; }
             int charCount = Character.charCount(cp);
+            if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { String s = WorldLanguageShaper.shape(seg.toString()); ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow); cursorX += tr.getWidth(s); seg.setLength(0); } int start = i; while (i < len && BengaliFontEngine.isBengaliChar(input.codePointAt(i))) { i += Character.charCount(input.codePointAt(i)); } cursorX += BengaliFontEngine.drawBengaliSegment(ctx, input.substring(start, i), cursorX, y, color, shadow); continue; }
             if (cp == 0xFE0F || cp == 0xFE0E) {
                 i += charCount;
                 continue;
@@ -108,8 +109,9 @@ public final class EmojiRenderer {
         StringBuilder seg = new StringBuilder();
 
         for (int i = 0; i < len; ) {
-            int cp = input.codePointAt(i);
+            int cp = input.codePointAt(i); if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { width += tr.getWidth(WorldLanguageShaper.shape(seg.toString())); seg.setLength(0); } int start = i; while (i < len && (BengaliFontEngine.isBengaliChar(input.codePointAt(i)))) { i += Character.charCount(input.codePointAt(i)); } width += BengaliFontEngine.measureBengaliWidth(input.substring(start, i)); continue; }
             int charCount = Character.charCount(cp);
+            if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { String s = WorldLanguageShaper.shape(seg.toString()); ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow); cursorX += tr.getWidth(s); seg.setLength(0); } int start = i; while (i < len && BengaliFontEngine.isBengaliChar(input.codePointAt(i))) { i += Character.charCount(input.codePointAt(i)); } cursorX += BengaliFontEngine.drawBengaliSegment(ctx, input.substring(start, i), cursorX, y, color, shadow); continue; }
             if (cp == 0xFE0F || cp == 0xFE0E) {
                 i += charCount;
                 continue;

@@ -65,6 +65,7 @@ public final class BanglaClient implements ClientModInitializer {
         AccountManager.getInstance();
         SkinCapeManager.getInstance();
         com.ahmed.banglaclient.cosmetics.BackgroundManager.getInstance();
+        com.ahmed.banglaclient.livestream.LiveStreamManager.get();
         this.themeManager = new ThemeManager();
         this.notificationManager = new NotificationManager();
         this.moduleManager = new ModuleManager();
@@ -122,6 +123,7 @@ public final class BanglaClient implements ClientModInitializer {
                 AccountManager.getInstance().saveAccounts();
                 SkinCapeManager.getInstance().saveSelection();
                 com.ahmed.banglaclient.cosmetics.BackgroundManager.getInstance().saveSelection();
+                com.ahmed.banglaclient.livestream.LiveStreamManager.get().saveConfig();
             }
         });
     }

@@ -464,6 +464,7 @@ public final class LiveStreamGuiScreen extends Screen {
     @Override
     public void close() {
         LiveStreamManager.get().setStreamUrl(urlInput);
+        LiveStreamManager.get().saveConfig();
         if (!closing) {
             closing = true;
             openAnim.animateTo(0.0f);

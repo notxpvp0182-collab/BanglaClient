@@ -1,5 +1,10 @@
 package com.ahmed.banglaclient.livestream;
 
+import com.ahmed.banglaclient.config.ConfigManager;
+import com.ahmed.banglaclient.config.ConfigValidator;
+import net.fabricmc.loader.api.FabricLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -117,7 +122,69 @@ public final class LiveStreamManager {
     private volatile String cachedClientVer = "2.20250214.01.00";
     private volatile String continuationToken = null;
 
-    private LiveStreamManager() {}
+    private LiveStreamManager() {
+        loadConfig();
+    }
+
+    public synchronized void loadConfig() {
+        try {
+            Path cfgDir = FabricLoader.getInstance().getConfigDir();
+            Path bcDir = cfgDir.resolve("banglaclient");
+            Files.createDirectories(bcDir);
+            Path primary = cfgDir.resolve("livestream.json");
+            Path secondary = bcDir.resolve("livestream.json");
+            Path target = Files.exists(primary) ? primary : secondary;
+            if (!Files.exists(target)) {
+                saveConfig();
+                return;
+            }
+            JsonObject root = ConfigValidator.readSafeJsonObject(target);
+            if (root.has("youtubeUrl")) this.streamUrl = root.get("youtubeUrl").getAsString();
+            if (root.has("autoConnect")) this.autoConnect = root.get("autoConnect").getAsBoolean();
+            if (root.has("chatDelayMs")) this.chatDelayMs = Math.max(0, Math.min(5000, root.get("chatDelayMs").getAsInt()));
+            if (root.has("animationTemplate")) {
+                try { this.animationTemplate = ChatAnimationTemplate.valueOf(root.get("animationTemplate").getAsString()); }
+                catch (Exception ignored) {}
+            }
+            if (root.has("showYouTubeIcon")) this.showYouTubeIcon = root.get("showYouTubeIcon").getAsBoolean();
+            if (root.has("showUsername")) this.showUsername = root.get("showUsername").getAsBoolean();
+            if (root.has("showTimestamp")) this.showTimestamp = root.get("showTimestamp").getAsBoolean();
+            if (root.has("coloredUsernames")) this.coloredUsernames = root.get("coloredUsernames").getAsBoolean();
+            if (root.has("coloredMessages")) this.coloredMessages = root.get("coloredMessages").getAsBoolean();
+            if (root.has("rgbMode")) this.rgbMode = root.get("rgbMode").getAsBoolean();
+            if (root.has("newestAtTop")) this.newestAtTop = root.get("newestAtTop").getAsBoolean();
+            if (root.has("chatShadow")) this.chatShadow = root.get("chatShadow").getAsBoolean();
+            if (root.has("textShadow")) this.textShadow = root.get("textShadow").getAsBoolean();
+
+            if (this.autoConnect && !this.streamUrl.isEmpty()) {
+                connect(this.streamUrl);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public synchronized void saveConfig() {
+        try {
+            Path cfgDir = FabricLoader.getInstance().getConfigDir();
+            Path bcDir = cfgDir.resolve("banglaclient");
+            Files.createDirectories(bcDir);
+            JsonObject root = new JsonObject();
+            root.addProperty("youtubeUrl", streamUrl != null ? streamUrl : "");
+            root.addProperty("autoConnect", autoConnect);
+            root.addProperty("chatDelayMs", chatDelayMs);
+            root.addProperty("animationTemplate", animationTemplate.name());
+            root.addProperty("showYouTubeIcon", showYouTubeIcon);
+            root.addProperty("showUsername", showUsername);
+            root.addProperty("showTimestamp", showTimestamp);
+            root.addProperty("coloredUsernames", coloredUsernames);
+            root.addProperty("coloredMessages", coloredMessages);
+            root.addProperty("rgbMode", rgbMode);
+            root.addProperty("newestAtTop", newestAtTop);
+            root.addProperty("chatShadow", chatShadow);
+            root.addProperty("textShadow", textShadow);
+            ConfigManager.writeAtomically(cfgDir.resolve("livestream.json"), root);
+            ConfigManager.writeAtomically(bcDir.resolve("livestream.json"), root);
+        } catch (Throwable ignored) {}
+    }
 
     public static LiveStreamManager get() { return INSTANCE; }
 
