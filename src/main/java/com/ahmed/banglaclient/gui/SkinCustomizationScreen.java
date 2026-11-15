@@ -103,7 +103,7 @@ public final class SkinCustomizationScreen extends Screen {
         if (this.center3DCharacterWidget != null) {
             try {
                 // Drag horizontally to turn the 3D model 180 degrees so the cape on the back faces the camera
-                this.center3DCharacterWidget.onDrag(
+                this.center3DCharacterWidget.mouseDragged(
                         new Click(center3DCharacterWidget.getX() + 20, center3DCharacterWidget.getY() + 20, new MouseInput(0, 0)),
                         showBack ? 95.0 : -95.0,
                         0.0
