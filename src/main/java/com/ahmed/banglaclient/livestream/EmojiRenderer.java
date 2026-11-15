@@ -59,20 +59,33 @@ public final class EmojiRenderer {
         String input = smallCaps ? GlassRenderer.toSmallCaps(raw) : raw;
         int width = 0;
         int len = input.length();
-        StringBuilder seg = new StringBuilder();
+        StringBuilder latinSeg = new StringBuilder();
+        StringBuilder bnSeg = new StringBuilder();
 
         for (int i = 0; i < len; ) {
-            int cp = input.codePointAt(i); if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { width += tr.getWidth(WorldLanguageShaper.shape(seg.toString())); seg.setLength(0); } int start = i; while (i < len && (BengaliFontEngine.isBengaliChar(input.codePointAt(i)))) { i += Character.charCount(input.codePointAt(i)); } width += BengaliFontEngine.measureBengaliWidth(input.substring(start, i)); continue; }
+            int cp = input.codePointAt(i);
             int charCount = Character.charCount(cp);
-            if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { String s = WorldLanguageShaper.shape(seg.toString()); ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow); cursorX += tr.getWidth(s); seg.setLength(0); } int start = i; while (i < len && BengaliFontEngine.isBengaliChar(input.codePointAt(i))) { i += Character.charCount(input.codePointAt(i)); } cursorX += BengaliFontEngine.drawBengaliSegment(ctx, input.substring(start, i), cursorX, y, color, shadow); continue; }
             if (cp == 0xFE0F || cp == 0xFE0E) {
                 i += charCount;
                 continue;
             }
+            if (BengaliFontEngine.isBengaliChar(cp)) {
+                if (!latinSeg.isEmpty()) {
+                    width += tr.getWidth(WorldLanguageShaper.shape(latinSeg.toString()));
+                    latinSeg.setLength(0);
+                }
+                bnSeg.appendCodePoint(cp);
+                i += charCount;
+                continue;
+            } else if (!bnSeg.isEmpty()) {
+                width += BengaliFontEngine.measureBengaliWidth(bnSeg.toString());
+                bnSeg.setLength(0);
+            }
+
             if (isRegionalIndicator(cp)) {
-                if (!seg.isEmpty()) {
-                    width += tr.getWidth(WorldLanguageShaper.shape(seg.toString()));
-                    seg.setLength(0);
+                if (!latinSeg.isEmpty()) {
+                    width += tr.getWidth(WorldLanguageShaper.shape(latinSeg.toString()));
+                    latinSeg.setLength(0);
                 }
                 if (i + charCount < len && isRegionalIndicator(input.codePointAt(i + charCount))) {
                     i += charCount * 2;
@@ -83,18 +96,21 @@ public final class EmojiRenderer {
                 continue;
             }
             if (isColorEmoji(cp)) {
-                if (!seg.isEmpty()) {
-                    width += tr.getWidth(WorldLanguageShaper.shape(seg.toString()));
-                    seg.setLength(0);
+                if (!latinSeg.isEmpty()) {
+                    width += tr.getWidth(WorldLanguageShaper.shape(latinSeg.toString()));
+                    latinSeg.setLength(0);
                 }
                 width += 10;
             } else {
-                seg.appendCodePoint(cp);
+                latinSeg.appendCodePoint(cp);
             }
             i += charCount;
         }
-        if (!seg.isEmpty()) {
-            width += tr.getWidth(WorldLanguageShaper.shape(seg.toString()));
+        if (!bnSeg.isEmpty()) {
+            width += BengaliFontEngine.measureBengaliWidth(bnSeg.toString());
+        }
+        if (!latinSeg.isEmpty()) {
+            width += tr.getWidth(WorldLanguageShaper.shape(latinSeg.toString()));
         }
         return width;
     }
@@ -106,22 +122,37 @@ public final class EmojiRenderer {
         int alpha = (color >>> 24) & 0xFF;
         float cursorX = x;
         int len = input.length();
-        StringBuilder seg = new StringBuilder();
+        StringBuilder latinSeg = new StringBuilder();
+        StringBuilder bnSeg = new StringBuilder();
 
         for (int i = 0; i < len; ) {
-            int cp = input.codePointAt(i); if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { width += tr.getWidth(WorldLanguageShaper.shape(seg.toString())); seg.setLength(0); } int start = i; while (i < len && (BengaliFontEngine.isBengaliChar(input.codePointAt(i)))) { i += Character.charCount(input.codePointAt(i)); } width += BengaliFontEngine.measureBengaliWidth(input.substring(start, i)); continue; }
+            int cp = input.codePointAt(i);
             int charCount = Character.charCount(cp);
-            if (BengaliFontEngine.isBengaliChar(cp)) { if (!seg.isEmpty()) { String s = WorldLanguageShaper.shape(seg.toString()); ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow); cursorX += tr.getWidth(s); seg.setLength(0); } int start = i; while (i < len && BengaliFontEngine.isBengaliChar(input.codePointAt(i))) { i += Character.charCount(input.codePointAt(i)); } cursorX += BengaliFontEngine.drawBengaliSegment(ctx, input.substring(start, i), cursorX, y, color, shadow); continue; }
             if (cp == 0xFE0F || cp == 0xFE0E) {
                 i += charCount;
                 continue;
             }
-            if (isRegionalIndicator(cp)) {
-                if (!seg.isEmpty()) {
-                    String s = WorldLanguageShaper.shape(seg.toString());
+            if (BengaliFontEngine.isBengaliChar(cp)) {
+                if (!latinSeg.isEmpty()) {
+                    String s = WorldLanguageShaper.shape(latinSeg.toString());
                     ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow);
                     cursorX += tr.getWidth(s);
-                    seg.setLength(0);
+                    latinSeg.setLength(0);
+                }
+                bnSeg.appendCodePoint(cp);
+                i += charCount;
+                continue;
+            } else if (!bnSeg.isEmpty()) {
+                cursorX += BengaliFontEngine.drawBengaliSegment(ctx, bnSeg.toString(), cursorX, y, color, shadow);
+                bnSeg.setLength(0);
+            }
+
+            if (isRegionalIndicator(cp)) {
+                if (!latinSeg.isEmpty()) {
+                    String s = WorldLanguageShaper.shape(latinSeg.toString());
+                    ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow);
+                    cursorX += tr.getWidth(s);
+                    latinSeg.setLength(0);
                 }
                 int secondCp = 0;
                 if (i + charCount < len && isRegionalIndicator(input.codePointAt(i + charCount))) {
@@ -135,21 +166,24 @@ public final class EmojiRenderer {
                 continue;
             }
             if (isColorEmoji(cp)) {
-                if (!seg.isEmpty()) {
-                    String s = WorldLanguageShaper.shape(seg.toString());
+                if (!latinSeg.isEmpty()) {
+                    String s = WorldLanguageShaper.shape(latinSeg.toString());
                     ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow);
                     cursorX += tr.getWidth(s);
-                    seg.setLength(0);
+                    latinSeg.setLength(0);
                 }
                 drawColorEmojiIcon(ctx, cp, cursorX + 0.5f, y, alpha);
                 cursorX += 10.0f;
             } else {
-                seg.appendCodePoint(cp);
+                latinSeg.appendCodePoint(cp);
             }
             i += charCount;
         }
-        if (!seg.isEmpty()) {
-            String s = WorldLanguageShaper.shape(seg.toString());
+        if (!bnSeg.isEmpty()) {
+            cursorX += BengaliFontEngine.drawBengaliSegment(ctx, bnSeg.toString(), cursorX, y, color, shadow);
+        }
+        if (!latinSeg.isEmpty()) {
+            String s = WorldLanguageShaper.shape(latinSeg.toString());
             ctx.drawText(tr, s, Math.round(cursorX), Math.round(y), color, shadow);
             cursorX += tr.getWidth(s);
         }
