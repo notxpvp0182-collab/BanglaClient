@@ -133,7 +133,7 @@ public final class LiveStreamManager {
             Files.createDirectories(bcDir);
             Path primary = cfgDir.resolve("livestream.json");
             Path secondary = bcDir.resolve("livestream.json");
-            Path target = Files.exists(primary) ? primary : secondary;
+            Path target = secondary;
             if (!Files.exists(target)) {
                 saveConfig();
                 return;
@@ -181,7 +181,6 @@ public final class LiveStreamManager {
             root.addProperty("newestAtTop", newestAtTop);
             root.addProperty("chatShadow", chatShadow);
             root.addProperty("textShadow", textShadow);
-            ConfigManager.writeAtomically(cfgDir.resolve("livestream.json"), root);
             ConfigManager.writeAtomically(bcDir.resolve("livestream.json"), root);
         } catch (Throwable ignored) {}
     }
