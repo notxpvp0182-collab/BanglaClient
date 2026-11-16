@@ -114,7 +114,7 @@ public abstract class HudModule extends Module {
         return width;
     }
 
-    protected void setWidth(float width) {
+    public void setWidth(float width) {
         this.width = Math.max(16.0f, width);
     }
 
@@ -122,7 +122,7 @@ public abstract class HudModule extends Module {
         return height;
     }
 
-    protected void setHeight(float height) {
+    public void setHeight(float height) {
         this.height = Math.max(12.0f, height);
     }
 
