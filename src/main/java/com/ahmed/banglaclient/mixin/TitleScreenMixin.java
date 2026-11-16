@@ -72,6 +72,15 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private PlayerSkinWidget mainSkinWidget;
 
+    @Unique
+    private final java.util.Map<ClickableWidget, int[]> widgetBaseCoords = new java.util.HashMap<>();
+
+    @Unique
+    private long entranceStartMs = -1L;
+
+    @Unique
+    private boolean wasOverlayPresent = true;
+
     protected TitleScreenMixin(Text title) {
         super(title);
     }
@@ -79,12 +88,16 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private void registerBanglaButton(ButtonWidget btn) {
         banglaMenuWidgets.add(btn);
+        widgetBaseCoords.put(btn, new int[]{btn.getX(), btn.getY()});
         this.addDrawableChild(btn);
     }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void banglaclient$setup2DAuraMainMenu(CallbackInfo ci) {
         banglaMenuWidgets.clear();
+        widgetBaseCoords.clear();
+        this.entranceStartMs = System.currentTimeMillis();
+        this.wasOverlayPresent = (this.client != null && this.client.getOverlay() != null);
         capturedModWidgets.clear();
         bridgedExternalWidgets.clear();
 
@@ -337,40 +350,94 @@ public abstract class TitleScreenMixin extends Screen {
             context.fill(0, 0, w, h, 0x44060709);
         }
 
-        // 2. Clean 2D "Bangla Client" Title at Top-Center
-        int titleY = Math.max(20, h / 2 - 76);
+        // Smooth Entrance Animation Timing (re-triggers cleanly the moment SplashOverlay finishes!)
+        boolean overlayNow = (this.client != null && this.client.getOverlay() != null);
+        if (wasOverlayPresent && !overlayNow) {
+            entranceStartMs = System.currentTimeMillis();
+        }
+        wasOverlayPresent = overlayNow;
+        if (entranceStartMs < 0L) entranceStartMs = System.currentTimeMillis();
+
+        float elapsedSec = (System.currentTimeMillis() - entranceStartMs) / 1000.0f;
+        float globalAnim = com.ahmed.banglaclient.animation.Easing.EASE_OUT_QUART.apply(
+                com.ahmed.banglaclient.util.MathUtils.clamp(elapsedSec / 0.72f, 0.0f, 1.0f)
+        );
+
+        // 2. Animated 2D "Bangla Client" Title at Top-Center (glides down & scales in)
+        int baseTitleY = Math.max(20, h / 2 - 76);
+        float titleSlideY = baseTitleY - (1.0f - globalAnim) * 18.0f;
+        float titleScale = 1.65f + 0.20f * globalAnim;
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
-        matrices.translate(centerX, titleY);
-        matrices.scale(1.85f, 1.85f);
+        matrices.translate(centerX, titleSlideY);
+        matrices.scale(titleScale, titleScale);
         String titleStr = "Bangla Client";
         int tw = this.textRenderer.getWidth(titleStr);
         context.drawTextWithShadow(this.textRenderer, titleStr, -tw / 2, 0, 0xFFFFFFFF);
         matrices.popMatrix();
 
-        // 3. Right-Side Username Pill & 3D PlayerSkinWidget
+        // 3. Animated Right-Side Username Pill & 3D PlayerSkinWidget (glides in from right)
+        int rightSlideOffset = Math.round((1.0f - globalAnim) * 36.0f);
         String liveUser = this.client != null && this.client.getSession() != null ? this.client.getSession().getUsername() : "Player";
-        int charCenterX = w - 64;
+        int charCenterX = w - 64 + rightSlideOffset;
         int nameW = this.textRenderer.getWidth(liveUser);
+        int charW = 72;
         int charH = Math.min(108, h - 94);
+        int charTopY = Math.max(44, (h - charH) / 2 - 6);
         int badgeY = Math.max(26, (h - charH) / 2 - 22);
         GlassRenderer.drawPillBadge(context, charCenterX - nameW / 2 - 6, badgeY, nameW + 12, 14, 0xFFFFFFFF, false);
         context.drawTextWithShadow(this.textRenderer, liveUser, charCenterX - nameW / 2, badgeY + 3, 0xFFFFFFFF);
 
         if (this.mainSkinWidget != null) {
             try {
+                this.mainSkinWidget.setPosition(charCenterX - charW / 2, charTopY);
                 this.mainSkinWidget.render(context, mouseX, mouseY, delta);
             } catch (Throwable ignored) {}
         }
 
-        // 4. Render All 2D Aura Buttons
+        // 4. Staggered Choreographed Entrance for All Main Menu Buttons
+        int centerBtnIndex = 0;
         for (ClickableWidget cw : banglaMenuWidgets) {
-            if (cw.visible) {
-                cw.render(context, mouseX, mouseY, delta);
+            if (!cw.visible) continue;
+            int[] base = widgetBaseCoords.get(cw);
+            if (base != null) {
+                int bx = base[0], by = base[1];
+                if (bx <= 24) {
+                    // Left-side icon dock slides in from left
+                    cw.setX(bx - Math.round((1.0f - globalAnim) * 28.0f));
+                    cw.setY(by);
+                } else if (by <= 20 && bx > w / 2) {
+                    // Top-right utility dock slides down from top
+                    cw.setX(bx);
+                    cw.setY(by - Math.round((1.0f - globalAnim) * 24.0f));
+                } else if (bx > w - 150 && by > 40) {
+                    // Right-side Wardrobe & BANGLA SMP card slide in from right
+                    cw.setX(bx + rightSlideOffset);
+                    cw.setY(by);
+                } else {
+                    // Center buttons cascade upward with staggered timing
+                    float delay = centerBtnIndex * 0.045f;
+                    float btnProgress = com.ahmed.banglaclient.animation.Easing.EASE_OUT_CUBIC.apply(
+                            com.ahmed.banglaclient.util.MathUtils.clamp((elapsedSec - delay) / 0.55f, 0.0f, 1.0f)
+                    );
+                    cw.setX(bx);
+                    cw.setY(by + Math.round((1.0f - btnProgress) * 22.0f));
+                    centerBtnIndex++;
+                }
             }
+            cw.render(context, mouseX, mouseY, delta);
         }
 
-        context.drawTextWithShadow(this.textRenderer, "Bangla Client v1.0.0", 12, h - 14, 0xFF94A3B8);
+        int verSlideY = Math.round((1.0f - globalAnim) * 14.0f);
+        context.drawTextWithShadow(this.textRenderer, "Bangla Client v1.0.0", 12, h - 14 + verSlideY, 0xFF94A3B8);
+
+        // Seamless post-splash dark dissolve veil so there is zero sudden flash
+        if (!overlayNow && globalAnim < 0.99f) {
+            int veilAlpha = Math.round((1.0f - globalAnim) * 165.0f);
+            if (veilAlpha > 2) {
+                context.fill(0, 0, w, h, (veilAlpha << 24) | 0x040507);
+            }
+        }
 
         if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
             BanglaClient.getInstance().getNotificationManager().render(context, w, h);
