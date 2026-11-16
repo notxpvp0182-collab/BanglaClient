@@ -7,11 +7,6 @@ import com.ahmed.banglaclient.module.setting.EnumSetting;
 import com.ahmed.banglaclient.module.setting.NumberSetting;
 import net.minecraft.client.gui.DrawContext;
 
-import java.awt.Color;
-
-/**
- * Built-in Color Saturation, Vibrance, Contrast, Brightness & Hue Customizer Module with 16 Presets and Reset.
- */
 public final class ColorSaturationModule extends Module {
     public enum ColorPreset {
         DEFAULT("Default", 1.0f, 1.0f, 1.0f, 0.0f),
@@ -42,16 +37,10 @@ public final class ColorSaturationModule extends Module {
             this.hue = hue;
         }
 
-        public String getActivePresetName() { return presetSetting.getValue().toString(); }
-    public void applyPreset(ColorPreset p) { if (p != null) presetSetting.setValue(p); }
-    public void setSaturation(float v) { saturationSetting.setValue((double) v); }
-    public void setContrast(float v) { contrastSetting.setValue((double) v); }
-    public void setBrightness(float v) { brightnessSetting.setValue((double) v); }
-    public void setHue(float v) { hueSetting.setValue((double) v); }
-    public float getSaturation() { return saturation; }
-        public float getContrast() { return contrast; }
-        public float getBrightness() { return brightness; }
-        public float getHue() { return hue; }
+        public float getPresetSaturation() { return saturation; }
+        public float getPresetContrast() { return contrast; }
+        public float getPresetBrightness() { return brightness; }
+        public float getPresetHue() { return hue; }
         @Override public String toString() { return label; }
     }
 
@@ -67,7 +56,7 @@ public final class ColorSaturationModule extends Module {
         super(
                 "color_saturation",
                 "Color Saturation",
-                "Real-time color saturation, contrast, brightness, and hue customizer with 16 visual presets.",
+                "Real-time GPU shader color saturation, contrast, brightness, and hue customizer with 16 visual presets.",
                 ModuleCategory.VISUAL
         );
         this.presetSetting = addSetting(new EnumSetting<>("preset", "Color Preset", "Select a built-in color grading preset", ColorPreset.VIBRANT));
@@ -80,10 +69,10 @@ public final class ColorSaturationModule extends Module {
         this.presetSetting.onChange(preset -> {
             if (preset != null && !applyingPreset) {
                 applyingPreset = true;
-                saturationSetting.setValue((double) preset.getSaturation());
-                contrastSetting.setValue((double) preset.getContrast());
-                brightnessSetting.setValue((double) preset.getBrightness());
-                hueSetting.setValue((double) preset.getHue());
+                saturationSetting.setValue((double) preset.getPresetSaturation());
+                contrastSetting.setValue((double) preset.getPresetContrast());
+                brightnessSetting.setValue((double) preset.getPresetBrightness());
+                hueSetting.setValue((double) preset.getPresetHue());
                 applyingPreset = false;
             }
         });
@@ -102,52 +91,23 @@ public final class ColorSaturationModule extends Module {
         addAliases("saturation", "colorsaturation", "vibrance", "contrast", "hue", "color");
     }
 
-    /**
-     * Renders the real-time color grading pass (Saturation, Contrast, Brightness, Hue) over the game viewport.
-     */
     public String getActivePresetName() { return presetSetting.getValue().toString(); }
     public void applyPreset(ColorPreset p) { if (p != null) presetSetting.setValue(p); }
-    public void setSaturation(float v) { saturationSetting.setValue((double) v); }
-    public void setContrast(float v) { contrastSetting.setValue((double) v); }
-    public void setBrightness(float v) { brightnessSetting.setValue((double) v); }
-    public void setHue(float v) { hueSetting.setValue((double) v); }
     public float getSaturation() { return saturationSetting.getFloatValue(); }
+    public void setSaturation(float v) { saturationSetting.setValue((double) v); }
     public float getContrast() { return contrastSetting.getFloatValue(); }
+    public void setContrast(float v) { contrastSetting.setValue((double) v); }
     public float getBrightness() { return brightnessSetting.getFloatValue(); }
+    public void setBrightness(float v) { brightnessSetting.setValue((double) v); }
     public float getHue() { return hueSetting.getFloatValue(); }
-    public boolean isActiveNonIdentity() { return isEnabled() && (Math.abs(getSaturation() - 1.0f) > 0.005f || Math.abs(getContrast() - 1.0f) > 0.005f || Math.abs(getBrightness() - 1.0f) > 0.005f || Math.abs(getHue()) > 0.1f); }
-    public void renderColorGradingOverlay(DrawContext context, int screenWidth, int screenHeight) {
-        
-        if (!isEnabled() || context == null) return;
-        float sat = saturationSetting.getFloatValue();
-        float con = contrastSetting.getFloatValue();
-        float bri = brightnessSetting.getFloatValue();
-        float hueDeg = hueSetting.getFloatValue();
+    public void setHue(float v) { hueSetting.setValue((double) v); }
 
-        // 1. Brightness & Contrast pass
-        if (Math.abs(bri - 1.0f) > 0.02f) {
-            if (bri > 1.0f) {
-                int alpha = Math.min(95, Math.round((bri - 1.0f) * 110.0f));
-                context.fill(0, 0, screenWidth, screenHeight, (alpha << 24) | 0xFFFFFF);
-            } else {
-                int alpha = Math.min(160, Math.round((1.0f - bri) * 180.0f));
-                context.fill(0, 0, screenWidth, screenHeight, (alpha << 24));
-            }
-        }
-
-        // 2. Saturation & Hue vibrancy pass
-        float satDelta = sat - 1.0f;
-        if (Math.abs(satDelta) > 0.03f || Math.abs(hueDeg) > 1.0f || Math.abs(con - 1.0f) > 0.03f) {
-            float normalizedHue = ((hueDeg + 360.0f) % 360.0f) / 360.0f;
-            if (Math.abs(hueDeg) <= 1.0f) {
-                normalizedHue = satDelta >= 0 ? 0.08f : 0.60f;
-            }
-            float tintSat = Math.min(1.0f, Math.abs(satDelta) * 0.35f + Math.abs(hueDeg) / 180.0f * 0.5f);
-            int rgb = Color.HSBtoRGB(normalizedHue, tintSat, satDelta >= 0 ? 1.0f : 0.25f) & 0x00FFFFFF;
-            int alpha = Math.min(72, Math.round((Math.abs(satDelta) * 18.0f) + (Math.abs(con - 1.0f) * 28.0f) + (Math.abs(hueDeg) * 0.18f)));
-            if (alpha > 2) {
-                context.fill(0, 0, screenWidth, screenHeight, (alpha << 24) | rgb);
-            }
-        }
+    public boolean isActiveNonIdentity() {
+        return isEnabled() && (Math.abs(getSaturation() - 1.0f) > 0.005f
+                || Math.abs(getContrast() - 1.0f) > 0.005f
+                || Math.abs(getBrightness() - 1.0f) > 0.005f
+                || Math.abs(getHue()) > 0.1f);
     }
+
+    public void renderColorGradingOverlay(DrawContext context, int screenWidth, int screenHeight) {}
 }

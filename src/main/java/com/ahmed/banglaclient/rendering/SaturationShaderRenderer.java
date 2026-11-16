@@ -10,7 +10,6 @@ import com.mojang.blaze3d.systems.CommandEncoder;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
-import com.mojang.blaze3d.textures.GpuSampler;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.MinecraftClient;
@@ -25,10 +24,6 @@ import net.minecraft.util.Identifier;
 import java.lang.reflect.Method;
 import java.util.OptionalInt;
 
-/**
- * Exact GPU Shader Pipeline from color-saturation-main (FullscreenTriangle, InternalTargetTracker,
- * SaturationUniforms, and SaturationHandler) adapted for Yarn 1.21.11.
- */
 public final class SaturationShaderRenderer {
     public static final int VERTEX_COUNT = 3;
     private static final int BLOCK_SIZE = new Std140SizeCalculator()
@@ -50,6 +45,7 @@ public final class SaturationShaderRenderer {
     private static float uploadedBrightness = Float.NaN;
     private static float uploadedHue = Float.NaN;
     private static Method cachedSamplerMethod = null;
+    private static Method cachedBindTexMethod = null;
 
     private SaturationShaderRenderer() {}
 
@@ -111,7 +107,6 @@ public final class SaturationShaderRenderer {
         uploadedHue = hue;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private static RenderPipeline getPipeline() {
         if (saturationPipeline == null) {
             RenderPipeline.Builder builder = RenderPipeline.builder()
@@ -163,23 +158,35 @@ public final class SaturationShaderRenderer {
         prevHeight = height;
     }
 
-    private static GpuSampler resolveNearestClampSampler() {
+    private static void bindDiffuseSampler(RenderPass pass, GpuTextureView inputView) {
         try {
-            Object cache = RenderSystem.getSamplerCache();
-            if (cachedSamplerMethod == null) {
-                for (Method m : cache.getClass().getMethods()) {
-                    if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == FilterMode.class
-                            && GpuSampler.class.isAssignableFrom(m.getReturnType())) {
-                        cachedSamplerMethod = m;
+            if (cachedBindTexMethod == null) {
+                for (Method m : RenderPass.class.getMethods()) {
+                    if (m.getName().equals("bindTexture")) {
+                        cachedBindTexMethod = m;
                         break;
                     }
                 }
             }
-            if (cachedSamplerMethod != null) {
-                return (GpuSampler) cachedSamplerMethod.invoke(cache, FilterMode.NEAREST);
+            if (cachedBindTexMethod != null) {
+                if (cachedBindTexMethod.getParameterCount() == 2) {
+                    cachedBindTexMethod.invoke(pass, "DiffuseSampler", inputView);
+                } else if (cachedBindTexMethod.getParameterCount() == 3) {
+                    Method samplerGetter = RenderSystem.class.getMethod("getSamplerCache");
+                    Object cache = samplerGetter.invoke(null);
+                    if (cachedSamplerMethod == null) {
+                        for (Method m : cache.getClass().getMethods()) {
+                            if (m.getParameterCount() == 1 && m.getParameterTypes()[0] == FilterMode.class) {
+                                cachedSamplerMethod = m;
+                                break;
+                            }
+                        }
+                    }
+                    Object sampler = cachedSamplerMethod != null ? cachedSamplerMethod.invoke(cache, FilterMode.NEAREST) : null;
+                    cachedBindTexMethod.invoke(pass, "DiffuseSampler", inputView, sampler);
+                }
             }
         } catch (Throwable ignored) {}
-        return null;
     }
 
     public static boolean renderWorldPass() {
@@ -223,8 +230,6 @@ public final class SaturationShaderRenderer {
     private static void drawPass(GpuTextureView outputView, GpuTextureView inputView) {
         CommandEncoder commandEncoder = RenderSystem.getDevice().createCommandEncoder();
         GpuBuffer vbo = getVertexBuffer();
-        GpuSampler sampler = resolveNearestClampSampler();
-        if (sampler == null) return;
 
         try (RenderPass renderPass = commandEncoder.createRenderPass(
                 () -> "ColorSaturation/Saturation",
@@ -233,7 +238,7 @@ public final class SaturationShaderRenderer {
         )) {
             renderPass.setPipeline(getPipeline());
             renderPass.setVertexBuffer(0, vbo);
-            renderPass.bindTexture("DiffuseSampler", inputView, sampler);
+            bindDiffuseSampler(renderPass, inputView);
             renderPass.setUniform("SaturationConfig", getUniformBuffer());
             renderPass.draw(0, VERTEX_COUNT);
         }
