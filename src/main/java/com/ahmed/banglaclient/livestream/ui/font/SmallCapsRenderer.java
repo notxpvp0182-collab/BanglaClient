@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.font;
+package com.ahmed.banglaclient.livestream.ui.font;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

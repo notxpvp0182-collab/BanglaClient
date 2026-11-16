@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.animation;
+package com.ahmed.banglaclient.livestream.ui.animation;
 
 public final class Animation {
     public enum Easing {

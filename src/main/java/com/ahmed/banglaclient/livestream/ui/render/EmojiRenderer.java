@@ -1,6 +1,6 @@
-package dev.ahmed.liquidglass.ui.render;
-import dev.ahmed.liquidglass.ui.font.BengaliFontEngine;
-import dev.ahmed.liquidglass.ui.font.WorldLanguageShaper;
+package com.ahmed.banglaclient.livestream.ui.render;
+import com.ahmed.banglaclient.livestream.ui.font.BengaliFontEngine;
+import com.ahmed.banglaclient.livestream.ui.font.WorldLanguageShaper;
 
 import com.ahmed.banglaclient.rendering.GlassRenderer;
 import net.minecraft.client.font.TextRenderer;

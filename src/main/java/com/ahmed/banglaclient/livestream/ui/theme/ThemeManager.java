@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.theme;
+package com.ahmed.banglaclient.livestream.ui.theme;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

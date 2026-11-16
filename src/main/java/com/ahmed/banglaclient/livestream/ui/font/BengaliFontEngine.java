@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.font;
+package com.ahmed.banglaclient.livestream.ui.font;
 
 import net.minecraft.client.gui.DrawContext;
 import org.joml.Matrix3x2fStack;

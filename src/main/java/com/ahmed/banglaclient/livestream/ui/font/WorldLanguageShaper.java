@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.font;
+package com.ahmed.banglaclient.livestream.ui.font;
 
 import java.text.Bidi;
 import java.text.Normalizer;

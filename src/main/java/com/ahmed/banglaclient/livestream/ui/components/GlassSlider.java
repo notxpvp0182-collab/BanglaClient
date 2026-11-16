@@ -1,9 +1,9 @@
-package dev.ahmed.liquidglass.ui.components;
+package com.ahmed.banglaclient.livestream.ui.components;
 
-import dev.ahmed.liquidglass.ui.animation.Animation;
-import dev.ahmed.liquidglass.ui.render.UIRenderer;
-import dev.ahmed.liquidglass.ui.theme.ThemeManager;
-import dev.ahmed.liquidglass.ui.theme.ThemeTokens;
+import com.ahmed.banglaclient.livestream.ui.animation.Animation;
+import com.ahmed.banglaclient.livestream.ui.render.UIRenderer;
+import com.ahmed.banglaclient.livestream.ui.theme.ThemeManager;
+import com.ahmed.banglaclient.livestream.ui.theme.ThemeTokens;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 

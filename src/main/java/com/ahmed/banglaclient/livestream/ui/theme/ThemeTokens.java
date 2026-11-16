@@ -1,4 +1,4 @@
-package dev.ahmed.liquidglass.ui.theme;
+package com.ahmed.banglaclient.livestream.ui.theme;
 
 public record ThemeTokens(
     String id,
