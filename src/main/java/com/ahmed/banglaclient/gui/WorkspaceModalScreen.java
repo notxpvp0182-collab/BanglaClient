@@ -1,16 +1,15 @@
 package com.ahmed.banglaclient.gui;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.animation.Animation;
+import com.ahmed.banglaclient.animation.Easing;
 import com.ahmed.banglaclient.livestream.LiveStreamHudModule;
 import com.ahmed.banglaclient.livestream.LiveStreamManager;
 import com.ahmed.banglaclient.module.ModuleManager;
-import com.ahmed.banglaclient.livestream.ui.animation.Animation;
-import com.ahmed.banglaclient.livestream.ui.components.GlassTextField;
-import com.ahmed.banglaclient.livestream.ui.render.IconRenderer;
-import com.ahmed.banglaclient.livestream.ui.render.UIRenderer;
-import com.ahmed.banglaclient.livestream.ui.theme.GlassQuality;
-import com.ahmed.banglaclient.livestream.ui.theme.ThemeManager;
-import com.ahmed.banglaclient.livestream.ui.theme.ThemeTokens;
+import com.ahmed.banglaclient.rendering.BlurRenderer;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
+import com.ahmed.banglaclient.theme.ThemeTokens;
+import com.ahmed.banglaclient.util.MathUtils;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -23,21 +22,26 @@ import org.lwjgl.glfw.GLFW;
 public final class WorkspaceModalScreen extends Screen {
     private static final String[] PROFILES = {"Default", "Streaming", "Gaming", "Minimal"};
     private final Screen parent;
-    private final GlassTextField streamUrlField = new GlassTextField("Paste YouTube Live link...");
-    private final Animation openAnim = new Animation(0.0f, 0.25f, Animation.Easing.EASE_OUT_QUART);
+    private final Animation openAnim = new Animation(0.0f, 180L, Easing.EASE_OUT_QUART);
     private boolean closing = false;
-    private long lastFrameNs = System.nanoTime();
-    private static String activeProfile = "Default";
+    private String urlText = "";
+    private boolean urlFocused = false;
 
     public WorkspaceModalScreen(Screen parent) {
         super(Text.literal("Stream Workspace"));
         this.parent = parent;
-        streamUrlField.setText(LiveStreamManager.get().getStreamUrl());
-        openAnim.animateTo(1.0f);
+        this.urlText = LiveStreamManager.get().getStreamUrl();
+    }
+
+    @Override
+    protected void init() {
+        this.closing = false;
+        this.openAnim.snapTo(0.0f);
+        this.openAnim.animateTo(1.0f);
     }
 
     private void applyProfilePreset(String profileName) {
-        activeProfile = profileName;
+        LiveStreamManager.get().setActiveProfile(profileName);
         ModuleManager mm = BanglaClient.getInstance().getModuleManager();
         String[] allIds = {
                 "ls_live_indicator", "ls_viewer_count", "ls_like_count", "ls_channel_name",
@@ -55,221 +59,197 @@ public final class WorkspaceModalScreen extends Screen {
             });
         }
         BanglaClient.getInstance().getConfigManager().saveModulesConfig();
-    }
-
-    private void closeWithAnimation() {
-        if (!closing) {
-            closing = true;
-            openAnim.animateTo(0.0f);
-        }
+        LiveStreamManager.get().saveConfig();
     }
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float deltaTicks) {
-        long now = System.nanoTime();
-        float dt = Math.min(0.05f, (now - lastFrameNs) / 1_000_000_000.0f);
-        lastFrameNs = now;
-
-        float progress = openAnim.update(dt);
-        if (closing && openAnim.isFinished()) {
+        float progress = openAnim.getValue();
+        if (closing && progress <= 0.02f) {
             if (this.client != null) this.client.setScreen(parent);
             return;
         }
 
-        ThemeTokens t = ThemeManager.get().tokens();
-        ctx.fill(0, 0, this.width, this.height, UIRenderer.withAlpha(t.bgOverlay(), (int) (185 * progress)));
+        BlurRenderer.renderScreenBackdrop(ctx, this.width, this.height, progress);
 
-        float scale = 0.93f + 0.07f * progress;
         Matrix3x2fStack matrices = ctx.getMatrices();
+        float scale = 0.94f + 0.06f * progress;
         matrices.pushMatrix();
-        matrices.translate(this.width * 0.5f, this.height * 0.5f + (1.0f - progress) * 10.0f);
+        matrices.translate(this.width * 0.5f, this.height * 0.5f);
         matrices.scale(scale, scale);
         matrices.translate(-this.width * 0.5f, -this.height * 0.5f);
 
-        float modalW = Math.min(520.0f, this.width - 40.0f);
-        float modalH = Math.min(310.0f, this.height - 40.0f);
-        float mx = (this.width - modalW) * 0.5f;
-        float my = (this.height - modalH) * 0.5f;
+        try {
+            int mw = Math.min(440, this.width - 24);
+            int mh = Math.min(228, this.height - 20);
+            int mx = (this.width - mw) / 2;
+            int my = (this.height - mh) / 2;
 
-        UIRenderer.drawGlassPanel(ctx, mx, my, modalW, modalH, 14.0f,
-            t.bgGlassStrong(), t.borderBase(), 0.15f, mouseX, mouseY);
+            GlassRenderer.drawGlassPanel(ctx, mx, my, mw, mh, false, false, true);
 
-        IconRenderer.drawIcon(ctx, IconRenderer.Icon.BACK, mx + 12, my + 12, 10, t.textSecondary());
-        UIRenderer.drawText(ctx, "Back", mx + 26, my + 13, t.textSecondary(), 1.0f, false, false);
-        UIRenderer.drawText(ctx, "Stream Workspace", mx + 74, my + 13, t.textPrimary(), 1.0f, false, false);
+            boolean backHov = MathUtils.isHovered(mouseX, mouseY, mx + 8, my + 7, 46, 16);
+            GlassRenderer.drawPillBadge(ctx, mx + 8, my + 7, 46, 16, 0xFFFFFFFF, backHov);
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, "← Back", mx + 14, my + 11, 0xFFFFFFFF);
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, "Stream Workspace", mx + 62, my + 11, 0xFFFFFFFF);
 
-        var snap = LiveStreamManager.get().snapshot();
-        String stateText = snap.state().name();
-        int badgeW = this.textRenderer.getWidth(stateText) + 16;
-        UIRenderer.drawRoundedRect(ctx, mx + modalW - badgeW - 12, my + 10, badgeW, 16, 8.0f, t.bgElevated());
-        UIRenderer.drawText(ctx, stateText, mx + modalW - badgeW - 4, my + 14, t.accentPrimary(), 1.0f, false, false);
+            var snap = LiveStreamManager.get().snapshot();
+            String stateText = snap.state().name();
+            int badgeW = textRenderer.getWidth(stateText) + 14;
+            GlassRenderer.drawPillBadge(ctx, mx + mw - badgeW - 8, my + 7, badgeW, 16, 0xFFFFFFFF, true);
+            ctx.drawTextWithShadow(textRenderer, stateText, mx + mw - badgeW - 1, my + 11, 0xFFFFFFFF);
 
-        float sideX = mx + 12;
-        float sideY = my + 36;
-        float sideW = 125;
-        float sideH = modalH - 48;
-        UIRenderer.drawRoundedRect(ctx, sideX, sideY, sideW, sideH, 10.0f, t.bgElevated());
-        UIRenderer.drawRoundedBorder(ctx, sideX, sideY, sideW, sideH, 10.0f, 1.0f, t.borderBase());
+            GlassRenderer.drawHorizontalDivider(ctx, mx + 8, my + 27, mw - 16);
 
-        UIRenderer.drawText(ctx, "HUD PROFILES", sideX + 10, sideY + 10, t.textMuted(), 0.9f, true, false);
-        for (int i = 0; i < PROFILES.length; i++) {
-            float py = sideY + 26 + i * 24;
-            boolean active = PROFILES[i].equals(activeProfile);
-            UIRenderer.drawRoundedRect(ctx, sideX + 6, py, sideW - 12, 20, 7.0f,
-                active ? t.bgGlassStrong() : t.bgGlassWeak());
-            UIRenderer.drawRoundedBorder(ctx, sideX + 6, py, sideW - 12, 20, 7.0f, 1.0f,
-                active ? t.borderActive() : t.borderBase());
-            UIRenderer.drawText(ctx, PROFILES[i], sideX + 14, py + 6,
-                active ? t.textPrimary() : t.textSecondary(), 1.0f, false, false);
+            // Left Sidebar: HUD Profiles
+            int sideX = mx + 8, sideY = my + 32, sideW = 100, sideH = mh - 40;
+            GlassRenderer.drawGlassPanel(ctx, sideX, sideY, sideW, sideH, true, false, false);
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, "HUD Profiles", sideX + 8, sideY + 6, 0xFF94A3B8);
+            for (int i = 0; i < PROFILES.length; i++) {
+                int py = sideY + 20 + i * 22;
+                boolean active = PROFILES[i].equals(LiveStreamManager.get().getActiveProfile());
+                boolean hov = MathUtils.isHovered(mouseX, mouseY, sideX + 5, py, sideW - 10, 18);
+                GlassRenderer.drawPillBadge(ctx, sideX + 5, py, sideW - 10, 18, 0xFFFFFFFF, active || hov);
+                GlassRenderer.drawSmallCapsText(ctx, textRenderer, PROFILES[i], sideX + 12, py + 5, 0xFFFFFFFF);
+            }
+
+            // Right Main Workspace Area
+            int mainX = sideX + sideW + 6, mainY = sideY, mainW = mw - sideW - 22;
+            GlassRenderer.drawGlassPanel(ctx, mainX, mainY, mainW, sideH, true, false, false);
+
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, "Stream URL", mainX + 8, mainY + 6, 0xFFFFFFFF);
+            int pasteW = 44;
+            int fieldW = mainW - pasteW - 20;
+            GlassRenderer.drawGlassPanel(ctx, mainX + 8, mainY + 18, fieldW, 18, false, false, urlFocused);
+            String disp = urlText.isEmpty() && !urlFocused
+                    ? "Paste YouTube Live link..."
+                    : textRenderer.trimToWidth(urlText, fieldW - 22) + (urlFocused && (System.currentTimeMillis() / 500L) % 2L == 0L ? "|" : "");
+            ctx.drawTextWithShadow(textRenderer, disp, mainX + 12, mainY + 23, urlText.isEmpty() && !urlFocused ? 0xFF64748B : 0xFFFFFFFF);
+            if (!urlText.isEmpty()) {
+                ctx.drawTextWithShadow(textRenderer, "×", mainX + 8 + fieldW - 10, mainY + 23, 0xFF94A3B8);
+            }
+
+            int pasteX = mainX + 12 + fieldW;
+            boolean pHov = MathUtils.isHovered(mouseX, mouseY, pasteX, mainY + 18, pasteW, 18);
+            GlassRenderer.drawPillBadge(ctx, pasteX, mainY + 18, pasteW, 18, 0xFFFFFFFF, pHov || true);
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, "Paste", pasteX + 8, mainY + 23, 0xFFFFFFFF);
+
+            int btnY = mainY + 41;
+            int bw = (mainW - 24) / 3;
+            String[] bLabels = {"Connect", "Disconnect", "Refresh"};
+            for (int i = 0; i < 3; i++) {
+                int bx = mainX + 8 + i * (bw + 4);
+                boolean hov = MathUtils.isHovered(mouseX, mouseY, bx, btnY, bw, 17);
+                GlassRenderer.drawPillBadge(ctx, bx, btnY, bw, 17, i == 1 ? ThemeTokens.STATUS_ERROR : 0xFFFFFFFF, hov || i == 0);
+                String bl = GlassRenderer.toSmallCaps(bLabels[i]);
+                ctx.drawTextWithShadow(textRenderer, bl, bx + (bw - textRenderer.getWidth(bl)) / 2, btnY + 4, 0xFFFFFFFF);
+            }
+
+            GlassRenderer.drawSmallCapsText(ctx, textRenderer, textRenderer.trimToWidth(snap.statusMessage(), mainW - 16), mainX + 8, mainY + 63, 0xFF94A3B8);
+
+            int cardW = (mainW - 20) / 2;
+            int cardH = 30;
+            drawTelemetryCard(ctx, mainX + 8, mainY + 76, cardW, cardH, "Channel", snap.channelName());
+            drawTelemetryCard(ctx, mainX + 12 + cardW, mainY + 76, cardW, cardH, "Subscribers", LiveStreamManager.formatCompactNumber(snap.subscriberCount()));
+            drawTelemetryCard(ctx, mainX + 8, mainY + 110, cardW, cardH, "Live Viewers", LiveStreamManager.formatCompactNumber(snap.viewerCount()));
+            drawTelemetryCard(ctx, mainX + 12 + cardW, mainY + 110, cardW, cardH, "Likes", LiveStreamManager.formatCompactNumber(snap.likeCount()));
+        } finally {
+            matrices.popMatrix();
         }
-
-        UIRenderer.drawText(ctx, "GLASS QUALITY", sideX + 10, sideY + 132, t.textMuted(), 0.9f, true, false);
-        GlassQuality[] qualities = GlassQuality.values();
-        for (int i = 0; i < qualities.length; i++) {
-            float qy = sideY + 148 + i * 22;
-            boolean active = qualities[i] == ThemeManager.get().quality();
-            UIRenderer.drawRoundedRect(ctx, sideX + 6, qy, sideW - 12, 18, 7.0f,
-                active ? t.bgGlassStrong() : t.bgGlassWeak());
-            UIRenderer.drawText(ctx, qualities[i].name(), sideX + 14, qy + 5,
-                active ? t.accentPrimary() : t.textSecondary(), 1.0f, false, false);
-        }
-
-        float mainX = sideX + sideW + 10;
-        float mainY = sideY;
-        float mainW = modalW - sideW - 34;
-        float mainH = sideH;
-        UIRenderer.drawRoundedRect(ctx, mainX, mainY, mainW, mainH, 10.0f, t.bgElevated());
-        UIRenderer.drawRoundedBorder(ctx, mainX, mainY, mainW, mainH, 10.0f, 1.0f, t.borderBase());
-
-        UIRenderer.drawText(ctx, "Stream URL", mainX + 12, mainY + 14, t.textPrimary(), 1.0f, false, false);
-        float fieldW = mainW - 24;
-        streamUrlField.render(ctx, mainX + 12, mainY + 32, fieldW, 24, mouseX, mouseY, dt);
-
-        float bw = (fieldW - 12) / 3.0f;
-        drawButton(ctx, mainX + 12, mainY + 66, bw, 22, "Connect", mouseX, mouseY);
-        drawButton(ctx, mainX + 18 + bw, mainY + 66, bw, 22, "Disconnect", mouseX, mouseY);
-        drawButton(ctx, mainX + 24 + bw * 2, mainY + 66, bw, 22, "Refresh", mouseX, mouseY);
-
-        String status = snap.statusMessage();
-        int maxStatusW = (int) fieldW;
-        if (this.textRenderer.getWidth(status) > maxStatusW) {
-            status = this.textRenderer.trimToWidth(status, maxStatusW - 8) + "...";
-        }
-        UIRenderer.drawText(ctx, status, mainX + 12, mainY + 100, t.textSecondary(), 1.0f, false, false);
-
-        float cardW = (mainW - 32) * 0.5f;
-        drawTelemetryCard(ctx, mainX + 12, mainY + 120, cardW, 42, "Channel", snap.channelName());
-        drawTelemetryCard(ctx, mainX + 20 + cardW, mainY + 120, cardW, 42,
-            "Subscribers", LiveStreamManager.formatCompactNumber(snap.subscriberCount()));
-        drawTelemetryCard(ctx, mainX + 12, mainY + 170, cardW, 42,
-            "Live Viewers", LiveStreamManager.formatCompactNumber(snap.viewerCount()));
-        drawTelemetryCard(ctx, mainX + 20 + cardW, mainY + 170, cardW, 42,
-            "Likes", LiveStreamManager.formatCompactNumber(snap.likeCount()));
-
-        matrices.popMatrix();
     }
 
-    private void drawButton(DrawContext ctx, float x, float y, float w, float h, String label, int mouseX, int mouseY) {
-        ThemeTokens t = ThemeManager.get().tokens();
-        boolean hover = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
-        UIRenderer.drawRoundedRect(ctx, x, y, w, h, 7.5f, hover ? t.bgGlassStrong() : t.bgGlassWeak());
-        UIRenderer.drawRoundedBorder(ctx, x, y, w, h, 7.5f, 1.0f, hover ? t.borderActive() : t.borderBase());
-        float tw = this.textRenderer.getWidth(label);
-        UIRenderer.drawText(ctx, label, x + (w - tw) * 0.5f, y + (h - 8) * 0.5f, t.textPrimary(), 1.0f, false, false);
-    }
-
-    private void drawTelemetryCard(DrawContext ctx, float x, float y, float w, float h, String label, String value) {
-        ThemeTokens t = ThemeManager.get().tokens();
-        UIRenderer.drawRoundedRect(ctx, x, y, w, h, 8.0f, t.bgGlassWeak());
-        UIRenderer.drawRoundedBorder(ctx, x, y, w, h, 8.0f, 1.0f, t.borderBase());
-        UIRenderer.drawText(ctx, label, x + 8, y + 8, t.textMuted(), 1.0f, true, false);
-        UIRenderer.drawText(ctx, value != null ? value : "--", x + 8, y + 24, t.textPrimary(), 1.0f, false, false);
+    private void drawTelemetryCard(DrawContext ctx, int x, int y, int w, int h, String label, String val) {
+        GlassRenderer.drawGlassPanel(ctx, x, y, w, h, false, false, false);
+        GlassRenderer.drawSmallCapsText(ctx, textRenderer, label, x + 6, y + 4, 0xFF94A3B8);
+        ctx.drawTextWithShadow(textRenderer, textRenderer.trimToWidth(val != null ? val : "--", w - 12), x + 6, y + 16, 0xFFFFFFFF);
     }
 
     @Override
     public boolean mouseClicked(Click click, boolean doubled) {
-        double cx = click.x();
-        double cy = click.y();
-        int btn = click.button();
+        double cx = click.x(), cy = click.y();
+        if (click.button() != 0 || closing) return super.mouseClicked(click, doubled);
 
-        float modalW = Math.min(520.0f, this.width - 40.0f);
-        float modalH = Math.min(310.0f, this.height - 40.0f);
-        float mx = (this.width - modalW) * 0.5f;
-        float my = (this.height - modalH) * 0.5f;
+        int mw = Math.min(440, this.width - 24);
+        int mh = Math.min(228, this.height - 20);
+        int mx = (this.width - mw) / 2;
+        int my = (this.height - mh) / 2;
 
-        if (btn == 0 && cx >= mx + 10 && cx <= mx + 60 && cy >= my + 10 && cy <= my + 28) {
-            closeWithAnimation();
+        if (MathUtils.isHovered(cx, cy, mx + 8, my + 7, 46, 16)) {
+            GlassRenderer.playClickSound();
+            close();
             return true;
         }
 
-        float sideX = mx + 12;
-        float sideY = my + 36;
-        float sideW = 125;
-
+        int sideX = mx + 8, sideY = my + 32, sideW = 100;
         for (int i = 0; i < PROFILES.length; i++) {
-            float py = sideY + 26 + i * 24;
-            if (btn == 0 && cx >= sideX + 6 && cx <= sideX + sideW - 6 && cy >= py && cy <= py + 20) {
+            int py = sideY + 20 + i * 22;
+            if (MathUtils.isHovered(cx, cy, sideX + 5, py, sideW - 10, 18)) {
+                GlassRenderer.playClickSound();
                 applyProfilePreset(PROFILES[i]);
                 return true;
             }
         }
 
-        GlassQuality[] qualities = GlassQuality.values();
-        for (int i = 0; i < qualities.length; i++) {
-            float qy = sideY + 148 + i * 22;
-            if (btn == 0 && cx >= sideX + 6 && cx <= sideX + sideW - 6 && cy >= qy && cy <= qy + 18) {
-                ThemeManager.get().setQuality(qualities[i]);
-                return true;
-            }
+        int mainX = sideX + sideW + 6, mainY = sideY, mainW = mw - sideW - 22;
+        int pasteW = 44, fieldW = mainW - pasteW - 20;
+        if (!urlText.isEmpty() && MathUtils.isHovered(cx, cy, mainX + 8 + fieldW - 14, mainY + 18, 14, 18)) {
+            urlText = "";
+            GlassRenderer.playClickSound();
+            return true;
         }
-
-        float mainX = sideX + sideW + 10;
-        float mainY = sideY;
-        float mainW = modalW - sideW - 34;
-
-        float fieldW = mainW - 24;
-        if (streamUrlField.mouseClicked(cx, cy, btn, mainX + 12, mainY + 32, fieldW, 24)) {
+        if (MathUtils.isHovered(cx, cy, mainX + 8, mainY + 18, fieldW, 18)) {
+            urlFocused = true;
+            return true;
+        } else {
+            urlFocused = false;
+        }
+        if (MathUtils.isHovered(cx, cy, mainX + 12 + fieldW, mainY + 18, pasteW, 18)) {
+            GlassRenderer.playClickSound();
+            if (this.client != null && this.client.keyboard != null) {
+                String clip = this.client.keyboard.getClipboard();
+                if (clip != null) urlText = clip.trim();
+            }
             return true;
         }
 
-        float bw = (fieldW - 12) / 3.0f;
-        float by = mainY + 66;
-        if (btn == 0 && cy >= by && cy <= by + 22) {
-            if (cx >= mainX + 12 && cx <= mainX + 12 + bw) {
-                LiveStreamManager.get().setStreamUrl(streamUrlField.getText());
-                LiveStreamManager.get().saveConfig();
-                LiveStreamManager.get().connect(streamUrlField.getText());
-                return true;
-            }
-            if (cx >= mainX + 18 + bw && cx <= mainX + 18 + bw * 2) {
-                LiveStreamManager.get().disconnect();
-                return true;
-            }
-            if (cx >= mainX + 24 + bw * 2 && cx <= mainX + 24 + bw * 3) {
-                LiveStreamManager.get().refresh();
-                return true;
-            }
+        int btnY = mainY + 41, bw = (mainW - 24) / 3;
+        if (MathUtils.isHovered(cx, cy, mainX + 8, btnY, bw, 17)) {
+            GlassRenderer.playClickSound();
+            LiveStreamManager.get().setStreamUrl(urlText);
+            LiveStreamManager.get().saveConfig();
+            LiveStreamManager.get().connect(urlText);
+            return true;
+        }
+        if (MathUtils.isHovered(cx, cy, mainX + 12 + bw, btnY, bw, 17)) {
+            GlassRenderer.playClickSound();
+            LiveStreamManager.get().disconnect();
+            return true;
+        }
+        if (MathUtils.isHovered(cx, cy, mainX + 16 + bw * 2, btnY, bw, 17)) {
+            GlassRenderer.playClickSound();
+            LiveStreamManager.get().refresh();
+            return true;
         }
         return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean mouseDragged(Click click, double ox, double oy) {
-        if (streamUrlField.mouseDragged(click.x())) return true;
-        return super.mouseDragged(click, ox, oy);
-    }
-
-    @Override
-    public boolean mouseReleased(Click click) {
-        streamUrlField.mouseReleased();
-        return super.mouseReleased(click);
-    }
-
-    @Override
     public boolean keyPressed(KeyInput input) {
-        if (streamUrlField.keyPressed(input)) return true;
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
-            closeWithAnimation();
+        int key = input.key();
+        if (urlFocused) {
+            if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER) { urlFocused = false; return true; }
+            if (key == GLFW.GLFW_KEY_BACKSPACE && !urlText.isEmpty()) {
+                urlText = urlText.substring(0, urlText.length() - 1);
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_V && (input.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0 && this.client != null) {
+                String clip = this.client.keyboard.getClipboard();
+                if (clip != null) urlText += clip.trim();
+                return true;
+            }
+            return true;
+        }
+        if (key == GLFW.GLFW_KEY_ESCAPE) {
+            close();
             return true;
         }
         return super.keyPressed(input);
@@ -277,14 +257,22 @@ public final class WorkspaceModalScreen extends Screen {
 
     @Override
     public boolean charTyped(CharInput input) {
-        if (streamUrlField.charTyped(input)) return true;
+        char chr = (char) input.codepoint();
+        if (urlFocused && chr >= 32 && chr != 127) {
+            urlText += chr;
+            return true;
+        }
         return super.charTyped(input);
     }
 
     @Override
-    public void removed() {
-        LiveStreamManager.get().setStreamUrl(streamUrlField.getText());
+    public void close() {
+        LiveStreamManager.get().setStreamUrl(urlText);
         LiveStreamManager.get().saveConfig();
+        if (!closing) {
+            closing = true;
+            openAnim.animateTo(0.0f);
+        }
     }
 
     @Override
