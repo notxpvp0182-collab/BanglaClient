@@ -26,7 +26,6 @@ public final class HudManager {
         int screenWidth = client.getWindow().getScaledWidth();
         int screenHeight = client.getWindow().getScaledHeight();
 
-        moduleManager.getModule(ColorSaturationModule.class).ifPresent(cs -> cs.renderColorGradingOverlay(context, screenWidth, screenHeight));
         if (hudVisible) {
             for (HudModule hudModule : moduleManager.getHudModules()) {
                 if (!hudModule.isEnabled()) continue;
