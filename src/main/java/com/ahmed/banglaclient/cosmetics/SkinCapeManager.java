@@ -5,9 +5,9 @@ import com.ahmed.banglaclient.config.ConfigManager;
 import com.ahmed.banglaclient.config.ConfigValidator;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.authlib.GameProfile;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.DefaultSkinHelper;
@@ -16,36 +16,37 @@ import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.util.AssetInfo;
 import net.minecraft.util.Identifier;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.*;
 
+/**
+ * Pure NativeImage-backed Skin & Cape Manager with Automatic Live-Reload on Android & Desktop.
+ */
 public final class SkinCapeManager {
     private static SkinCapeManager instance;
 
     public static final class AccountCosmetics {
-        public String skinId = "";
-        public String capeId = "";
+        public String selectedSkinId = "";
+        public String selectedCapeId = "";
         public boolean slimModel = false;
-        public boolean skinOverride = true;
-        public boolean capeOverride = true;
+        public boolean customSkinOverride = true;
+        public boolean customCapeOverride = true;
     }
 
+    private final Path banglaRootDir;
     private final Path skinsDir;
     private final Path capesDir;
-    private final Path selectedFile;
+    private final Path selectionFile;
 
-    private final Map<String, SkinEntry> skinLibrary = new LinkedHashMap<>();
-    private final Map<String, SkinEntry> capeLibrary = new LinkedHashMap<>();
-    private final Map<String, AccountCosmetics> accountCosmeticsMap = new HashMap<>();
+    private final Map<String, SkinEntry> skins = new LinkedHashMap<>();
+    private final Map<String, SkinEntry> capes = new LinkedHashMap<>();
+    private final Map<String, AccountCosmetics> perAccountMap = new LinkedHashMap<>();
 
-    private String activeUsername = "player";
+    private String activeUsername = "Player";
+    private long lastWatchCheckMs = 0L;
+    private String lastFolderSignature = "";
 
     public static synchronized SkinCapeManager getInstance() {
         if (instance == null) {
@@ -55,294 +56,53 @@ public final class SkinCapeManager {
     }
 
     public SkinCapeManager() {
-        Path gameDir = FabricLoader.getInstance().getGameDir();
-        Path rootDir = gameDir.resolve("banglaclient");
-        this.skinsDir = rootDir.resolve("skins");
-        this.capesDir = rootDir.resolve("capes");
-        this.selectedFile = rootDir.resolve("cosmetics").resolve("selected.json");
-        initializeStorage();
-    }
-
-    private synchronized void initializeStorage() {
+        this.banglaRootDir = FabricLoader.getInstance().getGameDir().resolve("banglaclient");
+        this.skinsDir = banglaRootDir.resolve("skins");
+        this.capesDir = banglaRootDir.resolve("capes");
+        this.selectionFile = banglaRootDir.resolve("selected.json");
         try {
             Files.createDirectories(skinsDir);
             Files.createDirectories(capesDir);
-            Files.createDirectories(selectedFile.getParent());
-
-            // Permanently remove any legacy starter assets
-            Files.deleteIfExists(skinsDir.resolve("skin_001.png"));
-            Files.deleteIfExists(skinsDir.resolve("skin_002.png"));
-            Files.deleteIfExists(capesDir.resolve("cape_001.png"));
-            Files.deleteIfExists(capesDir.resolve("cape_002.png"));
-
-            refreshLibraries();
+            seedDefaultCapesNative();
             loadSelection();
         } catch (IOException e) {
-            BanglaClient.LOGGER.error("Failed to initialize SkinCapeManager directories", e);
+            BanglaClient.LOGGER.error("Failed to create skin/cape directories", e);
         }
     }
 
-    public synchronized void refreshLibraries() {
-        skinLibrary.clear();
-        capeLibrary.clear();
-        scanDirectory(skinsDir, false, skinLibrary);
-        scanDirectory(capesDir, true, capeLibrary);
-    }
-
-    private void scanDirectory(Path dir, boolean isCape, Map<String, SkinEntry> targetMap) {
-        if (!Files.exists(dir)) return;
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.png")) {
-            for (Path entry : stream) {
-                SkinEntry loaded = loadAndRegisterTexture(entry, isCape);
-                if (loaded != null) {
-                    targetMap.put(loaded.getId(), loaded);
-                }
-            }
-        } catch (IOException e) {
-            BanglaClient.LOGGER.warn("Error scanning cosmetics directory {}", dir, e);
-        }
-    }
-
-    public SkinEntry loadAndRegisterTexture(Path file, boolean asCape) {
-        if (file == null || !Files.exists(file)) return null;
-        try (InputStream in = Files.newInputStream(file)) {
-            BufferedImage img = ImageIO.read(in);
-            if (img == null) return null;
-            int w = img.getWidth();
-            int h = img.getHeight();
-            if (asCape) {
-                boolean validCape = (w >= 16 && h >= 8);
-                if (!validCape) return null;
-            } else {
-                boolean validSkin = (w >= 32 && h >= 32);
-                if (!validSkin) return null;
-            }
-
-            String fileName = file.getFileName().toString();
-            String cleanTitle = fileName.substring(0, fileName.length() - 4).replace('_', ' ');
-            String safeTexName = fileName.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_");
-            Identifier texIdentifier = Identifier.of("banglaclient", (asCape ? "capes/" : "skins/") + safeTexName);
-
-            try (InputStream nativeIn = Files.newInputStream(file)) {
-                NativeImage nativeImage = NativeImage.read(nativeIn);
-                NativeImageBackedTexture nativeTexture = new NativeImageBackedTexture(() -> safeTexName, nativeImage);
-                MinecraftClient.getInstance().getTextureManager().registerTexture(texIdentifier, nativeTexture);
-            }
-
-            int cornerAlpha = 255;
-            if (!asCape && h == w) {
-                int[] sample = new int[1];
-                img.getRGB(Math.min(w - 1, 54 * (w / 64)), Math.min(h - 1, 20 * (h / 64)), 1, 1, sample, 0, 1);
-                cornerAlpha = (sample[0] >>> 24) & 0xFF;
-            }
-            boolean autoSlim = !asCape && h == w && cornerAlpha == 0;
-
-            return new SkinEntry(fileName, cleanTitle, file, w, h, asCape, autoSlim, texIdentifier);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public synchronized String importExternalFile(Path sourceFile, Boolean forceCapeMode) {
-        if (sourceFile == null || !Files.exists(sourceFile)) {
-            return "File does not exist.";
-        }
-        String nameLower = sourceFile.getFileName().toString().toLowerCase(Locale.ROOT);
-        if (!nameLower.endsWith(".png")) {
-            return "Rejected: Only .png textures are supported.";
-        }
-        try (InputStream in = Files.newInputStream(sourceFile)) {
-            BufferedImage img = ImageIO.read(in);
-            if (img == null) {
-                return "Rejected: Corrupted or unreadable PNG.";
-            }
-            int w = img.getWidth();
-            int h = img.getHeight();
-            boolean isSkinDim = (w == 64 && (h == 64 || h == 32)) || (w == 128 && (h == 128 || h == 64));
-            boolean isCapeDim = (w == 64 && h == 32) || (w == 128 && h == 64) || (w == 22 && h == 17);
-
-            boolean importAsCape;
-            if (forceCapeMode != null) {
-                importAsCape = forceCapeMode;
-                if (importAsCape && !isCapeDim) return "Invalid Cape dimensions (" + w + "x" + h + "). Expected 64x32.";
-                if (!importAsCape && !isSkinDim) return "Invalid Skin dimensions (" + w + "x" + h + "). Expected 64x64 or 64x32.";
-            } else {
-                if (w == h && isSkinDim) importAsCape = false;
-                else if (w == h * 2 && nameLower.contains("cape")) importAsCape = true;
-                else if (isSkinDim) importAsCape = false;
-                else if (isCapeDim) importAsCape = true;
-                else return "Rejected: Unsupported PNG dimensions (" + w + "x" + h + ").";
-            }
-
-            Path targetFolder = importAsCape ? capesDir : skinsDir;
-            String safeFileName = sourceFile.getFileName().toString().replaceAll("[^a-zA-Z0-9._-]", "_");
-            Path destination = targetFolder.resolve(safeFileName);
-            Files.copy(sourceFile, destination, StandardCopyOption.REPLACE_EXISTING);
-            refreshLibraries();
-
-            AccountCosmetics cos = getActiveAccountCosmetics();
-            if (importAsCape) {
-                cos.capeId = safeFileName;
-                cos.capeOverride = true;
-            } else {
-                cos.skinId = safeFileName;
-                cos.skinOverride = true;
-            }
-            saveSelection();
-            return "Imported " + (importAsCape ? "Cape" : "Skin") + ": " + safeFileName;
-        } catch (IOException e) {
-            return "Import error: " + e.getMessage();
-        }
-    }
-
-    public synchronized boolean removeEntry(SkinEntry entry) {
-        if (entry == null) return false;
-        try {
-            MinecraftClient.getInstance().getTextureManager().destroyTexture(entry.getTextureId());
-            boolean deleted = Files.deleteIfExists(entry.getFilePath());
-            refreshLibraries();
-
-            AccountCosmetics cos = getActiveAccountCosmetics();
-            if (entry.isCape() && entry.getId().equals(cos.capeId)) {
-                cos.capeId = "";
-            } else if (!entry.isCape() && entry.getId().equals(cos.skinId)) {
-                cos.skinId = "";
-            }
-            saveSelection();
-            return deleted;
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
-    public synchronized void onAccountSwitched(String newUsername) {
-        if (newUsername != null && !newUsername.isBlank()) {
-            this.activeUsername = newUsername.trim().toLowerCase(Locale.ROOT);
-            saveSelection();
-        }
-    }
-
-    public AccountCosmetics getActiveAccountCosmetics() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && mc.getSession() != null && mc.getSession().getUsername() != null) {
-            this.activeUsername = mc.getSession().getUsername().toLowerCase(Locale.ROOT);
-        }
-        return accountCosmeticsMap.computeIfAbsent(this.activeUsername, k -> new AccountCosmetics());
-    }
-
-    public SkinTextures getActiveSkinTextures() {
-        checkAndLiveReload();
-        MinecraftClient mc = MinecraftClient.getInstance();
-        SkinTextures vanillaDefault = getAuthenticatedAccountDefaultSkin(mc);
-
-        AccountCosmetics cos = getActiveAccountCosmetics();
-        SkinEntry skin = (cos.skinOverride && hasCustomSkinSelected()) ? getSelectedSkin() : null;
-        SkinEntry cape = (cos.capeOverride && hasCustomCapeSelected()) ? getSelectedCape() : null;
-
-        AssetInfo.TextureAsset body = (skin != null)
-                ? new AssetInfo.TextureAssetInfo(skin.getTextureId(), skin.getTextureId())
-                : vanillaDefault.body();
-        AssetInfo.TextureAsset capeAsset = (cape != null)
-                ? new AssetInfo.TextureAssetInfo(cape.getTextureId(), cape.getTextureId())
-                : vanillaDefault.cape();
-        PlayerSkinType model = (skin != null)
-                ? (skin.isSlimModel() ? PlayerSkinType.SLIM : PlayerSkinType.WIDE)
-                : vanillaDefault.model();
-
-        return new SkinTextures(
-                body,
-                capeAsset,
-                vanillaDefault.elytra(),
-                model,
-                true
-        );
-    }
-
-    public static SkinTextures getAuthenticatedAccountDefaultSkin(MinecraftClient mc) {
-        UUID uuid = new UUID(0L, 0L);
-        if (mc != null && mc.getSession() != null && mc.getSession().getUuidOrNull() != null) {
-            uuid = mc.getSession().getUuidOrNull();
-        }
-        return DefaultSkinHelper.getSkinTextures(uuid);
-    }
-
-    public boolean isCustomSkinOverride() {
-        return getActiveAccountCosmetics().skinOverride && hasCustomSkinSelected();
-    }
-
-    public void setCustomSkinOverride(boolean enabled) {
-        getActiveAccountCosmetics().skinOverride = enabled;
-        saveSelection();
-    }
-
-    public boolean isCustomCapeOverride() {
-        return getActiveAccountCosmetics().capeOverride && hasCustomCapeSelected();
-    }
-
-    public void setCustomCapeOverride(boolean enabled) {
-        getActiveAccountCosmetics().capeOverride = enabled;
-        saveSelection();
-    }
-
-    public boolean hasCustomSkinSelected() {
-        String id = getActiveAccountCosmetics().skinId;
-        return id != null && !id.isEmpty() && skinLibrary.containsKey(id);
-    }
-
-    public boolean hasCustomCapeSelected() {
-        String id = getActiveAccountCosmetics().capeId;
-        return id != null && !id.isEmpty() && capeLibrary.containsKey(id);
-    }
-
-    public void loadSelection() {
-        JsonObject root = ConfigValidator.readSafeJsonObject(selectedFile);
-        if (root.has("activeUsername")) {
-            this.activeUsername = root.get("activeUsername").getAsString().toLowerCase(Locale.ROOT);
-        }
-        if (root.has("accounts") && root.get("accounts").isJsonObject()) {
-            JsonObject accs = root.getAsJsonObject("accounts");
-            for (Map.Entry<String, JsonElement> e : accs.entrySet()) {
-                if (e.getValue().isJsonObject()) {
-                    JsonObject obj = e.getValue().getAsJsonObject();
-                    AccountCosmetics c = new AccountCosmetics();
-                    if (obj.has("skinId")) c.skinId = obj.get("skinId").getAsString();
-                    if (obj.has("capeId")) c.capeId = obj.get("capeId").getAsString();
-                    if (obj.has("slimModel")) c.slimModel = obj.get("slimModel").getAsBoolean();
-                    if (obj.has("skinOverride")) c.skinOverride = obj.get("skinOverride").getAsBoolean();
-                    if (obj.has("capeOverride")) c.capeOverride = obj.get("capeOverride").getAsBoolean();
-                    accountCosmeticsMap.put(e.getKey().toLowerCase(Locale.ROOT), c);
-                }
+    private void seedDefaultCapesNative() {
+        int[][] themes = {
+                {0xFF0A0C12, 0xFFEF4444, 0xFFFBBF24},
+                {0xFF08090D, 0xFFE2E8F0, 0xFF94A3B8},
+                {0xFF14080E, 0xFFF43F5E, 0xFFFFFFFF}
+        };
+        String[] names = {"Bangla_Crown_Cape.png", "Aura_Obsidian_Cape.png", "Crimson_Royal_Cape.png"};
+        for (int i = 0; i < names.length; i++) {
+            Path p = capesDir.resolve(names[i]);
+            if (!Files.exists(p)) {
+                try (NativeImage img = new NativeImage(64, 32, true)) {
+                    for (int y = 1; y < 17; y++) {
+                        for (int x = 1; x < 21; x++) {
+                            boolean border = (x == 1 || x == 20 || y == 1 || y == 16);
+                            boolean emblem = (x >= 4 && x <= 8 && y >= 4 && y <= 13);
+                            boolean crown = (x >= 5 && x <= 7 && y >= 5 && y <= 7);
+                            int col = crown ? themes[i][2] : (border || emblem ? themes[i][1] : themes[i][0]);
+                            img.setColorArgb(x, y, col);
+                        }
+                    }
+                    img.writeTo(p);
+                } catch (Throwable ignored) {}
             }
         }
     }
-
-    public void saveSelection() {
-        JsonObject root = new JsonObject();
-        root.addProperty("activeUsername", activeUsername);
-        JsonObject accs = new JsonObject();
-        for (Map.Entry<String, AccountCosmetics> e : accountCosmeticsMap.entrySet()) {
-            JsonObject obj = new JsonObject();
-            AccountCosmetics c = e.getValue();
-            obj.addProperty("skinId", c.skinId != null ? c.skinId : "");
-            obj.addProperty("capeId", c.capeId != null ? c.capeId : "");
-            obj.addProperty("slimModel", c.slimModel);
-            obj.addProperty("skinOverride", c.skinOverride);
-            obj.addProperty("capeOverride", c.capeOverride);
-            accs.add(e.getKey(), obj);
-        }
-        root.add("accounts", accs);
-        ConfigManager.writeAtomically(selectedFile, root);
-    }
-
-    private long lastWatchCheckMs = 0L;
-    private String lastFolderSignature = "";
 
     public synchronized void checkAndLiveReload() {
         long now = System.currentTimeMillis();
-        if (now - lastWatchCheckMs < 1500L) return;
+        if (now - lastWatchCheckMs < 1200L) return;
         lastWatchCheckMs = now;
         try {
-            if (MinecraftClient.getInstance() == null || MinecraftClient.getInstance().getTextureManager() == null) return;
+            MinecraftClient mc = MinecraftClient.getInstance();
+            if (mc == null || mc.getTextureManager() == null) return;
             StringBuilder sig = new StringBuilder();
             if (Files.exists(skinsDir)) {
                 try (var s = Files.list(skinsDir)) {
@@ -359,59 +119,325 @@ public final class SkinCapeManager {
                     });
                 }
             }
-            String currentSig = sig.toString();
-            if (!currentSig.equals(lastFolderSignature)) {
-                lastFolderSignature = currentSig;
+            String cur = sig.toString();
+            if (!cur.equals(lastFolderSignature)) {
+                lastFolderSignature = cur;
                 refreshLibraries();
                 loadSelection();
             }
         } catch (Throwable ignored) {}
     }
 
+    public synchronized void refreshLibraries() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.getTextureManager() == null) return;
+
+        for (SkinEntry old : skins.values()) {
+            try { mc.getTextureManager().destroyTexture(old.getTextureId()); } catch (Throwable ignored) {}
+        }
+        for (SkinEntry old : capes.values()) {
+            try { mc.getTextureManager().destroyTexture(old.getTextureId()); } catch (Throwable ignored) {}
+        }
+        skins.clear();
+        capes.clear();
+        scanDirectory(skinsDir, false, skins);
+        scanDirectory(capesDir, true, capes);
+    }
+
+    private void scanDirectory(Path dir, boolean isCape, Map<String, SkinEntry> targetMap) {
+        if (!Files.exists(dir)) return;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+            for (Path file : stream) {
+                if (Files.isDirectory(file)) continue;
+                String lower = file.getFileName().toString().toLowerCase(Locale.ROOT);
+                if (!lower.endsWith(".png")) continue;
+                SkinEntry entry = loadEntryNative(file, isCape);
+                if (entry != null) {
+                    targetMap.put(entry.getId(), entry);
+                }
+            }
+        } catch (IOException e) {
+            BanglaClient.LOGGER.warn("Error scanning cosmetics directory {}", dir, e);
+        }
+    }
+
+    private SkinEntry loadEntryNative(Path file, boolean asCape) {
+        try (InputStream stream = Files.newInputStream(file)) {
+            NativeImage raw = NativeImage.read(stream);
+            int w = raw.getWidth();
+            int h = raw.getHeight();
+            if (w < 16 || h < 8) {
+                raw.close();
+                return null;
+            }
+
+            NativeImage finalImage;
+            int outW, outH;
+            boolean slim = false;
+
+            if (asCape) {
+                outW = 64;
+                outH = 32;
+                if (w == 64 && h == 32) {
+                    finalImage = raw;
+                } else {
+                    finalImage = new NativeImage(64, 32, true);
+                    for (int y = 0; y < 32; y++) {
+                        for (int x = 0; x < 64; x++) {
+                            int sx = (w == 22 && h == 17) ? Math.min(w - 1, x) : (x * w / 64);
+                            int sy = (w == 22 && h == 17) ? Math.min(h - 1, y) : (y * h / 32);
+                            if (w == 22 && h == 17 && (x >= 22 || y >= 17)) {
+                                finalImage.setColorArgb(x, y, 0);
+                            } else {
+                                finalImage.setColorArgb(x, y, raw.getColorArgb(sx, sy));
+                            }
+                        }
+                    }
+                    raw.close();
+                }
+            } else {
+                outW = 64;
+                outH = 64;
+                if (w == 64 && h == 64) {
+                    finalImage = raw;
+                } else if (w == 64 && h == 32) {
+                    finalImage = new NativeImage(64, 64, true);
+                    for (int y = 0; y < 32; y++) {
+                        for (int x = 0; x < 64; x++) {
+                            finalImage.setColorArgb(x, y, raw.getColorArgb(x, y));
+                        }
+                    }
+                    // Copy right leg & right arm to left leg & left arm for 64x32 legacy skins
+                    for (int y = 16; y < 32; y++) {
+                        for (int x = 0; x < 16; x++) {
+                            finalImage.setColorArgb(x + 16, y + 32, raw.getColorArgb(x, y));
+                        }
+                        for (int x = 40; x < 56; x++) {
+                            finalImage.setColorArgb(x - 8, y + 32, raw.getColorArgb(x, y));
+                        }
+                    }
+                    raw.close();
+                } else {
+                    finalImage = new NativeImage(64, 64, true);
+                    for (int y = 0; y < 64; y++) {
+                        for (int x = 0; x < 64; x++) {
+                            finalImage.setColorArgb(x, y, raw.getColorArgb(x * w / 64, y * h / 64));
+                        }
+                    }
+                    raw.close();
+                }
+                slim = isSlimNative(finalImage);
+            }
+
+            String title = file.getFileName().toString();
+            int dot = title.lastIndexOf('.');
+            if (dot > 0) title = title.substring(0, dot);
+
+            String safeId = file.getFileName().toString().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_.-]", "_");
+            Identifier texId = Identifier.of("banglaclient", (asCape ? "capes/" : "skins/") + safeId);
+
+            NativeImageBackedTexture dynTex = new NativeImageBackedTexture(() -> "bc_" + safeId, finalImage);
+            MinecraftClient.getInstance().getTextureManager().registerTexture(texId, dynTex);
+
+            return new SkinEntry(file.getFileName().toString(), title, file, outW, outH, slim, asCape, texId);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static boolean isSlimNative(NativeImage img) {
+        try {
+            for (int y = 20; y < 32; y++) {
+                if (((img.getColorArgb(54, y) >>> 24) & 0xFF) > 16) return false;
+                if (((img.getColorArgb(55, y) >>> 24) & 0xFF) > 16) return false;
+            }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    public synchronized String importExternalFile(Path sourcePath, Boolean forceCapeOverride) {
+        if (sourcePath == null || !Files.exists(sourcePath)) return "File does not exist.";
+        String fileName = sourcePath.getFileName().toString();
+        if (!fileName.toLowerCase(Locale.ROOT).endsWith(".png")) return "Only PNG files are supported.";
+
+        try (InputStream in = Files.newInputStream(sourcePath);
+             NativeImage probe = NativeImage.read(in)) {
+            int w = probe.getWidth(), h = probe.getHeight();
+            boolean isCape = forceCapeOverride != null ? forceCapeOverride : (w == h * 2 && h != 32);
+            String safeName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
+            Path destDir = isCape ? capesDir : skinsDir;
+            Files.copy(sourcePath, destDir.resolve(safeName), StandardCopyOption.REPLACE_EXISTING);
+            lastFolderSignature = "";
+            checkAndLiveReload();
+            if (isCape) setSelectedCapeId(safeName);
+            else setSelectedSkinId(safeName);
+            return "Imported " + (isCape ? "Cape: " : "Skin: ") + safeName;
+        } catch (Throwable t) {
+            return "Failed to import PNG file.";
+        }
+    }
+
+    public synchronized boolean removeEntry(SkinEntry entry) {
+        if (entry == null) return false;
+        try {
+            try { MinecraftClient.getInstance().getTextureManager().destroyTexture(entry.getTextureId()); } catch (Throwable ignored) {}
+            boolean deleted = Files.deleteIfExists(entry.getFilePath());
+            AccountCosmetics active = getActiveAccountCosmetics();
+            if (entry.isCape()) {
+                capes.remove(entry.getId());
+                if (entry.getId().equals(active.selectedCapeId)) active.selectedCapeId = "";
+            } else {
+                skins.remove(entry.getId());
+                if (entry.getId().equals(active.selectedSkinId)) active.selectedSkinId = "";
+            }
+            saveSelection();
+            return deleted;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private AccountCosmetics getActiveAccountCosmetics() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc != null && mc.getSession() != null && mc.getSession().getUsername() != null) {
+            this.activeUsername = mc.getSession().getUsername();
+        }
+        return perAccountMap.computeIfAbsent(this.activeUsername, k -> new AccountCosmetics());
+    }
+
+    public void setActiveAccountUsername(String username) {
+        if (username != null && !username.isBlank()) {
+            this.activeUsername = username.trim();
+            perAccountMap.computeIfAbsent(this.activeUsername, k -> new AccountCosmetics());
+        }
+    }
+
     public List<SkinEntry> getSkins() {
-        checkAndLiveReload(); return Collections.unmodifiableList(new ArrayList<>(skinLibrary.values())); }
+        checkAndLiveReload();
+        return Collections.unmodifiableList(new ArrayList<>(skins.values()));
+    }
+
     public List<SkinEntry> getCapes() {
-        checkAndLiveReload(); return Collections.unmodifiableList(new ArrayList<>(capeLibrary.values())); }
+        checkAndLiveReload();
+        return Collections.unmodifiableList(new ArrayList<>(capes.values()));
+    }
 
     public SkinEntry getSelectedSkin() {
-        String id = getActiveAccountCosmetics().skinId;
-        if (id != null && !id.isEmpty() && skinLibrary.containsKey(id)) {
-            return skinLibrary.get(id);
-        }
-        return null;
+        checkAndLiveReload();
+        AccountCosmetics ac = getActiveAccountCosmetics();
+        if (!ac.customSkinOverride || ac.selectedSkinId == null || ac.selectedSkinId.isEmpty()) return null;
+        return skins.get(ac.selectedSkinId);
     }
 
     public SkinEntry getSelectedCape() {
-        String id = getActiveAccountCosmetics().capeId;
-        if (id != null && !id.isEmpty() && capeLibrary.containsKey(id)) {
-            return capeLibrary.get(id);
-        }
-        return null;
+        checkAndLiveReload();
+        AccountCosmetics ac = getActiveAccountCosmetics();
+        if (!ac.customCapeOverride || ac.selectedCapeId == null || ac.selectedCapeId.isEmpty()) return null;
+        return capes.get(ac.selectedCapeId);
     }
 
+    public boolean hasCustomSkinSelected() { return getSelectedSkin() != null; }
+    public boolean hasCustomCapeSelected() { return getSelectedCape() != null; }
+
     public void setSelectedSkinId(String id) {
-        AccountCosmetics cos = getActiveAccountCosmetics();
-        cos.skinId = id != null ? id : "";
-        SkinEntry s = getSelectedSkin();
-        if (s != null) cos.slimModel = s.isSlimModel();
+        AccountCosmetics ac = getActiveAccountCosmetics();
+        ac.selectedSkinId = id != null ? id : "";
+        SkinEntry entry = skins.get(ac.selectedSkinId);
+        if (entry != null) ac.slimModel = entry.isSlimModel();
         saveSelection();
     }
 
     public void setSelectedCapeId(String id) {
-        AccountCosmetics cos = getActiveAccountCosmetics();
-        cos.capeId = id != null ? id : "";
+        AccountCosmetics ac = getActiveAccountCosmetics();
+        ac.selectedCapeId = id != null ? id : "";
         saveSelection();
     }
 
     public boolean isSelectedSlimModel() { return getActiveAccountCosmetics().slimModel; }
-    public void setSelectedSlimModel(boolean slim) {
-        AccountCosmetics cos = getActiveAccountCosmetics();
-        cos.slimModel = slim;
-        SkinEntry s = getSelectedSkin();
-        if (s != null) s.setSlimModel(slim);
-        saveSelection();
+    public void setSelectedSlimModel(boolean slimModel) { getActiveAccountCosmetics().slimModel = slimModel; saveSelection(); }
+    public boolean isCustomSkinOverride() { return getActiveAccountCosmetics().customSkinOverride; }
+    public void setCustomSkinOverride(boolean enabled) { getActiveAccountCosmetics().customSkinOverride = enabled; saveSelection(); }
+    public boolean isCustomCapeOverride() { return getActiveAccountCosmetics().customCapeOverride; }
+    public void setCustomCapeOverride(boolean enabled) { getActiveAccountCosmetics().customCapeOverride = enabled; saveSelection(); }
+
+    public SkinTextures getActiveSkinTextures() {
+        checkAndLiveReload();
+        MinecraftClient mc = MinecraftClient.getInstance();
+        SkinTextures vanillaDefault = getAuthenticatedAccountDefaultSkin(mc);
+
+        SkinEntry skin = getSelectedSkin();
+        SkinEntry cape = getSelectedCape();
+
+        AssetInfo.TextureAsset body = (skin != null)
+                ? new AssetInfo.TextureAssetInfo(skin.getTextureId(), skin.getTextureId())
+                : vanillaDefault.body();
+        AssetInfo.TextureAsset capeAsset = (cape != null)
+                ? new AssetInfo.TextureAssetInfo(cape.getTextureId(), cape.getTextureId())
+                : vanillaDefault.cape();
+        PlayerSkinType model = (skin != null)
+                ? (isSelectedSlimModel() ? PlayerSkinType.SLIM : PlayerSkinType.WIDE)
+                : vanillaDefault.model();
+
+        return new SkinTextures(body, capeAsset, vanillaDefault.elytra(), model, vanillaDefault.secure());
+    }
+
+    public static SkinTextures getAuthenticatedAccountDefaultSkin(MinecraftClient client) {
+        if (client != null) {
+            if (client.player != null && client.getNetworkHandler() != null) {
+                PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
+                if (entry != null && entry.getSkinTextures() != null) return entry.getSkinTextures();
+            }
+            if (client.getSession() != null && client.getSession().getUuidOrNull() != null) {
+                return DefaultSkinHelper.getSkinTextures(client.getSession().getUuidOrNull());
+            }
+        }
+        return DefaultSkinHelper.getSkinTextures(new UUID(0L, 0L));
+    }
+
+    public void loadSelection() {
+        JsonObject root = ConfigValidator.readSafeJsonObject(selectionFile);
+        if (root.has("accounts") && root.get("accounts").isJsonObject()) {
+            JsonObject accObj = root.getAsJsonObject("accounts");
+            for (Map.Entry<String, JsonElement> entry : accObj.entrySet()) {
+                if (entry.getValue().isJsonObject()) {
+                    JsonObject o = entry.getValue().getAsJsonObject();
+                    AccountCosmetics ac = new AccountCosmetics();
+                    if (o.has("selectedSkin")) ac.selectedSkinId = o.get("selectedSkin").getAsString();
+                    if (o.has("selectedCape")) ac.selectedCapeId = o.get("selectedCape").getAsString();
+                    if (o.has("slimModel")) ac.slimModel = o.get("slimModel").getAsBoolean();
+                    if (o.has("customSkinOverride")) ac.customSkinOverride = o.get("customSkinOverride").getAsBoolean();
+                    if (o.has("customCapeOverride")) ac.customCapeOverride = o.get("customCapeOverride").getAsBoolean();
+                    perAccountMap.put(entry.getKey(), ac);
+                }
+            }
+        }
+    }
+
+    public void saveSelection() {
+        JsonObject root = new JsonObject();
+        AccountCosmetics current = getActiveAccountCosmetics();
+        root.addProperty("selectedSkin", current.selectedSkinId);
+        root.addProperty("selectedCape", current.selectedCapeId);
+        root.addProperty("slimModel", current.slimModel);
+
+        JsonObject accObj = new JsonObject();
+        for (Map.Entry<String, AccountCosmetics> entry : perAccountMap.entrySet()) {
+            JsonObject o = new JsonObject();
+            AccountCosmetics ac = entry.getValue();
+            o.addProperty("selectedSkin", ac.selectedSkinId != null ? ac.selectedSkinId : "");
+            o.addProperty("selectedCape", ac.selectedCapeId != null ? ac.selectedCapeId : "");
+            o.addProperty("slimModel", ac.slimModel);
+            o.addProperty("customSkinOverride", ac.customSkinOverride);
+            o.addProperty("customCapeOverride", ac.customCapeOverride);
+            accObj.add(entry.getKey(), o);
+        }
+        root.add("accounts", accObj);
+        ConfigManager.writeAtomically(selectionFile, root);
     }
 
     public Path getSkinsDir() { return skinsDir; }
     public Path getCapesDir() { return capesDir; }
+    public Path getBanglaRootDir() { return banglaRootDir; }
 }

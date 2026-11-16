@@ -433,7 +433,7 @@ public abstract class TitleScreenMixin extends Screen {
 
         // Seamless post-splash dark dissolve veil so there is zero sudden flash
         if (!overlayNow && globalAnim < 0.99f) {
-            int veilAlpha = Math.round((1.0f - globalAnim) * 165.0f);
+            int veilAlpha = Math.round((1.0f - globalAnim) * 255.0f);
             if (veilAlpha > 2) {
                 context.fill(0, 0, w, h, (veilAlpha << 24) | 0x040507);
             }
