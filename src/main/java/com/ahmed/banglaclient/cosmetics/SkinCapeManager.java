@@ -114,7 +114,7 @@ public final class SkinCapeManager {
                 boolean validCape = (w >= 16 && h >= 8);
                 if (!validCape) return null;
             } else {
-                boolean validSkin = (w == 64 && (h == 64 || h == 32)) || (w == 128 && (h == 128 || h == 64));
+                boolean validSkin = (w >= 32 && h >= 32);
                 if (!validSkin) return null;
             }
 
@@ -231,6 +231,7 @@ public final class SkinCapeManager {
     }
 
     public SkinTextures getActiveSkinTextures() {
+        checkAndLiveReload();
         MinecraftClient mc = MinecraftClient.getInstance();
         SkinTextures vanillaDefault = getAuthenticatedAccountDefaultSkin(mc);
 
@@ -333,8 +334,44 @@ public final class SkinCapeManager {
         ConfigManager.writeAtomically(selectedFile, root);
     }
 
-    public List<SkinEntry> getSkins() { return Collections.unmodifiableList(new ArrayList<>(skinLibrary.values())); }
-    public List<SkinEntry> getCapes() { return Collections.unmodifiableList(new ArrayList<>(capeLibrary.values())); }
+    private long lastWatchCheckMs = 0L;
+    private String lastFolderSignature = "";
+
+    public synchronized void checkAndLiveReload() {
+        long now = System.currentTimeMillis();
+        if (now - lastWatchCheckMs < 1500L) return;
+        lastWatchCheckMs = now;
+        try {
+            if (MinecraftClient.getInstance() == null || MinecraftClient.getInstance().getTextureManager() == null) return;
+            StringBuilder sig = new StringBuilder();
+            if (Files.exists(skinsDir)) {
+                try (var s = Files.list(skinsDir)) {
+                    s.sorted().forEach(p -> {
+                        try { sig.append(p.getFileName()).append(':').append(Files.size(p)).append(';'); } catch (Throwable ignored) {}
+                    });
+                }
+            }
+            sig.append("|");
+            if (Files.exists(capesDir)) {
+                try (var s = Files.list(capesDir)) {
+                    s.sorted().forEach(p -> {
+                        try { sig.append(p.getFileName()).append(':').append(Files.size(p)).append(';'); } catch (Throwable ignored) {}
+                    });
+                }
+            }
+            String currentSig = sig.toString();
+            if (!currentSig.equals(lastFolderSignature) || (skins.isEmpty() && capes.isEmpty() && currentSig.length() > 2)) {
+                lastFolderSignature = currentSig;
+                refreshLibraries();
+                loadSelection();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public List<SkinEntry> getSkins() {
+        checkAndLiveReload(); return Collections.unmodifiableList(new ArrayList<>(skinLibrary.values())); }
+    public List<SkinEntry> getCapes() {
+        checkAndLiveReload(); return Collections.unmodifiableList(new ArrayList<>(capeLibrary.values())); }
 
     public SkinEntry getSelectedSkin() {
         String id = getActiveAccountCosmetics().skinId;

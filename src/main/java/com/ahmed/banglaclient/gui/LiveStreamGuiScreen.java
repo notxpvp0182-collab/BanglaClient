@@ -172,7 +172,7 @@ public final class LiveStreamGuiScreen extends Screen {
         }
 
         int contentH = switch (selectedCategory) {
-            case HUD -> 6 * 24 + 6;
+            case HUD -> 10 * 24 + 10;
             case CHANNEL -> 4 * 24 + 6;
             case CHAT -> 14 * 24 + 18;
             case THEME -> 3 * 24 + 6;
@@ -187,7 +187,7 @@ public final class LiveStreamGuiScreen extends Screen {
             int rw = w - 8;
 
             if (selectedCategory == Category.HUD) {
-                String[] ids = {"ls_live_indicator", "ls_viewer_count", "ls_like_count", "ls_stream_duration", "ls_stream_title", "ls_connection_status"};
+                String[] ids = {"ls_live_chat", "ls_live_indicator", "ls_viewer_count", "ls_like_count", "ls_subscriber_count", "ls_channel_name", "ls_channel_handle", "ls_stream_duration", "ls_stream_title", "ls_connection_status"};
                 for (String id : ids) {
                     LiveStreamHudModule m = getLsModule(id);
                     if (m != null) {
@@ -328,7 +328,7 @@ public final class LiveStreamGuiScreen extends Screen {
                 int rw = panelW - 24;
 
                 if (selectedCategory == Category.HUD) {
-                    String[] ids = {"ls_live_indicator", "ls_viewer_count", "ls_like_count", "ls_stream_duration", "ls_stream_title", "ls_connection_status"};
+                    String[] ids = {"ls_live_chat", "ls_live_indicator", "ls_viewer_count", "ls_like_count", "ls_subscriber_count", "ls_channel_name", "ls_channel_handle", "ls_stream_duration", "ls_stream_title", "ls_connection_status"};
                     for (String id : ids) {
                         LiveStreamHudModule m = getLsModule(id);
                         if (m != null && MathUtils.isHovered(mx, my, px + 8, ry, rw, 21)) {

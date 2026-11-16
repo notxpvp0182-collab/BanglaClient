@@ -293,11 +293,42 @@ public final class BackgroundManager {
         }
     }
 
+    private long lastBgWatchMs = 0L;
+    private String lastBgSignature = "";
+
+    public synchronized void checkAndLiveReload() {
+        long now = System.currentTimeMillis();
+        if (now - lastBgWatchMs < 1500L) return;
+        lastBgWatchMs = now;
+        try {
+            if (MinecraftClient.getInstance() == null || MinecraftClient.getInstance().getTextureManager() == null) return;
+            StringBuilder sig = new StringBuilder();
+            if (Files.exists(backgroundsDir)) {
+                try (var s = Files.list(backgroundsDir)) {
+                    s.sorted().forEach(p -> {
+                        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+                        if (n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".gif")) {
+                            try { sig.append(n).append(':').append(Files.size(p)).append(';'); } catch (Throwable ignored) {}
+                        }
+                    });
+                }
+            }
+            String cur = sig.toString();
+            if (!cur.equals(lastBgSignature) || (entries.isEmpty() && !cur.isEmpty())) {
+                lastBgSignature = cur;
+                refreshLibrary();
+                loadSelection();
+            }
+        } catch (Throwable ignored) {}
+    }
+
     public List<BackgroundEntry> getEntries() {
+        checkAndLiveReload();
         return Collections.unmodifiableList(new ArrayList<>(entries.values()));
     }
 
     public BackgroundEntry getActiveBackground() {
+        checkAndLiveReload();
         if (selectedId == null || selectedId.isEmpty()) return null;
         return entries.get(selectedId);
     }

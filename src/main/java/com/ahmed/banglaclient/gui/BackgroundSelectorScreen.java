@@ -59,6 +59,7 @@ public final class BackgroundSelectorScreen extends Screen {
         this.confirmingDelete = false;
         this.openAnim.snapTo(0.0f);
         this.openAnim.animateTo(1.0f);
+        manager.checkAndLiveReload();
         this.highlightedEntry = manager.getActiveBackground();
     }
 
@@ -69,6 +70,7 @@ public final class BackgroundSelectorScreen extends Screen {
             manager.importFile(p);
         }
         GlassRenderer.playClickSound();
+        manager.checkAndLiveReload();
         this.highlightedEntry = manager.getActiveBackground();
     }
 

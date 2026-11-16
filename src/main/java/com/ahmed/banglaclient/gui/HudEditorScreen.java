@@ -160,9 +160,16 @@ public final class HudEditorScreen extends Screen {
 
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (resizingWidget != null && button == 0) {
-            float deltaPixels = (float) mouseX - resizeStartMouseX;
-            double newScale = resizeStartScale + (deltaPixels / Math.max(40.0f, resizingWidget.getWidth()));
-            setWidgetScale(resizingWidget, newScale);
+            if (resizingWidget instanceof com.ahmed.banglaclient.livestream.LiveStreamHudModule lsm && lsm.isLiveChatBox()) {
+                float nw = Math.max(160.0f, (float) mouseX - lsm.getPosX());
+                float nh = Math.max(80.0f, (float) mouseY - lsm.getPosY());
+                lsm.setWidth(nw);
+                lsm.setHeight(nh);
+            } else {
+                float deltaPixels = (float) mouseX - resizeStartMouseX;
+                double newScale = resizeStartScale + (deltaPixels / Math.max(40.0f, resizingWidget.getWidth()));
+                setWidgetScale(resizingWidget, newScale);
+            }
             HudManager.clampWidgetToScreen(resizingWidget, this.width, this.height);
             return true;
         }

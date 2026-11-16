@@ -265,7 +265,7 @@ public final class ModuleManager {
     public synchronized <M extends Module> M register(M module) {
         if (module == null) throw new IllegalArgumentException("Cannot register a null module");
         String key = module.getId().toLowerCase(Locale.ROOT);
-        if (modulesById.containsKey(key) || modulesByClass.containsKey(module.getClass())) {
+        if (modulesById.containsKey(key)) {
             return module;
         }
         modulesById.put(key, module);

@@ -43,6 +43,7 @@ public final class LiveStreamHudModule extends HudModule {
     ) {}
 
     private final boolean isLiveChatBox;
+    public boolean isLiveChatBox() { return isLiveChatBox; }
     private final Supplier<String> metricSupplier;
     private final Map<String, List<String>> wrapCache = new ConcurrentHashMap<>(512);
     private List<DisplayLine> cachedLines = List.of();
@@ -111,7 +112,7 @@ public final class LiveStreamHudModule extends HudModule {
 
         ClipRenderer.renderClipped(context, x + 2, y + 2, boxW - 4, boxH - 4, () -> {
             if (queue.isEmpty()) {
-                if (preview) {
+                if (true) {
                     EmojiRenderer.drawYouTubeBadge(context, x + 8, y + 8, 255);
                     EmojiRenderer.drawRichText(context, tr, "Live chat waiting for messages...", x + 24, y + 8, 0xFF94A3B8, false, mgr.textShadow);
                 }

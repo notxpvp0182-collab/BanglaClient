@@ -61,6 +61,7 @@ public final class SkinCustomizationScreen extends Screen {
         this.openAnim.snapTo(0.0f);
         this.openAnim.animateTo(1.0f);
 
+        manager.checkAndLiveReload();
         syncCarouselIndicesWithActiveSelection();
 
         this.center3DCharacterWidget = PlayerPreviewRenderer.createSkinWidget(
@@ -164,6 +165,7 @@ public final class SkinCustomizationScreen extends Screen {
             manager.importExternalFile(p, viewingCapesPage ? Boolean.TRUE : Boolean.FALSE);
         }
         GlassRenderer.playClickSound();
+        manager.checkAndLiveReload();
         syncCarouselIndicesWithActiveSelection();
     }
 
