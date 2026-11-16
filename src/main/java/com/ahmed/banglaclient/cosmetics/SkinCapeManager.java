@@ -360,7 +360,7 @@ public final class SkinCapeManager {
                 }
             }
             String currentSig = sig.toString();
-            if (!currentSig.equals(lastFolderSignature) || (skins.isEmpty() && capes.isEmpty() && currentSig.length() > 2)) {
+            if (!currentSig.equals(lastFolderSignature) || (skinEntries.isEmpty() && capeEntries.isEmpty() && currentSig.length() > 2)) {
                 lastFolderSignature = currentSig;
                 refreshLibraries();
                 loadSelection();
