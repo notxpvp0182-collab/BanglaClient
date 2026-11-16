@@ -39,7 +39,7 @@ public final class SkinCustomizationScreen extends Screen {
     private boolean closing = false;
 
     private PlayerSkinWidget center3DCharacterWidget;
-    private boolean viewingCapesPage = false; if (this.center3DCharacterWidget != null) ((com.ahmed.banglaclient.mixin.PlayerSkinWidgetAccessor) this.center3DCharacterWidget).banglaclient$setYRotation(210.0f);
+    private boolean viewingCapesPage = false;
     private int skinCarouselIndex = 0;
     private int capeCarouselIndex = 0;
 
