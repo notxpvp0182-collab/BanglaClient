@@ -307,6 +307,10 @@ public final class SkinCapeManager {
         return perAccountMap.computeIfAbsent(this.activeUsername, k -> new AccountCosmetics());
     }
 
+    public void onAccountSwitched(String username) {
+        setActiveAccountUsername(username);
+    }
+
     public void setActiveAccountUsername(String username) {
         if (username != null && !username.isBlank()) {
             this.activeUsername = username.trim();
