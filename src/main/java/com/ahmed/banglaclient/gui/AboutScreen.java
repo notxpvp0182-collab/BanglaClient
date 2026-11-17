@@ -64,7 +64,7 @@ public final class AboutScreen extends Screen {
             int cy = panelY + 14;
 
             BcIdentityManager.drawIdentityIcon(context, cx, cy, 16, 16);
-            context.drawTextWithShadow(textRenderer, BanglaClient.CLIENT_NAME + " v" + BanglaClient.CLIENT_VERSION, cx + 22, cy + 1, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, GlassRenderer.toSmallCaps("Bangla Client"), cx + 22, cy + 1, 0xFFFFFFFF);
             context.drawTextWithShadow(textRenderer, "Developed by Ahmed (Minecraft Player & Developer)", cx + 22, cy + 11, theme.getTextSecondary());
 
             GlassRenderer.drawHorizontalDivider(context, cx, cy + 25, panelW - 32);

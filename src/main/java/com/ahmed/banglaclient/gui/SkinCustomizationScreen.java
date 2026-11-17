@@ -169,6 +169,75 @@ public final class SkinCustomizationScreen extends Screen {
         syncCarouselIndicesWithActiveSelection();
     }
 
+    private float capeYawDeg = 18.0f;
+    private float capePitchDeg = 8.0f;
+    private boolean draggingCape3D = false;
+
+    /**
+     * Renders ONLY the 3D Cape Model (Front face, Back face, and 3D side thickness edges) with 360° mouse rotation!
+     */
+    private void renderStandalone3DCapeModel(DrawContext context, int cx, int cy, float anim) {
+        List<SkinEntry> capes = manager.getCapes();
+        Identifier capeTex = null;
+        if (capeCarouselIndex > 0 && capeCarouselIndex <= capes.size()) {
+            capeTex = capes.get(capeCarouselIndex - 1).getTextureId();
+        } else if (manager.getSelectedCape() != null) {
+            capeTex = manager.getSelectedCape().getTextureId();
+        }
+
+        if (capeTex == null) {
+            String msg = GlassRenderer.toSmallCaps("No Cape Selected");
+            context.drawTextWithShadow(textRenderer, msg, cx - textRenderer.getWidth(msg) / 2, cy - 4, 0xFF94A3B8);
+            return;
+        }
+
+        float rad = (float) Math.toRadians(capeYawDeg);
+        float cos = (float) Math.cos(rad);
+        float sin = (float) Math.sin(rad);
+        boolean showingFront = cos >= 0.0f;
+        float horizScale = Math.max(0.14f, Math.abs(cos)) * anim * 1.15f;
+        float vertScale = anim * 1.15f;
+        int thicknessPx = Math.max(2, Math.round(Math.abs(sin) * 6.0f));
+
+        Matrix3x2fStack m = context.getMatrices();
+        m.pushMatrix();
+        m.translate(cx, cy - 2);
+
+        int halfW = Math.max(3, Math.round(24.0f * horizScale));
+        int halfH = Math.round(38.0f * vertScale);
+        int sideOffset = sin >= 0 ? thicknessPx : -thicknessPx;
+
+        // 1. 3D Side Thickness Edge of the Cape Slab
+        int edgeX1 = sin >= 0 ? halfW : (-halfW - thicknessPx);
+        int edgeX2 = sin >= 0 ? (halfW + thicknessPx) : -halfW;
+        context.fill(edgeX1, -halfH + 1, edgeX2, halfH - 1, 0xFF141824);
+        try {
+            // Left/Right UV edge of cape (u=0 or u=11, v=1..17)
+            float edgeU = sin >= 0 ? 11.0f : 0.0f;
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, capeTex, edgeX1, -halfH, edgeU, 1.0f, Math.max(1, edgeX2 - edgeX1), halfH * 2, 1, 16, 64, 32);
+            context.fill(edgeX1, -halfH, edgeX2, halfH, 0x55000000);
+        } catch (Throwable ignored) {}
+
+        // 2. Main 3D Cape Face (Front u=1..11, v=1..17 OR Back u=12..22, v=1..17)
+        float faceU = showingFront ? 1.0f : 12.0f;
+        try {
+            context.fill(-halfW - 1, -halfH - 1, halfW + 1, halfH + 1, 0x88000000);
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, capeTex, -halfW, -halfH, faceU, 1.0f, halfW * 2, halfH * 2, 10, 16, 64, 32);
+        } catch (Throwable ignored) {}
+
+        m.popMatrix();
+    }
+
+    @Override
+    public boolean mouseDragged(Click c, double dx, double dy) {
+        if (viewingCapesPage) {
+            capeYawDeg = (capeYawDeg + (float) dx * 1.65f) % 360.0f;
+            capePitchDeg = MathUtils.clamp(capePitchDeg + (float) dy * 0.8f, -35.0f, 35.0f);
+            return true;
+        }
+        return super.mouseDragged(c, dx, dy);
+    }
+
     private String getCurrentBrowsedTitle() {
         if (!viewingCapesPage) {
             List<SkinEntry> skins = manager.getSkins();
@@ -191,8 +260,8 @@ public final class SkinCustomizationScreen extends Screen {
         }
 
         if (this.center3DCharacterWidget != null) {
-            this.center3DCharacterWidget.visible = true;
-            this.center3DCharacterWidget.active = true;
+            this.center3DCharacterWidget.visible = !viewingCapesPage;
+            this.center3DCharacterWidget.active = !viewingCapesPage;
         }
 
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, anim);
@@ -236,13 +305,15 @@ public final class SkinCustomizationScreen extends Screen {
 
             GlassRenderer.drawGlassPanel(context, stageX, stageY, stageW, stageH, true, false, true);
 
-            if (this.center3DCharacterWidget != null) {
+            if (!viewingCapesPage && this.center3DCharacterWidget != null) {
                 int w3d = Math.max(20, Math.round(92 * anim));
                 int h3d = Math.max(20, Math.round((stageH - 24) * anim));
                 this.center3DCharacterWidget.setWidth(w3d);
                 this.center3DCharacterWidget.setHeight(h3d);
                 this.center3DCharacterWidget.setPosition(centerX - w3d / 2, stageY + 4 + (stageH - 24 - h3d) / 2);
                 this.center3DCharacterWidget.render(context, mouseX, mouseY, delta);
+            } else if (viewingCapesPage) {
+                renderStandalone3DCapeModel(context, centerX, stageY + (stageH - 18) / 2, anim);
             } else if (viewingCapesPage) {
                 renderCharacterBackWithCape(context, centerX, stageY + 10, 1.05f * anim);
             }

@@ -8,6 +8,11 @@ import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import com.ahmed.banglaclient.gui.ServerBannerScreen;
+import com.ahmed.banglaclient.rendering.GlassRenderer;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -24,6 +29,17 @@ public abstract class ScreenBackgroundMixin {
 
     @Shadow public int width;
     @Shadow public int height;
+    @Shadow protected abstract <T extends net.minecraft.client.gui.Element & net.minecraft.client.gui.Drawable & net.minecraft.client.gui.Selectable> T addDrawableChild(T drawableElement);
+
+    @Inject(method = "init(Lnet/minecraft/client/MinecraftClient;II)V", at = @At("TAIL"), require = 0)
+    private void banglaclient$addServerBannerButtonOnMultiplayer(MinecraftClient client, int width, int height, CallbackInfo ci) {
+        if ((Object) this instanceof MultiplayerScreen mpScreen) {
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("Server Banner"), b -> {
+                client.setScreen(new ServerBannerScreen(mpScreen));
+            }).dimensions(width - 96, 6, 88, 18).build());
+        }
+    }
+
 
     @Inject(method = "renderPanoramaBackground", at = @At("HEAD"), cancellable = true, require = 0)
     private void banglaclient$renderGlobalCustomMenuBackground(DrawContext context, float delta, CallbackInfo ci) {

@@ -329,14 +329,12 @@ public final class SkinCapeManager {
     }
 
     public SkinEntry getSelectedSkin() {
-        checkAndLiveReload();
         AccountCosmetics ac = getActiveAccountCosmetics();
         if (!ac.customSkinOverride || ac.selectedSkinId == null || ac.selectedSkinId.isEmpty()) return null;
         return skins.get(ac.selectedSkinId);
     }
 
     public SkinEntry getSelectedCape() {
-        checkAndLiveReload();
         AccountCosmetics ac = getActiveAccountCosmetics();
         if (!ac.customCapeOverride || ac.selectedCapeId == null || ac.selectedCapeId.isEmpty()) return null;
         return capes.get(ac.selectedCapeId);
@@ -366,8 +364,9 @@ public final class SkinCapeManager {
     public boolean isCustomCapeOverride() { return getActiveAccountCosmetics().customCapeOverride; }
     public void setCustomCapeOverride(boolean enabled) { getActiveAccountCosmetics().customCapeOverride = enabled; saveSelection(); }
 
+    private boolean initialLoaded = false;
     public SkinTextures getActiveSkinTextures() {
-        checkAndLiveReload();
+        if (!initialLoaded) { initialLoaded = true; checkAndLiveReload(); }
         MinecraftClient mc = MinecraftClient.getInstance();
         SkinTextures vanillaDefault = getAuthenticatedAccountDefaultSkin(mc);
 
@@ -388,14 +387,8 @@ public final class SkinCapeManager {
     }
 
     public static SkinTextures getAuthenticatedAccountDefaultSkin(MinecraftClient client) {
-        if (client != null) {
-            if (client.player != null && client.getNetworkHandler() != null) {
-                PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
-                if (entry != null && entry.getSkinTextures() != null) return entry.getSkinTextures();
-            }
-            if (client.getSession() != null && client.getSession().getUuidOrNull() != null) {
-                return DefaultSkinHelper.getSkinTextures(client.getSession().getUuidOrNull());
-            }
+        if (client != null && client.getSession() != null && client.getSession().getUuidOrNull() != null) {
+            return DefaultSkinHelper.getSkinTextures(client.getSession().getUuidOrNull());
         }
         return DefaultSkinHelper.getSkinTextures(new UUID(0L, 0L));
     }

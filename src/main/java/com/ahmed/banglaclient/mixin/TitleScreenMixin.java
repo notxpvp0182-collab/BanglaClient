@@ -429,7 +429,7 @@ public abstract class TitleScreenMixin extends Screen {
         }
 
         int verSlideY = Math.round((1.0f - globalAnim) * 14.0f);
-        context.drawTextWithShadow(this.textRenderer, "Bangla Client v1.0.0", 12, h - 14 + verSlideY, 0xFF94A3B8);
+        context.drawTextWithShadow(this.textRenderer, GlassRenderer.toSmallCaps("Bangla Client"), 12, h - 14 + verSlideY, 0xFF94A3B8);
 
         // Seamless post-splash dark dissolve veil so there is zero sudden flash
         if (!overlayNow && globalAnim < 0.99f) {

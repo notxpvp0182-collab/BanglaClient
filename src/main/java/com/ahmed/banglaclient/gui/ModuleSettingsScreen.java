@@ -51,7 +51,7 @@ public final class ModuleSettingsScreen extends Screen {
     private int panelX, panelY, panelWidth, panelHeight;
 
     public ModuleSettingsScreen(Screen parentScreen, Module module) {
-        super(Text.literal(module.getName()));
+        super(Text.literal(GlassRenderer.toSmallCaps(module.getName())));
         this.parentScreen = parentScreen;
         this.module = module;
 
@@ -115,7 +115,7 @@ public final class ModuleSettingsScreen extends Screen {
             GlassRenderer.drawPillBadge(context, panelX + 6, panelY + 6, 42, 16, 0xFFFFFFFF, backHover);
             context.drawTextWithShadow(textRenderer, "← Back", panelX + 11, panelY + 10, 0xFFFFFFFF);
 
-            context.drawTextWithShadow(textRenderer, module.getName(), panelX + 54, panelY + 10, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, GlassRenderer.toSmallCaps(module.getName()), panelX + 54, panelY + 10, 0xFFFFFFFF);
 
             int resetW = 46;
             int resetX = panelX + panelWidth - resetW - 6;

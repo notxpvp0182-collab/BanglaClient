@@ -276,7 +276,7 @@ public final class ClickGuiScreen extends Screen {
             cy += 10;
 
             BcIdentityManager.drawIdentityIcon(context, cx, cy, 14, 14);
-            context.drawTextWithShadow(textRenderer, BanglaClient.CLIENT_NAME + " v" + BanglaClient.CLIENT_VERSION, cx + 20, cy + 3, 0xFFFFFFFF);
+            context.drawTextWithShadow(textRenderer, GlassRenderer.toSmallCaps("Bangla Client"), cx + 20, cy + 3, 0xFFFFFFFF);
             context.drawTextWithShadow(textRenderer, "Developer: Ahmed (Minecraft Player & Client Creator)", cx, cy + 19, 0xFFFFFFFF);
             GlassRenderer.drawHorizontalDivider(context, cx, cy + 31, width - 30);
 

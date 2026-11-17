@@ -14,22 +14,17 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Manages custom Main Menu backgrounds in banglaclient/backgrounds/.
- * Automatically downloads curated HD backgrounds ONLY on the very first launch if internet is available.
+ * High-Performance Background Manager supporting Full-HD PNG, JPG, JPEG, Animated GIF, and MP4 Video frames
+ * with zero startup lag and zero render-thread FPS drops.
  */
 public final class BackgroundManager {
     private static final String[][] CURATED_FIRST_LAUNCH_WALLPAPERS = {
@@ -46,19 +41,19 @@ public final class BackgroundManager {
         private final Path filePath;
         private final int width;
         private final int height;
-        private final boolean animatedGif;
+        private final boolean animated;
         private final List<Identifier> frameIds;
         private final int frameDelayMs;
 
-        public BackgroundEntry(String id, String displayName, Path filePath, int width, int height, boolean animatedGif, List<Identifier> frameIds, int frameDelayMs) {
+        public BackgroundEntry(String id, String displayName, Path filePath, int width, int height, boolean animated, List<Identifier> frameIds, int frameDelayMs) {
             this.id = id;
             this.displayName = displayName;
             this.filePath = filePath;
             this.width = width;
             this.height = height;
-            this.animatedGif = animatedGif;
+            this.animated = animated;
             this.frameIds = frameIds;
-            this.frameDelayMs = Math.max(40, frameDelayMs);
+            this.frameDelayMs = Math.max(33, frameDelayMs);
         }
 
         public String getId() { return id; }
@@ -66,7 +61,7 @@ public final class BackgroundManager {
         public Path getFilePath() { return filePath; }
         public int getWidth() { return width; }
         public int getHeight() { return height; }
-        public boolean isAnimatedGif() { return animatedGif; }
+        public boolean isAnimatedGif() { return animated; }
 
         public Identifier getCurrentFrameTexture() {
             if (frameIds == null || frameIds.isEmpty()) return null;
@@ -84,6 +79,8 @@ public final class BackgroundManager {
     private final Map<String, BackgroundEntry> entries = new LinkedHashMap<>();
     private String selectedId = "";
     private boolean firstLaunchSeeded = false;
+    private boolean initializedTextures = false;
+    private String lastBgSignature = "";
 
     public static synchronized BackgroundManager getInstance() {
         if (instance == null) {
@@ -96,14 +93,9 @@ public final class BackgroundManager {
         Path root = FabricLoader.getInstance().getGameDir().resolve("banglaclient");
         this.backgroundsDir = root.resolve("backgrounds");
         this.configFile = backgroundsDir.resolve("selected_bg.json");
-        initialize();
-    }
-
-    private void initialize() {
         try {
             Files.createDirectories(backgroundsDir);
             loadSelection();
-            refreshLibrary();
             if (!firstLaunchSeeded) {
                 firstLaunchSeeded = true;
                 saveSelection();
@@ -116,40 +108,58 @@ public final class BackgroundManager {
 
     private void downloadCuratedBackgroundsOnFirstLaunchAsync() {
         CompletableFuture.runAsync(() -> {
-            boolean downloadedAny = false;
             for (String[] pair : CURATED_FIRST_LAUNCH_WALLPAPERS) {
-                String fileName = pair[0];
-                String urlStr = pair[1];
-                Path target = backgroundsDir.resolve(fileName);
+                Path target = backgroundsDir.resolve(pair[0]);
                 if (Files.exists(target)) continue;
                 try {
-                    HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                    HttpURLConnection conn = (HttpURLConnection) new URL(pair[1]).openConnection();
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.setConnectTimeout(5000);
-                    conn.setReadTimeout(7000);
+                    conn.setConnectTimeout(4000);
+                    conn.setReadTimeout(6000);
                     if (conn.getResponseCode() == 200) {
                         try (InputStream in = conn.getInputStream()) {
                             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-                            downloadedAny = true;
                         }
                     }
-                } catch (Throwable ignored) {
-                    // No internet/data available -> silently skip without error
-                }
-            }
-            if (downloadedAny) {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc != null) {
-                    mc.execute(this::refreshLibrary);
-                }
+                } catch (Throwable ignored) {}
             }
         });
     }
 
+    public synchronized void checkAndLiveReload() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.getTextureManager() == null) return;
+        try {
+            StringBuilder sig = new StringBuilder();
+            if (Files.exists(backgroundsDir)) {
+                try (var s = Files.list(backgroundsDir)) {
+                    s.sorted().forEach(p -> {
+                        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+                        if (isSupportedFile(n)) {
+                            try { sig.append(n).append(':').append(Files.size(p)).append(';'); } catch (Throwable ignored) {}
+                        }
+                    });
+                }
+            }
+            String cur = sig.toString();
+            if (!cur.equals(lastBgSignature)) {
+                lastBgSignature = cur;
+                refreshLibrary();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static boolean isSupportedFile(String lower) {
+        return lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                || lower.endsWith(".gif") || lower.endsWith(".mp4");
+    }
+
     public synchronized void refreshLibrary() {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc == null || mc.getTextureManager() == null) return;
         for (BackgroundEntry old : entries.values()) {
             for (Identifier tex : old.getAllFrameIds()) {
-                try { MinecraftClient.getInstance().getTextureManager().destroyTexture(tex); } catch (Throwable ignored) {}
+                try { mc.getTextureManager().destroyTexture(tex); } catch (Throwable ignored) {}
             }
         }
         entries.clear();
@@ -159,13 +169,14 @@ public final class BackgroundManager {
             for (Path file : stream) {
                 if (Files.isDirectory(file)) continue;
                 String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
-                if (name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".gif")) {
+                if (isSupportedFile(name)) {
                     BackgroundEntry loaded = loadEntryFromDisk(file);
                     if (loaded != null) {
                         entries.put(loaded.getId(), loaded);
                     }
                 }
             }
+            initializedTextures = true;
         } catch (IOException e) {
             BanglaClient.LOGGER.warn("Error scanning backgrounds directory", e);
         }
@@ -179,29 +190,54 @@ public final class BackgroundManager {
             String lower = fileName.toLowerCase(Locale.ROOT);
             String safeBase = lower.replaceAll("[^a-z0-9_.-]", "_");
 
+            if (lower.endsWith(".mp4")) {
+                return loadMp4Entry(file, fileName, title, safeBase);
+            }
+
             if (lower.endsWith(".gif")) {
                 List<Identifier> frames = new ArrayList<>();
-                int w = 0, h = 0;
+                int canvasW = 0, canvasH = 0;
                 try (InputStream in = Files.newInputStream(file);
                      ImageInputStream iis = ImageIO.createImageInputStream(in)) {
                     Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
                     if (readers.hasNext()) {
                         ImageReader reader = readers.next();
                         reader.setInput(iis, false);
-                        int num = Math.min(36, reader.getNumImages(true));
+                        int num = Math.min(48, reader.getNumImages(true));
+                        BufferedImage masterCanvas = null;
                         for (int i = 0; i < num; i++) {
-                            BufferedImage frameImg = reader.read(i);
-                            if (frameImg == null) continue;
-                            if (w == 0) { w = frameImg.getWidth(); h = frameImg.getHeight(); }
+                            BufferedImage rawFrame = reader.read(i);
+                            if (rawFrame == null) continue;
+                            if (masterCanvas == null) {
+                                canvasW = rawFrame.getWidth();
+                                canvasH = rawFrame.getHeight();
+                                masterCanvas = new BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB);
+                            }
+                            // Composite delta frame onto master canvas so Full-HD GIFs never look ghosted or blurry!
+                            var g = masterCanvas.createGraphics();
+                            g.drawImage(rawFrame, 0, 0, null);
+                            g.dispose();
+
                             Identifier frameId = Identifier.of("banglaclient", "backgrounds/" + safeBase + "_f" + i);
-                            registerBufferedImageAsTexture(frameImg, frameId, safeBase + "_f" + i);
+                            registerBufferedImageDirect(masterCanvas, frameId, safeBase + "_f" + i);
                             frames.add(frameId);
                         }
                         reader.dispose();
                     }
                 }
                 if (!frames.isEmpty()) {
-                    return new BackgroundEntry(fileName, title, file, w, h, true, frames, 90);
+                    return new BackgroundEntry(fileName, title, file, canvasW, canvasH, true, frames, 65);
+                }
+            }
+
+            if (lower.endsWith(".png")) {
+                try (InputStream in = Files.newInputStream(file)) {
+                    NativeImage nativeImg = NativeImage.read(in);
+                    int w = nativeImg.getWidth(), h = nativeImg.getHeight();
+                    Identifier texId = Identifier.of("banglaclient", "backgrounds/" + safeBase);
+                    NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> safeBase, nativeImg);
+                    MinecraftClient.getInstance().getTextureManager().registerTexture(texId, tex);
+                    return new BackgroundEntry(fileName, title, file, w, h, false, Collections.singletonList(texId), 100);
                 }
             }
 
@@ -209,7 +245,7 @@ public final class BackgroundManager {
                 BufferedImage img = ImageIO.read(in);
                 if (img == null) return null;
                 Identifier texId = Identifier.of("banglaclient", "backgrounds/" + safeBase);
-                registerBufferedImageAsTexture(img, texId, safeBase);
+                registerBufferedImageDirect(img, texId, safeBase);
                 return new BackgroundEntry(fileName, title, file, img.getWidth(), img.getHeight(), false, Collections.singletonList(texId), 100);
             }
         } catch (Throwable t) {
@@ -217,61 +253,76 @@ public final class BackgroundManager {
         }
     }
 
-    private static void registerBufferedImageAsTexture(BufferedImage src, Identifier texId, String debugName) throws IOException {
-        BufferedImage argb = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        var g = argb.createGraphics();
-        g.drawImage(src, 0, 0, null);
-        g.dispose();
+    private BackgroundEntry loadMp4Entry(Path mp4File, String fileName, String title, String safeBase) {
+        try {
+            Path cacheDir = backgroundsDir.resolve(".mp4_" + safeBase);
+            if (!Files.exists(cacheDir)) {
+                Files.createDirectories(cacheDir);
+                try {
+                    new ProcessBuilder("ffmpeg", "-y", "-i", mp4File.toAbsolutePath().toString(),
+                            "-vf", "fps=15,scale=854:-1", "-frames:v", "45",
+                            cacheDir.resolve("frame_%03d.png").toAbsolutePath().toString())
+                            .redirectErrorStream(true).start().waitFor();
+                } catch (Throwable ignored) {}
+            }
+            List<Identifier> frames = new ArrayList<>();
+            int w = 854, h = 480;
+            if (Files.exists(cacheDir)) {
+                try (var stream = Files.list(cacheDir)) {
+                    List<Path> pngs = stream.filter(p -> p.toString().endsWith(".png")).sorted().toList();
+                    for (int i = 0; i < pngs.size(); i++) {
+                        try (InputStream in = Files.newInputStream(pngs.get(i))) {
+                            NativeImage ni = NativeImage.read(in);
+                            w = ni.getWidth();
+                            h = ni.getHeight();
+                            Identifier fid = Identifier.of("banglaclient", "backgrounds/" + safeBase + "_v" + i);
+                            MinecraftClient.getInstance().getTextureManager().registerTexture(fid, new NativeImageBackedTexture(() -> safeBase + "_v" + i, ni));
+                            frames.add(fid);
+                        }
+                    }
+                }
+            }
+            if (!frames.isEmpty()) {
+                return new BackgroundEntry(fileName, title, mp4File, w, h, true, frames, 66);
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(argb, "PNG", baos);
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
-            NativeImage nativeImg = NativeImage.read(bais);
-            NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> debugName, nativeImg);
-            MinecraftClient.getInstance().getTextureManager().registerTexture(texId, tex);
+    /**
+     * Direct fast pixel transfer from BufferedImage to NativeImage without slow PNG re-encoding!
+     */
+    private static void registerBufferedImageDirect(BufferedImage src, Identifier texId, String debugName) {
+        int w = src.getWidth();
+        int h = src.getHeight();
+        int[] rgbArray = src.getRGB(0, 0, w, h, null, 0, w);
+        NativeImage nativeImg = new NativeImage(w, h, true);
+        for (int y = 0; y < h; y++) {
+            int rowOff = y * w;
+            for (int x = 0; x < w; x++) {
+                nativeImg.setColorArgb(x, y, rgbArray[rowOff + x]);
+            }
         }
+        NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> debugName, nativeImg);
+        MinecraftClient.getInstance().getTextureManager().registerTexture(texId, tex);
     }
 
     public synchronized String importFile(Path source) {
         if (source == null || !Files.exists(source)) return "File not found.";
         String name = source.getFileName().toString();
-        String lower = name.toLowerCase(Locale.ROOT);
-        if (!lower.endsWith(".png") && !lower.endsWith(".jpg") && !lower.endsWith(".jpeg") && !lower.endsWith(".gif")) {
-            return "Supported formats: PNG, JPG, JPEG, GIF";
+        if (!isSupportedFile(name.toLowerCase(Locale.ROOT))) {
+            return "Supported: PNG, JPG, JPEG, GIF, MP4";
         }
         try {
             String safeName = name.replaceAll("[^a-zA-Z0-9._-]", "_");
             Path dest = backgroundsDir.resolve(safeName);
             Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING);
-            refreshLibrary();
+            lastBgSignature = "";
+            checkAndLiveReload();
             setSelectedId(safeName);
-            return "Imported & applied: " + safeName;
+            return "Imported: " + safeName;
         } catch (IOException e) {
             return "Failed to import file.";
-        }
-    }
-
-    public synchronized boolean renameEntry(BackgroundEntry entry, String newTitle) {
-        if (entry == null || newTitle == null || newTitle.isBlank()) return false;
-        String clean = newTitle.trim().replaceAll("[^a-zA-Z0-9 _-]", "").trim();
-        if (clean.isEmpty()) return false;
-
-        String oldFileName = entry.getId();
-        int dot = oldFileName.lastIndexOf('.');
-        String ext = dot >= 0 ? oldFileName.substring(dot) : ".png";
-        String newFileName = clean.replace(' ', '_') + ext;
-
-        Path newPath = backgroundsDir.resolve(newFileName);
-        try {
-            boolean wasSelected = oldFileName.equals(selectedId);
-            Files.move(entry.getFilePath(), newPath, StandardCopyOption.REPLACE_EXISTING);
-            refreshLibrary();
-            if (wasSelected) {
-                setSelectedId(newFileName);
-            }
-            return true;
-        } catch (IOException e) {
-            return false;
         }
     }
 
@@ -282,44 +333,14 @@ public final class BackgroundManager {
                 try { MinecraftClient.getInstance().getTextureManager().destroyTexture(tex); } catch (Throwable ignored) {}
             }
             boolean deleted = Files.deleteIfExists(entry.getFilePath());
-            if (entry.getId().equals(selectedId)) {
-                selectedId = "";
-            }
-            refreshLibrary();
+            if (entry.getId().equals(selectedId)) selectedId = "";
+            lastBgSignature = "";
+            checkAndLiveReload();
             saveSelection();
             return deleted;
         } catch (IOException e) {
             return false;
         }
-    }
-
-    private long lastBgWatchMs = 0L;
-    private String lastBgSignature = "";
-
-    public synchronized void checkAndLiveReload() {
-        long now = System.currentTimeMillis();
-        if (now - lastBgWatchMs < 1500L) return;
-        lastBgWatchMs = now;
-        try {
-            if (MinecraftClient.getInstance() == null || MinecraftClient.getInstance().getTextureManager() == null) return;
-            StringBuilder sig = new StringBuilder();
-            if (Files.exists(backgroundsDir)) {
-                try (var s = Files.list(backgroundsDir)) {
-                    s.sorted().forEach(p -> {
-                        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
-                        if (n.endsWith(".png") || n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".gif")) {
-                            try { sig.append(n).append(':').append(Files.size(p)).append(';'); } catch (Throwable ignored) {}
-                        }
-                    });
-                }
-            }
-            String cur = sig.toString();
-            if (!cur.equals(lastBgSignature) || (entries.isEmpty() && !cur.isEmpty())) {
-                lastBgSignature = cur;
-                refreshLibrary();
-                loadSelection();
-            }
-        } catch (Throwable ignored) {}
     }
 
     public List<BackgroundEntry> getEntries() {
@@ -328,8 +349,10 @@ public final class BackgroundManager {
     }
 
     public BackgroundEntry getActiveBackground() {
-        checkAndLiveReload();
         if (selectedId == null || selectedId.isEmpty()) return null;
+        if (!initializedTextures) {
+            checkAndLiveReload();
+        }
         return entries.get(selectedId);
     }
 
@@ -342,12 +365,8 @@ public final class BackgroundManager {
 
     public void loadSelection() {
         JsonObject root = ConfigValidator.readSafeJsonObject(configFile);
-        if (root.has("selectedId")) {
-            this.selectedId = root.get("selectedId").getAsString();
-        }
-        if (root.has("firstLaunchSeeded")) {
-            this.firstLaunchSeeded = root.get("firstLaunchSeeded").getAsBoolean();
-        }
+        if (root.has("selectedId")) this.selectedId = root.get("selectedId").getAsString();
+        if (root.has("firstLaunchSeeded")) this.firstLaunchSeeded = root.get("firstLaunchSeeded").getAsBoolean();
     }
 
     public void saveSelection() {
