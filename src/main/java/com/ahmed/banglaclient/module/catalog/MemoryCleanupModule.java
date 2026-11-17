@@ -17,6 +17,19 @@ public final class MemoryCleanupModule extends Module {
         this.levelSetting = addSetting(new NumberSetting("strength", "Memory Cleanup Level", "Intensity / threshold percentage", 80.0, 10.0, 150.0, 5.0, "%"));
     }
 
+    @Override
+    protected void onEnable() {
+        Runtime rt = Runtime.getRuntime();
+        long before = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
+        System.gc();
+        long after = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
+        long freed = Math.max(0L, before - after);
+        if (com.ahmed.banglaclient.BanglaClient.getInstance().getNotificationManager() != null) {
+            com.ahmed.banglaclient.BanglaClient.getInstance().getNotificationManager().pushInfo("Memory Cleanup", "Cleaned client heap (Freed ~" + freed + " MB)");
+        }
+        setEnabled(false);
+    }
+
     public float getLevelMultiplier() {
         return isEnabled() ? (levelSetting.getFloatValue() / 100.0f) : 1.0f;
     }

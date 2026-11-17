@@ -341,6 +341,7 @@ public final class ModuleManager {
     public void initialize() {
         registerBuiltInModules();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.ahmed.banglaclient.performance.PerformanceEngine.get().onClientTick(client);
             if (client.player == null || client.world == null) return;
             for (Module module : modulesById.values()) {
                 if (module.isEnabled()) {

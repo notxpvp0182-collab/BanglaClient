@@ -21,30 +21,41 @@ public final class DistanceDisplayModule extends HudModule {
 
     @Override
     public void renderHud(DrawContext context, float tickDelta, boolean preview) {
-        int fps = client != null ? Math.max(1, client.getCurrentFps()) : 120;
-        int lowFps = Math.max(1, (int) (fps * 0.82f));
-        String ms = String.format("%.1f", 1000.0f / fps);
+        var eng = com.ahmed.banglaclient.performance.PerformanceEngine.get();
+        int fps = client != null ? Math.max(0, client.getCurrentFps()) : 0;
+        int lowFps = eng.getOnePercentLowFps();
+        String ms = String.format(java.util.Locale.ROOT, "%.1f", eng.getCurrentFrameTimeMs());
         Runtime rt = Runtime.getRuntime();
         int ram = (int) (((rt.totalMemory() - rt.freeMemory()) * 100L) / Math.max(1L, rt.maxMemory()));
-        int ent = (client != null && client.world != null) ? client.world.getRegularEntityCount() : 12;
-        int gpu = Math.min(99, Math.max(12, 100 - (fps / 4)));
-        int cpu = Math.min(95, Math.max(8, ram / 2 + 10));
+        int ent = eng.getLoadedEntityCount();
+        String partStr = eng.getActiveParticleCountString();
+        String gpuStr = eng.getFormattedGpuUsage();
+        String cpuStr = eng.getFormattedCpuUsage();
+        int lCps = com.ahmed.banglaclient.BanglaClient.getInstance().getModuleManager()
+                .getModule(com.ahmed.banglaclient.module.hud.CpsCounterModule.class)
+                .map(com.ahmed.banglaclient.module.hud.CpsCounterModule::getLeftCps).orElse(0);
+        int rCps = com.ahmed.banglaclient.BanglaClient.getInstance().getModuleManager()
+                .getModule(com.ahmed.banglaclient.module.hud.CpsCounterModule.class)
+                .map(com.ahmed.banglaclient.module.hud.CpsCounterModule::getRightCps).orElse(0);
+        int pingVal = com.ahmed.banglaclient.BanglaClient.getInstance().getModuleManager()
+                .getModule(com.ahmed.banglaclient.module.hud.PingDisplayModule.class)
+                .map(com.ahmed.banglaclient.module.hud.PingDisplayModule::getCurrentPingMs).orElse(-1);
         float dist = (client != null && client.targetedEntity != null && client.player != null)
-                ? (float) client.player.distanceTo(client.targetedEntity) : 3.0f;
+                ? (float) client.player.distanceTo(client.targetedEntity) : 0.0f;
 
         String text = "Dist: {dist}m"
                 .replace("{fps}", String.valueOf(lowFps))
                 .replace("{ms}", ms)
-                .replace("{gpu}", String.valueOf(gpu))
-                .replace("{cpu}", String.valueOf(cpu))
+                .replace("{gpu}%", gpuStr)
+                .replace("{cpu}%", cpuStr)
                 .replace("{ram}", String.valueOf(ram))
                 .replace("{ent}", String.valueOf(ent))
-                .replace("{part}", String.valueOf(ent * 3))
-                .replace("{l}", "0")
-                .replace("{r}", "0")
-                .replace("{hits}", String.valueOf(ent))
-                .replace("{dist}", String.format("%.1f", dist))
-                .replace("{ping}", "28");
+                .replace("{part}", partStr)
+                .replace("{l}", String.valueOf(lCps))
+                .replace("{r}", String.valueOf(rCps))
+                .replace("{hits}", String.valueOf(eng.getConfirmedHitsSession()))
+                .replace("{dist}", String.format(java.util.Locale.ROOT, "%.2f", dist))
+                .replace("{ping} ms", pingVal >= 0 ? (pingVal + " ms") : "Local");
 
         int pad = paddingSetting.getIntValue();
         int w = client.textRenderer.getWidth(text) + pad * 2;

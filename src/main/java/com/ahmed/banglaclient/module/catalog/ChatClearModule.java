@@ -17,6 +17,14 @@ public final class ChatClearModule extends Module {
         this.levelSetting = addSetting(new NumberSetting("strength", "Chat Clear Level", "Intensity / threshold percentage", 80.0, 10.0, 150.0, 5.0, "%"));
     }
 
+    @Override
+    protected void onEnable() {
+        if (client != null && client.inGameHud != null && client.inGameHud.getChatHud() != null) {
+            client.inGameHud.getChatHud().clear(opt1.isEnabled());
+        }
+        setEnabled(false);
+    }
+
     public float getLevelMultiplier() {
         return isEnabled() ? (levelSetting.getFloatValue() / 100.0f) : 1.0f;
     }

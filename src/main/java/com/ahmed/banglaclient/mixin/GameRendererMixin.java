@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class GameRendererMixin {
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/WorldRenderer;drawEntityOutlinesFramebuffer()V"), require = 0)
     private void banglaclient$renderColorSaturationShader(net.minecraft.client.render.RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
+        com.ahmed.banglaclient.performance.PerformanceEngine.get().onRenderFrame();
         com.ahmed.banglaclient.rendering.SaturationShaderRenderer.renderWorldPass();
     }
 

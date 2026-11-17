@@ -29,6 +29,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class EntityRendererMixin<T extends Entity, S extends EntityRenderState> {
 
     @Inject(
+            method = "shouldRender(Lnet/minecraft/entity/Entity;Lnet/minecraft/client/render/Frustum;DDD)Z",
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0
+    )
+    private void banglaclient$applyEntityAndCategoryCulling(T entity, net.minecraft.client.render.Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
+        if (com.ahmed.banglaclient.performance.PerformanceEngine.get().shouldCullEntity(entity)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+    @Inject(
             method = "getDisplayName(Lnet/minecraft/entity/Entity;)Lnet/minecraft/text/Text;",
             at = @At("RETURN"),
             cancellable = true,

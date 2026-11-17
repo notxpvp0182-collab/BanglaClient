@@ -14,6 +14,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientConnection.class)
 public abstract class ClientConnectionMixin {
+    @Inject(method = "send(Lnet/minecraft/network/packet/Packet;)V", at = @At("HEAD"), require = 0)
+    private void banglaclient$countTxPacket(net.minecraft.network.packet.Packet<?> packet, CallbackInfo ci) {
+        com.ahmed.banglaclient.performance.PerformanceEngine.get().recordOutgoingPacket();
+    }
+    @Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/packet/Packet;)V", at = @At("HEAD"), require = 0)
+    private void banglaclient$countRxPacket(ChannelHandlerContext ctx, net.minecraft.network.packet.Packet<?> packet, CallbackInfo ci) {
+        com.ahmed.banglaclient.performance.PerformanceEngine.get().recordIncomingPacket();
+    }
 
     @Shadow private Channel channel;
 
