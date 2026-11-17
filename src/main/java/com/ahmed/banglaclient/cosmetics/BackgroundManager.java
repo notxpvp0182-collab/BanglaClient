@@ -276,7 +276,7 @@ public final class BackgroundManager {
                             w = ni.getWidth();
                             h = ni.getHeight();
                             Identifier fid = Identifier.of("banglaclient", "backgrounds/" + safeBase + "_v" + i);
-                            MinecraftClient.getInstance().getTextureManager().registerTexture(fid, new NativeImageBackedTexture(() -> safeBase + "_v" + i, ni));
+                            MinecraftClient.getInstance().getTextureManager().registerTexture(fid, new NativeImageBackedTexture(() -> safeBase, ni));
                             frames.add(fid);
                         }
                     }
