@@ -112,19 +112,7 @@ public final class ServerFlagManager {
     private static String[] resolveServerIpWithSrvBypass(String rawAddress, String cleanHost) {
         String targetHost = cleanHost;
 
-        // 1A: Try Minecraft's native AllowedAddressResolver (resolves _minecraft._tcp SRV records)
-        try {
-            ServerAddress parsed = ServerAddress.parse(rawAddress);
-            Optional<Address> resolved = AllowedAddressResolver.DEFAULT.resolve(parsed);
-            if (resolved.isPresent()) {
-                var inet = resolved.get().getInetSocketAddress();
-                if (inet != null && inet.getAddress() != null) {
-                    String hostName = inet.getHostName();
-                    if (hostName != null && !hostName.isEmpty()) targetHost = hostName.toLowerCase(Locale.ROOT);
-                    return new String[]{inet.getAddress().getHostAddress(), targetHost};
-                }
-            }
-        } catch (Throwable ignored) {}
+
 
         // 1B: Query Google DNS-over-HTTPS for _minecraft._tcp.<host> SRV record (works on all Android/Pojav networks!)
         try {

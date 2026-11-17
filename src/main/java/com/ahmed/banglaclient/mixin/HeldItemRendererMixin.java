@@ -49,6 +49,24 @@ public abstract class HeldItemRendererMixin {
             float s = sysOpt.get().getScaleForStack(item);
             if (Math.abs(s - 1.0f) > 0.01f) matrices.scale(s, s, s);
         }
+        if (item.isOf(Items.TOTEM_OF_UNDYING)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallTotemModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.TotemResizerModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.isOf(Items.SHIELD)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallShieldModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.isIn(net.minecraft.registry.tag.ItemTags.SWORDS)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallSwordModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.isIn(net.minecraft.registry.tag.ItemTags.AXES)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallAxeModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.isIn(net.minecraft.registry.tag.ItemTags.PICKAXES)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallPickaxeModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.isIn(net.minecraft.registry.tag.ItemTags.SHOVELS)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallShovelModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.contains(net.minecraft.component.DataComponentTypes.FOOD)) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallFoodModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        } else if (item.getItem() instanceof net.minecraft.item.BlockItem) {
+            bangla.getModuleManager().getModule(com.ahmed.banglaclient.module.catalog.SmallBlockModule.class).ifPresent(m -> { if (m.isEnabled()) matrices.scale(m.getLevelMultiplier(), m.getLevelMultiplier(), m.getLevelMultiplier()); });
+        }
 
         if (item.isOf(Items.SHIELD)) {
             var shieldOpt = bangla.getModuleManager().getModule(ShieldOptimizerModule.class);

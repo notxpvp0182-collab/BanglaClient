@@ -16,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,14 +39,6 @@ public abstract class EntityRendererMixin<T extends Entity, S extends EntityRend
         Text original = cir.getReturnValue();
         if (original == null) return;
 
-        BanglaClient bangla = BanglaClient.getInstance();
-        if (bangla != null && bangla.getModuleManager() != null) {
-            var nametagsOpt = bangla.getModuleManager().getModule(NametagsModule.class);
-            if (nametagsOpt.isPresent() && !nametagsOpt.get().shouldShowBcBadge()) {
-                return;
-            }
-        }
-
         if (BcIdentityManager.isVerifiedBcUser(player.getUuid())
                 || BcIdentityManager.isVerifiedBcUserByName(player.getName().getString())) {
             cir.setReturnValue(BcIdentityManager.createBcPrefixBadge().append(original));
@@ -54,10 +47,10 @@ public abstract class EntityRendererMixin<T extends Entity, S extends EntityRend
 
     @Inject(
             method = "renderLabelIfPresent",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/util/math/MatrixStack;pop()V"),
+            at = @At("TAIL"),
             require = 0
     )
-    private void banglaclient$drawRealHdIconOnOverheadNametag(
+    private void banglaclient$draw3DIconBesidePlayerNametag(
             S state,
             MatrixStack matrices,
             @Coerce Object renderQueue,
@@ -69,33 +62,39 @@ public abstract class EntityRendererMixin<T extends Entity, S extends EntityRend
         if (!BcIdentityManager.isVerifiedBcUserByName(raw)) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.textRenderer == null || mc.getBufferBuilders() == null) return;
+        if (mc == null || mc.textRenderer == null || mc.gameRenderer == null || mc.getBufferBuilders() == null) return;
+
+        Vec3d labelOffset = state.nameLabelPos;
+        if (labelOffset == null) return;
+
+        matrices.push();
+        matrices.translate(labelOffset.x, labelOffset.y + 0.5, labelOffset.z);
+        matrices.multiply(mc.gameRenderer.getCamera().getRotation());
+        matrices.scale(0.025f, -0.025f, 0.025f);
 
         int totalW = mc.textRenderer.getWidth(state.displayName);
-        float iconSize = 15.0f;
-        float iconX = -(totalW / 2.0f) - 2.0f;
-        float iconY = -3.5f;
+        float iconSize = 13.0f;
+        float ix = -(totalW / 2.0f) - 2.0f;
+        float iy = -2.5f;
+        float z = -0.02f;
 
         Matrix4f pos = matrices.peek().getPositionMatrix();
         VertexConsumerProvider.Immediate immediate = mc.getBufferBuilders().getEntityVertexConsumers();
-        VertexConsumer vc = immediate.getBuffer(RenderLayers.entityCutout(BcIdentityManager.IDENTITY_ICON));
+        VertexConsumer vc = immediate.getBuffer(RenderLayers.entityTranslucent(BcIdentityManager.IDENTITY_ICON));
         int light = 0xF000F0;
 
-        // Emit BOTH front and back winding orders so negative Y scale (-0.025f) never backface-culls the icon!
-        for (float zOff : new float[]{0.03f, -0.03f}) {
-            // Winding 1 (CCW for negative Y scale)
-            vc.vertex(pos, iconX, iconY, zOff).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX + iconSize, iconY, zOff).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX + iconSize, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix, iy, z).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix + iconSize, iy, z).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix + iconSize, iy + iconSize, z).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix, iy + iconSize, z).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
 
-            // Winding 2 (CW fallback)
-            vc.vertex(pos, iconX, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX + iconSize, iconY + iconSize, zOff).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX + iconSize, iconY, zOff).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-            vc.vertex(pos, iconX, iconY, zOff).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
-        }
+        vc.vertex(pos, ix, iy + iconSize, z).color(255, 255, 255, 255).texture(0.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix + iconSize, iy + iconSize, z).color(255, 255, 255, 255).texture(1.0f, 1.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix + iconSize, iy, z).color(255, 255, 255, 255).texture(1.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+        vc.vertex(pos, ix, iy, z).color(255, 255, 255, 255).texture(0.0f, 0.0f).overlay(OverlayTexture.DEFAULT_UV).light(light).normal(0.0f, 1.0f, 0.0f);
+
         immediate.draw();
+        matrices.pop();
     }
 
     @Mixin(LivingEntityRenderer.class)

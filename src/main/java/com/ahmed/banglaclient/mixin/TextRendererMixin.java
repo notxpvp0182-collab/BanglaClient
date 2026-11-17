@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class TextRendererMixin {
 
     @Inject(
-            method = "draw(Lnet/minecraft/text/Text;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)I",
+            method = "draw(Lnet/minecraft/text/Text;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)V",
             at = @At("RETURN"),
             require = 0
     )
@@ -39,7 +39,7 @@ public abstract class TextRendererMixin {
             TextRenderer.TextLayerType layerType,
             int backgroundColor,
             int light,
-            CallbackInfoReturnable<Integer> cir
+            CallbackInfo ci
     ) {
         if (text == null || shadow) return;
         String raw = text.getString();
@@ -49,7 +49,7 @@ public abstract class TextRendererMixin {
     }
 
     @Inject(
-            method = "draw(Lnet/minecraft/text/OrderedText;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)I",
+            method = "draw(Lnet/minecraft/text/OrderedText;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)V",
             at = @At("RETURN"),
             require = 0
     )
@@ -64,7 +64,7 @@ public abstract class TextRendererMixin {
             TextRenderer.TextLayerType layerType,
             int backgroundColor,
             int light,
-            CallbackInfoReturnable<Integer> cir
+            CallbackInfo ci
     ) {
         if (text == null || shadow) return;
         StringBuilder sb = new StringBuilder();
