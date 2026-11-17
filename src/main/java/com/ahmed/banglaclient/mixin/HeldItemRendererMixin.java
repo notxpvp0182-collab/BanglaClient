@@ -3,6 +3,7 @@ package com.ahmed.banglaclient.mixin;
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.module.combat.ShieldOptimizerModule;
 import com.ahmed.banglaclient.module.visual.SmallHeldItemModule;
+import com.ahmed.banglaclient.module.visual.SmallItemsSystemModule;
 import com.ahmed.banglaclient.module.visual.ZoomModule;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -43,6 +44,11 @@ public abstract class HeldItemRendererMixin {
         }
 
         if (item == null || item.isEmpty()) return;
+        var sysOpt = bangla.getModuleManager().getModule(SmallItemsSystemModule.class);
+        if (sysOpt.isPresent() && sysOpt.get().isEnabled()) {
+            float s = sysOpt.get().getScaleForStack(item);
+            if (Math.abs(s - 1.0f) > 0.01f) matrices.scale(s, s, s);
+        }
 
         if (item.isOf(Items.SHIELD)) {
             var shieldOpt = bangla.getModuleManager().getModule(ShieldOptimizerModule.class);

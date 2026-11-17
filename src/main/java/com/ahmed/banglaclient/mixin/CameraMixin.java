@@ -1,6 +1,7 @@
 package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
+import com.ahmed.banglaclient.module.visual.ClearLavaModule;
 import com.ahmed.banglaclient.module.visual.ClearWaterModule;
 import net.minecraft.block.enums.CameraSubmersionType;
 import net.minecraft.client.render.Camera;
@@ -17,6 +18,13 @@ public abstract class CameraMixin {
 
     @Inject(method = "getSubmersionType", at = @At("RETURN"), cancellable = true, require = 0)
     private void banglaclient$crystalClearUnderwaterNoFog(CallbackInfoReturnable<CameraSubmersionType> cir) {
+        if (cir.getReturnValue() == CameraSubmersionType.LAVA) {
+            BanglaClient b = BanglaClient.getInstance();
+            if (b != null && b.getModuleManager() != null) {
+                var lavaOpt = b.getModuleManager().getModule(ClearLavaModule.class);
+                if (lavaOpt.isPresent() && lavaOpt.get().shouldBypassLavaFog()) cir.setReturnValue(CameraSubmersionType.NONE);
+            }
+        }
         if (cir.getReturnValue() == CameraSubmersionType.WATER) {
             BanglaClient bangla = BanglaClient.getInstance();
             if (bangla != null && bangla.getModuleManager() != null) {

@@ -2,6 +2,7 @@ package com.ahmed.banglaclient.mixin;
 
 import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.module.hud.CpsCounterModule;
+import com.ahmed.banglaclient.module.utility.MidClickActionsModule;
 import com.ahmed.banglaclient.module.utility.MiddleClickPearlModule;
 import com.ahmed.banglaclient.module.visual.ZoomModule;
 import net.minecraft.client.MinecraftClient;
@@ -41,6 +42,7 @@ public abstract class MouseMixin {
         if (input.button() == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
             bangla.getModuleManager().getModule(MiddleClickPearlModule.class)
                     .ifPresent(MiddleClickPearlModule::onMiddleMouseClick);
+            bangla.getModuleManager().getModule(MidClickActionsModule.class).ifPresent(MidClickActionsModule::onMiddleClick);
         }
     }
 }

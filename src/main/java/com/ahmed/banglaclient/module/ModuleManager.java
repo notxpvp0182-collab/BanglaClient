@@ -100,6 +100,18 @@ import com.ahmed.banglaclient.module.world.CompassHudModule;
 import com.ahmed.banglaclient.module.world.LightLevelModule;
 import com.ahmed.banglaclient.module.world.SlimeChunkInfoModule;
 import com.ahmed.banglaclient.module.world.TimeDisplayModule;
+import com.ahmed.banglaclient.module.combat.ReachDisplayModule;
+import com.ahmed.banglaclient.module.combat.TntCrystalHudModule;
+import com.ahmed.banglaclient.module.hud.ServerTpsNetworkHudModule;
+import com.ahmed.banglaclient.module.inventory.MouseTweaksModule;
+import com.ahmed.banglaclient.module.inventory.OffhandHudModule;
+import com.ahmed.banglaclient.module.movement.FlySpeedControlModule;
+import com.ahmed.banglaclient.module.performance.MasterOptimizerModule;
+import com.ahmed.banglaclient.module.utility.MidClickActionsModule;
+import com.ahmed.banglaclient.module.visual.ClearLavaModule;
+import com.ahmed.banglaclient.module.visual.CustomFovModule;
+import com.ahmed.banglaclient.module.visual.FreelookModule;
+import com.ahmed.banglaclient.module.visual.SmallItemsSystemModule;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import java.util.*;
@@ -197,6 +209,18 @@ public final class ModuleManager {
         register(new NametagsModule());
         register(new ItemPhysicsModule());
         register(new SmallHeldItemModule());
+        register(new SmallItemsSystemModule());
+        register(new ClearLavaModule());
+        register(new FreelookModule());
+        register(new CustomFovModule());
+        register(new ReachDisplayModule());
+        register(new TntCrystalHudModule());
+        register(new ServerTpsNetworkHudModule());
+        register(new OffhandHudModule());
+        register(new MouseTweaksModule());
+        register(new FlySpeedControlModule());
+        register(new MidClickActionsModule());
+        register(new MasterOptimizerModule());
 
         // Inventory (12 Essential Modules)
         register(new InventoryHudModule());

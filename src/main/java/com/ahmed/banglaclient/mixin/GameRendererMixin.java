@@ -4,6 +4,7 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.module.visual.ClearWaterModule;
 import com.ahmed.banglaclient.module.visual.CustomFogModule;
 import com.ahmed.banglaclient.module.visual.CustomHurtCameraModule;
+import com.ahmed.banglaclient.module.visual.CustomFovModule;
 import com.ahmed.banglaclient.module.visual.ZoomModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
@@ -26,6 +27,8 @@ public abstract class GameRendererMixin {
     private void banglaclient$applySmoothZoomFov(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Float> cir) {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla == null || bangla.getModuleManager() == null) return;
+        var fovOpt = bangla.getModuleManager().getModule(CustomFovModule.class);
+        if (fovOpt.isPresent() && fovOpt.get().isEnabled()) cir.setReturnValue(fovOpt.get().modifyFov(cir.getReturnValue()));
         var zoomOpt = bangla.getModuleManager().getModule(ZoomModule.class);
         if (zoomOpt.isPresent()) {
             float divisor = zoomOpt.get().getFovDivisor();
