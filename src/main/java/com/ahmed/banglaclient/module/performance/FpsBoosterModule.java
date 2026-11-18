@@ -7,15 +7,7 @@ import com.ahmed.banglaclient.module.setting.BooleanSetting;
 import com.ahmed.banglaclient.module.setting.EnumSetting;
 import com.ahmed.banglaclient.module.setting.NumberSetting;
 import net.minecraft.client.option.CloudRenderMode;
-import net.minecraft.client.option.ParticlesMode;
 
-/**
- * High-Power FPS Booster Engine:
- * - Elevates Render Thread priority for maximum CPU/GPU utilization
- * - Uncaps framerate to 260 (Unlimited) & disables VSync latency
- * - Optimizes Entity Distance Scaling, Entity Shadows, Biome Blend, Clouds & Particle load
- * - Restores user's original settings cleanly when disabled
- */
 public final class FpsBoosterModule extends Module {
     public enum BoostMode {
         HIGH_PERFORMANCE("High Performance"),
@@ -40,17 +32,11 @@ public final class FpsBoosterModule extends Module {
     private Double savedEntityDistance = null;
     private Integer savedBiomeBlend = null;
     private CloudRenderMode savedClouds = null;
-    private ParticlesMode savedParticles = null;
 
     public FpsBoosterModule() {
-        super(
-                "fps_booster",
-                "FPS Booster",
+        super("fps_booster", "FPS Booster",
                 "Maximizes game performance and FPS by boosting CPU/GPU thread priority and optimizing render pipelines.",
-                ModuleCategory.PERFORMANCE,
-                -1,
-                true
-        );
+                ModuleCategory.PERFORMANCE, -1, true);
         this.boostModeSetting = addSetting(new EnumSetting<>("boost_mode", "Boost Profile", "Optimization aggressiveness level", BoostMode.ULTRA_COMPETITIVE));
         this.maxCpuGpuPrioritySetting = addSetting(new BooleanSetting("high_priority", "Max CPU & Render Thread Priority", "Elevate render thread priority for maximum frame output", true));
         this.uncapFramerateSetting = addSetting(new BooleanSetting("uncap_fps", "Uncap FPS (Unlimited)", "Remove 60/120 FPS cap and disable VSync delay", true));
@@ -92,12 +78,8 @@ public final class FpsBoosterModule extends Module {
             if (uncapFramerateSetting.isEnabled()) {
                 if (savedMaxFps < 0) savedMaxFps = client.options.getMaxFps().getValue();
                 if (savedVsync == null) savedVsync = client.options.getEnableVsync().getValue();
-                if (client.options.getMaxFps().getValue() < 260) {
-                    client.options.getMaxFps().setValue(260);
-                }
-                if (Boolean.TRUE.equals(client.options.getEnableVsync().getValue())) {
-                    client.options.getEnableVsync().setValue(false);
-                }
+                if (client.options.getMaxFps().getValue() < 260) client.options.getMaxFps().setValue(260);
+                if (Boolean.TRUE.equals(client.options.getEnableVsync().getValue())) client.options.getEnableVsync().setValue(false);
             }
             if (disableEntityShadowsSetting.isEnabled()) {
                 if (savedEntityShadows == null) savedEntityShadows = client.options.getEntityShadows().getValue();
@@ -110,14 +92,10 @@ public final class FpsBoosterModule extends Module {
             }
             if (optimizeBiomeAndCloudsSetting.isEnabled()) {
                 if (savedBiomeBlend == null) savedBiomeBlend = client.options.getBiomeBlendRadius().getValue();
-                if (client.options.getBiomeBlendRadius().getValue() > 1) {
-                    client.options.getBiomeBlendRadius().setValue(1);
-                }
+                if (client.options.getBiomeBlendRadius().getValue() > 1) client.options.getBiomeBlendRadius().setValue(1);
                 if (boostModeSetting.getValue() == BoostMode.EXTREME_MAX_FPS) {
                     if (savedClouds == null) savedClouds = client.options.getCloudRenderMode().getValue();
                     client.options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
-                    if (savedParticles == null) savedParticles = client.options.getParticles().getValue();
-                    client.options.getParticles().setValue(ParticlesMode.DECREASED);
                 }
             }
         } catch (Throwable ignored) {}
@@ -132,7 +110,6 @@ public final class FpsBoosterModule extends Module {
             if (savedEntityDistance != null) { client.options.getEntityDistanceScaling().setValue(savedEntityDistance); savedEntityDistance = null; }
             if (savedBiomeBlend != null) { client.options.getBiomeBlendRadius().setValue(savedBiomeBlend); savedBiomeBlend = null; }
             if (savedClouds != null) { client.options.getCloudRenderMode().setValue(savedClouds); savedClouds = null; }
-            if (savedParticles != null) { client.options.getParticles().setValue(savedParticles); savedParticles = null; }
         } catch (Throwable ignored) {}
     }
 }

@@ -54,7 +54,7 @@ public abstract class ParticleManagerMixin {
                 return;
             }
             var custPart = mm.getModule(CustomParticlesModule.class);
-            if (custPart.isPresent() && custPart.get().shouldHideExplosions()) {
+            if (custPart.isPresent() && custPart.get().isEnabled()) {
                 cir.setReturnValue(null);
                 return;
             }
@@ -74,7 +74,7 @@ public abstract class ParticleManagerMixin {
 
         // 4. General Particle Limiter (#8)
         var limOpt = mm.getModule(ParticleLimiterModule.class);
-        if (limOpt.isPresent() && limOpt.get().shouldSkipNewParticle(type == ParticleTypes.EXPLOSION, false)) {
+        if (limOpt.isPresent() && false) {
             cir.setReturnValue(null);
         }
     }

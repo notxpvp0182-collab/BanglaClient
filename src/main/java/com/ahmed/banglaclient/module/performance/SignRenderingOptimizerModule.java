@@ -4,8 +4,8 @@ import com.ahmed.banglaclient.module.Module;
 import com.ahmed.banglaclient.module.ModuleCategory;
 import com.ahmed.banglaclient.module.setting.BooleanSetting;
 import com.ahmed.banglaclient.module.setting.NumberSetting;
-import net.minecraft.block.entity.AbstractSignBlockEntity;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.SignBlockEntity;
 
 public final class SignRenderingOptimizerModule extends Module {
     private final NumberSetting maxDistanceSetting;
@@ -21,7 +21,7 @@ public final class SignRenderingOptimizerModule extends Module {
     }
 
     public boolean shouldSkipSign(BlockEntity be) {
-        if (!isEnabled() || !(be instanceof AbstractSignBlockEntity) || client == null || client.player == null) return false;
+        if (!isEnabled() || !(be instanceof SignBlockEntity) || client == null || client.player == null) return false;
         double distSq = client.player.squaredDistanceTo(be.getPos().toCenterPos());
         if (alwaysRenderNearbySetting.isEnabled() && distSq <= 64.0) return false;
         double max = maxDistanceSetting.getValue();

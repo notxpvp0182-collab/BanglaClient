@@ -55,7 +55,7 @@ public abstract class FogRendererMixin {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getModuleManager() != null) {
             var fogOpt = bangla.getModuleManager().getModule(CustomFogModule.class);
-            if (fogOpt.isPresent() && fogOpt.get().shouldDisableTerrainFog()) {
+            if (fogOpt.isPresent() && fogOpt.get().isEnabled()) {
                 return 10000.0f;
             }
             var waterOpt = bangla.getModuleManager().getModule(ClearWaterModule.class);
@@ -77,7 +77,7 @@ public abstract class FogRendererMixin {
         BanglaClient bangla = BanglaClient.getInstance();
         if (bangla != null && bangla.getModuleManager() != null) {
             var fogOpt = bangla.getModuleManager().getModule(CustomFogModule.class);
-            if (fogOpt.isPresent() && fogOpt.get().shouldDisableTerrainFog()) {
+            if (fogOpt.isPresent() && fogOpt.get().isEnabled()) {
                 return 20000.0f;
             }
             var waterOpt = bangla.getModuleManager().getModule(ClearWaterModule.class);

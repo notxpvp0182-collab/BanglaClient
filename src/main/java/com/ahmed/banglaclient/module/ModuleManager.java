@@ -319,6 +319,11 @@ import com.ahmed.banglaclient.module.performance.GuiRenderingOptimizerModule;
 import com.ahmed.banglaclient.module.performance.ResourceReloadOptimizerModule;
 import com.ahmed.banglaclient.module.performance.StartupCacheModule;
 import com.ahmed.banglaclient.module.performance.FastResourceReloadModule;
+import com.ahmed.banglaclient.module.performance.ItemRenderingOptimizerModule;
+import com.ahmed.banglaclient.module.combat.TntFuseHudStandaloneModule;
+import com.ahmed.banglaclient.module.combat.CrystalStatusHudStandaloneModule;
+import com.ahmed.banglaclient.module.hud.DirectionHudStandaloneModule;
+import com.ahmed.banglaclient.module.hud.PingGraphStandaloneModule;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import java.util.*;

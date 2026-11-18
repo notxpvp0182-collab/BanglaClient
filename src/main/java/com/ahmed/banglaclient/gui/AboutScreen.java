@@ -118,10 +118,10 @@ public final class AboutScreen extends Screen {
         if (MathUtils.isHovered(mouseX, mouseY, copyX, srvY + 9, copyW, copyH)) {
             GlassRenderer.playClickSound();
             if (this.client != null && this.client.keyboard != null) {
-                this.client.keyboard.setClipboard(BanglaClient.SERVER_IP);
+                this.client.keyboard.setClipboard("play.banglasmp.net");
             }
             if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
-                BanglaClient.getInstance().getNotificationManager().pushSuccess("Server IP Copied", BanglaClient.SERVER_IP);
+                BanglaClient.getInstance().getNotificationManager().pushSuccess("Server IP Copied", "play.banglasmp.net");
             }
             return true;
         }

@@ -49,7 +49,7 @@ public abstract class ItemEntityRendererMixin {
         if (physOpt.isPresent() && physOpt.get().isEnabled()) {
             matrices.translate(0.0f, -0.10f, 0.0f);
             matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90.0f));
-            float spin = (state.age * 4.0f * physOpt.get().getRotationSpeedMultiplier()) % 360.0f;
+            float spin = (state.age * 4.0f * 1.0f) % 360.0f;
             matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(spin));
         }
     }
