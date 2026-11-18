@@ -6,34 +6,35 @@ import com.ahmed.banglaclient.animation.Easing;
 import com.ahmed.banglaclient.identity.BcIdentityManager;
 import com.ahmed.banglaclient.rendering.BlurRenderer;
 import com.ahmed.banglaclient.rendering.GlassRenderer;
-import com.ahmed.banglaclient.theme.Theme;
 import com.ahmed.banglaclient.util.MathUtils;
+import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 import org.joml.Matrix3x2fStack;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * 2D Aura Dark Developer & Client Info Screen.
+ * Redesigned Premium AMOLED Aura Info Screen (100% Small-Caps, zero version clutter).
  */
 public final class AboutScreen extends Screen {
-    private final Screen parentScreen;
-    private final Animation openAnim = new Animation(0.0f, 150L, Easing.EASE_OUT_CUBIC);
+    private final Screen parent;
+    private final Animation openAnim = new Animation(0.0f, 180L, Easing.EASE_OUT_CUBIC);
     private boolean closing = false;
-    private int panelX, panelY, panelW, panelH;
+    private int winX, winY, winW, winH;
 
-    public AboutScreen(Screen parentScreen) {
-        super(Text.literal("Info"));
-        this.parentScreen = parentScreen;
+    public AboutScreen(Screen parent) {
+        super(Text.literal("Client Info"));
+        this.parent = parent;
     }
 
     @Override
     protected void init() {
-        this.panelW = Math.min(310, this.width - 30);
-        this.panelH = Math.min(185, this.height - 24);
-        this.panelX = (this.width - this.panelW) / 2;
-        this.panelY = (this.height - this.panelH) / 2;
+        this.winW = 286;
+        this.winH = 182;
+        this.winX = (this.width - this.winW) / 2;
+        this.winY = (this.height - this.winH) / 2;
         this.closing = false;
         this.openAnim.snapTo(0.0f);
         this.openAnim.animateTo(1.0f);
@@ -43,83 +44,106 @@ public final class AboutScreen extends Screen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         float anim = openAnim.getValue();
         if (closing && anim <= 0.02f) {
-            if (this.client != null) this.client.setScreen(parentScreen);
+            if (this.client != null) this.client.setScreen(parent);
             return;
         }
 
         BlurRenderer.renderScreenBackdrop(context, this.width, this.height, anim);
-        Theme theme = GlassRenderer.getTheme();
 
         Matrix3x2fStack matrices = context.getMatrices();
-        float scale = 0.94f + 0.06f * anim;
+        float scale = 0.92f + 0.08f * anim;
         matrices.pushMatrix();
         matrices.translate(this.width * 0.5f, this.height * 0.5f);
         matrices.scale(scale, scale);
         matrices.translate(-this.width * 0.5f, -this.height * 0.5f);
 
         try {
-            GlassRenderer.drawGlassPanel(context, panelX, panelY, panelW, panelH, true, false, true);
+            GlassRenderer.drawGlassPanel(context, winX, winY, winW, winH, false, false, true);
 
-            int cx = panelX + 16;
-            int cy = panelY + 14;
+            int cx = winX + winW / 2;
+            BcIdentityManager.drawIdentityIcon(context, cx - 12, winY + 10, 24, 24);
 
-            BcIdentityManager.drawIdentityIcon(context, cx, cy, 16, 16);
-            context.drawTextWithShadow(textRenderer, GlassRenderer.toSmallCaps("Bangla Client"), cx + 22, cy + 1, 0xFFFFFFFF);
-            context.drawTextWithShadow(textRenderer, "Developed by Ahmed (Minecraft Player & Developer)", cx + 22, cy + 11, theme.getTextSecondary());
+            String brand = GlassRenderer.toSmallCaps("BANGLA CLIENT");
+            context.drawTextWithShadow(textRenderer, brand, cx - textRenderer.getWidth(brand) / 2, winY + 37, 0xFFFFFFFF);
 
-            GlassRenderer.drawHorizontalDivider(context, cx, cy + 25, panelW - 32);
+            String dev = GlassRenderer.toSmallCaps("Developed by Ahmed");
+            context.drawTextWithShadow(textRenderer, dev, cx - textRenderer.getWidth(dev) / 2, winY + 48, 0xFF94A3B8);
 
-            context.drawTextWithShadow(textRenderer, "• Support: All Minecraft Versions Compatible", cx, cy + 34, 0xFFFFFFFF);
-            context.drawTextWithShadow(textRenderer, "• Modules: 136 High-Performance Utility & PvP Mods", cx, cy + 47, theme.getTextSecondary());
-            context.drawTextWithShadow(textRenderer, "• Architecture: 2D Aura Dark Edition (Zero-Lag HD)", cx, cy + 60, theme.getTextSecondary());
-            context.drawTextWithShadow(textRenderer, "• Official Server: play.banglasmp.net", cx, cy + 76, 0xFFFFFFFF);
+            GlassRenderer.drawHorizontalDivider(context, winX + 14, winY + 61, winW - 28);
 
-            int cpX = cx, cpY = cy + 92, cpW = 90, cpH = 17;
-            boolean cpHov = MathUtils.isHovered(mouseX, mouseY, cpX, cpY, cpW, cpH);
-            GlassRenderer.drawPillBadge(context, cpX, cpY, cpW, cpH, 0xFFFFFFFF, cpHov || true);
-            context.drawTextWithShadow(textRenderer, "Copy Server IP", cpX + (cpW - textRenderer.getWidth("Copy Server IP")) / 2, cpY + 5, 0xFFFFFFFF);
+            // Clean Info Cards
+            int cardW = (winW - 34) / 2;
+            GlassRenderer.drawGlassPanel(context, winX + 14, winY + 67, cardW, 32, true, false, false);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Platform", winX + 20, winY + 72, 0xFF94A3B8);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Fabric 1.21.11", winX + 20, winY + 84, 0xFFFFFFFF);
 
-            int btnW = 84, btnH = 18;
-            int btnX = panelX + (panelW - btnW) / 2;
-            int btnY = panelY + panelH - 26;
-            boolean hovered = MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH);
-            GlassRenderer.drawGlassPanel(context, btnX, btnY, btnW, btnH, true, hovered, hovered);
-            String closeLabel = "← Return";
-            context.drawTextWithShadow(textRenderer, closeLabel, btnX + (btnW - textRenderer.getWidth(closeLabel)) / 2, btnY + 5, 0xFFFFFFFF);
+            GlassRenderer.drawGlassPanel(context, winX + 20 + cardW, winY + 67, cardW, 32, true, false, false);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Architecture", winX + 26 + cardW, winY + 72, 0xFF94A3B8);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "AMOLED Aura Engine", winX + 26 + cardW, winY + 84, 0xFFFFFFFF);
+
+            // Official Server Card
+            int srvY = winY + 105;
+            GlassRenderer.drawGlassPanel(context, winX + 14, srvY, winW - 28, 36, true, false, true);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "Official Community Server", winX + 22, srvY + 6, 0xFF94A3B8);
+            GlassRenderer.drawSmallCapsText(context, textRenderer, "play.banglasmp.net", winX + 22, srvY + 19, 0xFFFFFFFF);
+
+            int copyW = 68, copyH = 18;
+            int copyX = winX + winW - 22 - copyW;
+            boolean copyHov = MathUtils.isHovered(mouseX, mouseY, copyX, srvY + 9, copyW, copyH);
+            GlassRenderer.drawPillBadge(context, copyX, srvY + 9, copyW, copyH, 0xFFFFFFFF, copyHov || true);
+            String cpTxt = GlassRenderer.toSmallCaps("Copy IP");
+            context.drawTextWithShadow(textRenderer, cpTxt, copyX + (copyW - textRenderer.getWidth(cpTxt)) / 2, srvY + 14, 0xFFFFFFFF);
+
+            // Bottom Return Button
+            int retW = 104, retH = 20;
+            int retX = cx - retW / 2;
+            int retY = winY + winH - 28;
+            boolean retHov = MathUtils.isHovered(mouseX, mouseY, retX, retY, retW, retH);
+            GlassRenderer.drawPillBadge(context, retX, retY, retW, retH, 0xFFFFFFFF, retHov);
+            String retTxt = GlassRenderer.toSmallCaps("← Return");
+            context.drawTextWithShadow(textRenderer, retTxt, cx - textRenderer.getWidth(retTxt) / 2, retY + 6, 0xFFFFFFFF);
         } finally {
             matrices.popMatrix();
         }
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (closing) return false;
-        int cx = panelX + 16;
-        int cy = panelY + 14;
-        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, cx, cy + 92, 90, 17)) {
+    @Override
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x(), mouseY = click.y();
+        if (click.button() != 0 || closing) return super.mouseClicked(click, doubled);
+
+        int srvY = winY + 105;
+        int copyW = 68, copyH = 18;
+        int copyX = winX + winW - 22 - copyW;
+        if (MathUtils.isHovered(mouseX, mouseY, copyX, srvY + 9, copyW, copyH)) {
+            GlassRenderer.playClickSound();
             if (this.client != null && this.client.keyboard != null) {
-                this.client.keyboard.setClipboard("play.banglasmp.net");
-                if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
-                    BanglaClient.getInstance().getNotificationManager().pushSuccess("Bangla SMP", "Copied play.banglasmp.net");
-                }
+                this.client.keyboard.setClipboard(BanglaClient.SERVER_IP);
+            }
+            if (BanglaClient.getInstance() != null && BanglaClient.getInstance().getNotificationManager() != null) {
+                BanglaClient.getInstance().getNotificationManager().pushSuccess("Server IP Copied", BanglaClient.SERVER_IP);
             }
             return true;
         }
-        int btnW = 84, btnH = 18;
-        int btnX = panelX + (panelW - btnW) / 2;
-        int btnY = panelY + panelH - 26;
-        if (button == 0 && MathUtils.isHovered(mouseX, mouseY, btnX, btnY, btnW, btnH)) {
+
+        int cx = winX + winW / 2;
+        int retW = 104, retH = 20;
+        if (MathUtils.isHovered(mouseX, mouseY, cx - retW / 2, winY + winH - 28, retW, retH)) {
+            GlassRenderer.playClickSound();
             close();
             return true;
         }
-        return false;
+
+        return super.mouseClicked(click, doubled);
     }
 
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+    @Override
+    public boolean keyPressed(KeyInput input) {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
             close();
             return true;
         }
-        return false;
+        return super.keyPressed(input);
     }
 
     @Override
@@ -130,13 +154,6 @@ public final class AboutScreen extends Screen {
         }
     }
 
-    @Override public boolean mouseClicked(net.minecraft.client.gui.Click c, boolean d) { return mouseClicked(c.x(), c.y(), c.button()) || super.mouseClicked(c, d); }
-    @Override public boolean mouseDragged(net.minecraft.client.gui.Click c, double dx, double dy) { return false; }
-    @Override public boolean mouseReleased(net.minecraft.client.gui.Click c) { return false; }
-    @Override public boolean keyPressed(net.minecraft.client.input.KeyInput k) { return keyPressed(k.key(), k.scancode(), k.modifiers()) || super.keyPressed(k); }
-    @Override public boolean charTyped(net.minecraft.client.input.CharInput ch) { return false; }
-    public boolean mouseDragged(double mx, double my, int b, double dx, double dy) { return false; }
-    public boolean mouseReleased(double mx, double my, int b) { return false; }
-    public boolean charTyped(char c, int m) { return false; }
-    @Override public boolean shouldPause() { return false; }
+    @Override
+    public boolean shouldPause() { return false; }
 }

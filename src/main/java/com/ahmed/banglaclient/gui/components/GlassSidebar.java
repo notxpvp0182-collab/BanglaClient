@@ -29,8 +29,7 @@ public final class GlassSidebar {
         PERFORMANCE("Performance", "MODULES", ModuleCategory.PERFORMANCE, "PERFORMANCE"),
         UTILITY("Utility", "MODULES", ModuleCategory.UTILITY, "UTILITY"),
         SETTINGS("Settings", "CLIENT", null, "SETTINGS"),
-        ABOUT("About", "CLIENT", null, "ABOUT"),
-        LIVESTREAM("LiveStream", "CLIENT", null, "REPLAY");
+        ABOUT("About", "CLIENT", null, "ABOUT");
 
         private final String label;
         private final String sectionHeader;

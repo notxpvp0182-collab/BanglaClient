@@ -70,27 +70,34 @@ public final class LiveStreamHudModule extends HudModule {
         int y = Math.round(getPosY());
 
         if (!isLiveChatBox) {
-            String text = metricSupplier != null ? metricSupplier.get() : getName();
-            int pad = paddingSetting.getIntValue();
+            boolean isConnectedOrConnecting = mgr.snapshot().state() != LiveStreamManager.ConnectionState.DISCONNECTED;
+            if (!isConnectedOrConnecting && !preview) {
+                return;
+            }
             boolean isLiveInd = getId().equals("ls_live_indicator");
-            int w = Math.max(58, client.textRenderer.getWidth(text) + pad * 2 + (isLiveInd ? 11 : 0));
-            int h = client.textRenderer.fontHeight + pad * 2;
+            String rawText = metricSupplier != null ? metricSupplier.get() : getName();
+            if (isLiveInd && "DISCONNECTED".equalsIgnoreCase(rawText)) {
+                rawText = "Offline";
+            }
+            String text = GlassRenderer.toSmallCaps(rawText);
+            int pad = 4;
+            int w = Math.max(44, client.textRenderer.getWidth(text) + pad * 2 + (isLiveInd ? 9 : 0));
+            int h = 15;
             setWidth(w);
             setHeight(h);
 
             if (showBackgroundSetting.isEnabled()) {
-                GlassRenderer.drawCustomGlassPanel(context, x, y, w, h, backgroundColorSetting.getArgb(), false, false, showBorderSetting.isEnabled());
+                GlassRenderer.drawPillBadge(context, x, y, w, h, 0xFFFFFFFF, false);
             }
 
             int tx = x + pad;
             if (isLiveInd) {
                 boolean isLive = mgr.snapshot().state() == LiveStreamManager.ConnectionState.LIVE;
-                float pulse = isLive ? (float) (0.65 + 0.35 * Math.sin(System.currentTimeMillis() / 260.0)) : 0.4f;
-                int dotColor = isLive ? EmojiRenderer.withAlpha(0xFFFC8181, (int) (255 * pulse)) : 0xFF64748B;
-                context.fill(tx, y + (h - 6) / 2, tx + 6, y + (h - 6) / 2 + 6, dotColor);
-                tx += 10;
+                int dotColor = isLive ? 0xFFEF4444 : 0xFF94A3B8;
+                context.fill(tx, y + 5, tx + 5, y + 10, dotColor);
+                tx += 8;
             }
-            context.drawTextWithShadow(client.textRenderer, text, tx, y + pad + 1, textColorSetting.getArgb());
+            context.drawTextWithShadow(client.textRenderer, text, tx, y + 4, textColorSetting.getArgb());
             renderBoundingBoxIfEnabled(context, x, y, w, h);
             return;
         }
@@ -112,7 +119,7 @@ public final class LiveStreamHudModule extends HudModule {
 
         ClipRenderer.renderClipped(context, x + 2, y + 2, boxW - 4, boxH - 4, () -> {
             if (queue.isEmpty()) {
-                if (true) {
+                if (preview || mgr.snapshot().state() != LiveStreamManager.ConnectionState.DISCONNECTED) {
                     EmojiRenderer.drawYouTubeBadge(context, x + 8, y + 8, 255);
                     EmojiRenderer.drawRichText(context, tr, "Live chat waiting for messages...", x + 24, y + 8, 0xFF94A3B8, false, mgr.textShadow);
                 }

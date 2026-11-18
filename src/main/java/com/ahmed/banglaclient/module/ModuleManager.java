@@ -496,6 +496,7 @@ public final class ModuleManager {
         register(new LatencyOptimizerModule());
         register(new InputOptimizerModule());
         register(new RenderOptimizerModule());
+        register(new FpsBoosterModule());
         register(new EntityCullingModule());
         register(new CaveCullingModule());
         register(new BlockRenderingOptimizerModule());
