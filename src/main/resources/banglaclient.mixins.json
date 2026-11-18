@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "AbstractClientPlayerEntityMixin",
+    "BlockEntityRenderDispatcherMixin",
     "BossBarHudMixin",
     "CameraMixin",
     "ChatHudMixin",
@@ -26,6 +27,7 @@
     "MinecraftClientSessionAccessor",
     "MouseMixin",
     "MultiplayerServerListMixin",
+    "ParticleManagerMixin",
     "PlayerListEntryMixin",
     "PlayerListHudMixin",
     "PlayerSkinWidgetAccessor",
