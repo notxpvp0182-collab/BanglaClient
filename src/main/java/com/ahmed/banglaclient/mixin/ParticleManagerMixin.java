@@ -35,7 +35,7 @@ public abstract class ParticleManagerMixin {
         if (bangla == null || bangla.getModuleManager() == null) return;
         ModuleManager mm = bangla.getModuleManager();
 
-        var type = parameters.getType();
+        var type = parameters.getType(); if (type == ParticleTypes.DUST || type == ParticleTypes.CAMPFIRE_COSY_SMOKE || type == ParticleTypes.CAMPFIRE_SIGNAL_SMOKE) { var lagOpt = mm.getModule(com.ahmed.banglaclient.module.performance.LagMachineOptimizerModule.class); if (lagOpt.isPresent() && lagOpt.get().shouldBlockRedstoneParticles()) { cir.setReturnValue(null); return; } }
 
         // 1. Potion Particle Off (#194 & #32)
         if (type == ParticleTypes.ENTITY_EFFECT) {

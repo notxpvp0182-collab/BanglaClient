@@ -521,6 +521,7 @@ public final class ModuleManager {
         register(new XpOptimizerModule());
         register(new TntOptimizerModule());
         register(new ItemEntityOptimizerModule());
+        register(new LagMachineOptimizerModule());
         register(new FastHotbarOptimizerModule());
         register(new PotionOptimizerModule());
         register(new ElytraOptimizerModule());

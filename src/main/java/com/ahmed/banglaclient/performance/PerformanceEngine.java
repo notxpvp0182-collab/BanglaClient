@@ -59,6 +59,13 @@ public final class PerformanceEngine {
     private int savedOriginalViewDistance = -1;
     private int savedOriginalMaxFps = -1;
 
+    private final it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap cellItemCounts = new it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap();
+    private final it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap cellEntityCounts = new it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap();
+    private int pistonsRenderedThisFrame = 0;
+
+    public boolean allowPistonRender(int maxPistons) {
+        return ++pistonsRenderedThisFrame <= maxPistons;
+    }
     private PerformanceEngine() {}
 
     public static PerformanceEngine get() {
@@ -69,6 +76,9 @@ public final class PerformanceEngine {
      * Called once per rendered frame to record real frame time and compute rolling 1% Low FPS & variance.
      */
     public void onRenderFrame() {
+        cellItemCounts.clear();
+        cellEntityCounts.clear();
+        pistonsRenderedThisFrame = 0;
         long now = System.nanoTime();
         float dtMs = (now - lastFrameNano) / 1_000_000.0f;
         lastFrameNano = now;
@@ -175,8 +185,26 @@ public final class PerformanceEngine {
 
         double distSq = entity.squaredDistanceTo(mc.player);
 
-        if (entity instanceof ItemEntity && isModEnabled("item_entity_optimizer") && distSq > 48.0 * 48.0) {
-            return true;
+        long cellKey = (((long) (entity.getBlockX() >> 1) & 0x3FFFFFL) << 42)
+                | (((long) (entity.getBlockY() >> 1) & 0xFFFFFL) << 22)
+                | ((long) (entity.getBlockZ() >> 1) & 0x3FFFFFL);
+
+        var lootOpt = bc.getModuleManager().getModule(com.ahmed.banglaclient.module.performance.ItemEntityOptimizerModule.class);
+        if (entity instanceof ItemEntity && lootOpt.isPresent() && lootOpt.get().isEnabled()) {
+            if (distSq > lootOpt.get().getMaxDistanceSq()) return true;
+            int cnt = cellItemCounts.addTo(cellKey, 1);
+            if (cnt >= lootOpt.get().getMaxItemsPerCell()) return true;
+        }
+
+        var lagShield = bc.getModuleManager().getModule(com.ahmed.banglaclient.module.performance.LagMachineOptimizerModule.class);
+        if (lagShield.isPresent() && lagShield.get().isEnabled()) {
+            if (lagShield.get().shouldCullFallingBlocks() && entity instanceof net.minecraft.entity.FallingBlockEntity && distSq > 32.0 * 32.0) {
+                return true;
+            }
+            if (lagShield.get().shouldLimitStackedEntities() && !(entity instanceof net.minecraft.entity.player.PlayerEntity)) {
+                int ec = cellEntityCounts.addTo(cellKey, 1);
+                if (ec >= lagShield.get().getMaxEntitiesPerCell()) return true;
+            }
         }
         if (entity instanceof ExperienceOrbEntity && isModEnabled("xp_optimizer") && distSq > 36.0 * 36.0) {
             return true;

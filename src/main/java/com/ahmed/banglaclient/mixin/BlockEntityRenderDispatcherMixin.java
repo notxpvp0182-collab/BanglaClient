@@ -42,6 +42,7 @@ public abstract class BlockEntityRenderDispatcherMixin {
             return;
         }
 
+        if (blockEntity instanceof net.minecraft.block.entity.PistonBlockEntity) { var lagOpt = mm.getModule(com.ahmed.banglaclient.module.performance.LagMachineOptimizerModule.class); if (lagOpt.isPresent() && lagOpt.get().shouldLimitPistons() && !com.ahmed.banglaclient.performance.PerformanceEngine.get().allowPistonRender(lagOpt.get().getMaxPistonsPerFrame())) { ci.cancel(); return; } }
         var blockOpt = mm.getModule(BlockRenderingOptimizerModule.class);
         if (blockOpt.isPresent() && blockOpt.get().shouldSkipBlockEntity(blockEntity)) {
             ci.cancel();
