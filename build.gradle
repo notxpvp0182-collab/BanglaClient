@@ -41,6 +41,9 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "org.jcodec:jcodec:0.2.5"
+    include "org.jcodec:jcodec:0.2.5"
+
     modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'

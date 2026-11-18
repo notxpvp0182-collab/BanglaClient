@@ -4,6 +4,9 @@ import com.ahmed.banglaclient.BanglaClient;
 import com.ahmed.banglaclient.theme.Theme;
 import com.ahmed.banglaclient.theme.ThemeTokens;
 import com.ahmed.banglaclient.util.ColorUtils;
+import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.util.Identifier;
+import java.util.Locale;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
@@ -149,6 +152,13 @@ public final class GlassRenderer {
      * Draws a unique custom 2D vector icon specifically tailored to each individual module's ID.
      */
     public static void drawModuleIcon(DrawContext c, int x, int y, int size, String moduleId, int col) {
+        if (c != null && moduleId != null && !moduleId.isEmpty()) {
+            try {
+                Identifier tex = Identifier.of("banglaclient", "textures/icons/modules/" + moduleId.toLowerCase(Locale.ROOT) + ".png");
+                c.drawTexture(RenderPipelines.GUI_TEXTURED, tex, x, y, 0.0f, 0.0f, size, size, size, size);
+                return;
+            } catch (Throwable ignored) {}
+        }
         if (c == null || moduleId == null) return;
         String id = moduleId.toLowerCase(Locale.ROOT);
         int cx = x + size / 2;

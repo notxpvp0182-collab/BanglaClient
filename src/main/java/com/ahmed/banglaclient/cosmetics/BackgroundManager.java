@@ -10,6 +10,13 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
 
+import org.jcodec.api.FrameGrab;
+import org.jcodec.common.io.NIOUtils;
+import org.jcodec.common.io.SeekableByteChannel;
+import org.jcodec.common.model.ColorSpace;
+import org.jcodec.common.model.Picture;
+import org.jcodec.scale.ColorUtil;
+import org.jcodec.scale.Transform;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -256,34 +263,74 @@ public final class BackgroundManager {
     private BackgroundEntry loadMp4Entry(Path mp4File, String fileName, String title, String safeBase) {
         try {
             Path cacheDir = backgroundsDir.resolve(".mp4_" + safeBase);
-            if (!Files.exists(cacheDir)) {
-                Files.createDirectories(cacheDir);
-                try {
-                    new ProcessBuilder("ffmpeg", "-y", "-i", mp4File.toAbsolutePath().toString(),
-                            "-vf", "fps=15,scale=854:-1", "-frames:v", "45",
-                            cacheDir.resolve("frame_%03d.png").toAbsolutePath().toString())
-                            .redirectErrorStream(true).start().waitFor();
-                } catch (Throwable ignored) {}
+            Files.createDirectories(cacheDir);
+
+            // Check if frames were already decoded and cached
+            List<Path> existingPngs;
+            try (var s = Files.list(cacheDir)) {
+                existingPngs = s.filter(p -> p.toString().endsWith(".png")).sorted().toList();
             }
-            List<Identifier> frames = new ArrayList<>();
-            int w = 854, h = 480;
-            if (Files.exists(cacheDir)) {
-                try (var stream = Files.list(cacheDir)) {
-                    List<Path> pngs = stream.filter(p -> p.toString().endsWith(".png")).sorted().toList();
-                    for (int i = 0; i < pngs.size(); i++) {
-                        try (InputStream in = Files.newInputStream(pngs.get(i))) {
-                            NativeImage ni = NativeImage.read(in);
-                            w = ni.getWidth();
-                            h = ni.getHeight();
-                            Identifier fid = Identifier.of("banglaclient", "backgrounds/" + safeBase + "_v" + i);
-                            MinecraftClient.getInstance().getTextureManager().registerTexture(fid, new NativeImageBackedTexture(() -> safeBase, ni));
-                            frames.add(fid);
+
+            if (existingPngs.isEmpty()) {
+                // Pure-Java JCodec H.264/MP4 Decoder (Works on Windows & Android without ffmpeg!)
+                try (SeekableByteChannel channel = NIOUtils.readableChannel(mp4File.toFile())) {
+                    FrameGrab grab = FrameGrab.createFrameGrab(channel);
+                    Picture pic;
+                    int frameIdx = 0;
+                    int maxFrames = 60;
+                    while (frameIdx < maxFrames && (pic = grab.getNativeFrame()) != null) {
+                        Picture rgb = Picture.create(pic.getWidth(), pic.getHeight(), ColorSpace.RGB);
+                        Transform transform = ColorUtil.getTransform(pic.getColor(), ColorSpace.RGB);
+                        if (transform != null) {
+                            transform.transform(pic, rgb);
+                            int srcW = rgb.getWidth();
+                            int srcH = rgb.getHeight();
+                            // Keep Full-HD aspect ratio (up to 1280x720 for fast GPU texture upload)
+                            int outW = srcW > 1280 ? 1280 : srcW;
+                            int outH = srcW > 1280 ? Math.max(1, (srcH * 1280) / srcW) : srcH;
+                            byte[] plane = rgb.getPlaneData(0);
+                            try (NativeImage ni = new NativeImage(outW, outH, true)) {
+                                for (int y = 0; y < outH; y++) {
+                                    int sy = (y * srcH) / outH;
+                                    for (int x = 0; x < outW; x++) {
+                                        int sx = (x * srcW) / outW;
+                                        int off = (sy * srcW + sx) * 3;
+                                        if (off + 2 < plane.length) {
+                                            int r = Math.max(0, Math.min(255, plane[off] + 128));
+                                            int g = Math.max(0, Math.min(255, plane[off + 1] + 128));
+                                            int b = Math.max(0, Math.min(255, plane[off + 2] + 128));
+                                            ni.setColorArgb(x, y, (0xFF << 24) | (r << 16) | (g << 8) | b);
+                                        }
+                                    }
+                                }
+                                Path outPng = cacheDir.resolve(String.format(Locale.ROOT, "frame_%03d.png", frameIdx));
+                                ni.writeTo(outPng);
+                            }
                         }
+                        frameIdx++;
+                    }
+                } catch (Throwable e) {
+                    BanglaClient.LOGGER.warn("JCodec MP4 decode warning for {}: {}", fileName, e.getMessage());
+                }
+            }
+
+            List<Identifier> frames = new ArrayList<>();
+            int w = 1280, h = 720;
+            try (var stream = Files.list(cacheDir)) {
+                List<Path> pngs = stream.filter(p -> p.toString().endsWith(".png")).sorted().toList();
+                for (int i = 0; i < pngs.size(); i++) {
+                    try (InputStream in = Files.newInputStream(pngs.get(i))) {
+                        NativeImage ni = NativeImage.read(in);
+                        w = ni.getWidth();
+                        h = ni.getHeight();
+                        Identifier fid = Identifier.of("banglaclient", "backgrounds/" + safeBase + "_v" + i);
+                        MinecraftClient.getInstance().getTextureManager().registerTexture(fid, new NativeImageBackedTexture(() -> safeBase, ni));
+                        frames.add(fid);
                     }
                 }
             }
             if (!frames.isEmpty()) {
-                return new BackgroundEntry(fileName, title, mp4File, w, h, true, frames, 66);
+                return new BackgroundEntry(fileName, title, mp4File, w, h, true, frames, 50);
             }
         } catch (Throwable ignored) {}
         return null;
