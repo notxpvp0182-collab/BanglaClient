@@ -17,6 +17,7 @@ import net.minecraft.client.gui.DrawContext;
  */
 public final class GlassSidebar {
     public enum SidebarTab {
+        LIVESTREAM("LiveStream", "CLIENT", null, "REPLAY"),
         HOME("All Modules", "OVERVIEW", null, "DASHBOARD"),
         HUD("HUD", "MODULES", ModuleCategory.HUD, "HUD"),
         COMBAT("PvP & Combat", "MODULES", ModuleCategory.COMBAT, "COMBAT"),
